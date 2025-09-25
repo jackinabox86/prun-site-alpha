@@ -1,10 +1,10 @@
 import { NextResponse } from "next/server";
-import recipesRaw from "@/src/mock/recipes.json";
-import pricesRaw from "@/src/mock/prices.json";
-import bestRaw from "@/src/mock/bestRecipeIDs.json";
-import { buildPriceMap, buildRecipeMap } from "@/src/engine/maps";
-import { BestMap, PriceMode } from "@/src/types";
-import { findAllMakeOptions, buildScenarioRows } from "@/src/engine/engine";
+import pricesRaw from "@mocks/prices.json";
+import bestRaw from "@mocks/bestRecipeIDs.json";
+import recipesRaw from "@mocks/recipes.json";
+
+import { buildPriceMap, buildRecipeMap } from "@core/maps";
+import { findAllMakeOptions, buildScenarioRows } from "@core/engine";
 
 export async function GET(req: Request) {
   const { searchParams } = new URL(req.url);
