@@ -1,14 +1,5 @@
 [
-  ["Ticker","AI1-AskPrice","AI1-BidPrice"],
-
-  
-  ["SAR",null,500],
-  ["PCB",null,120],
-  ["SEN",null,200],
-
-
-  ["COP",10,9],
-  ["PLS",20,18],
-  ["SIL",15,13],
-  ["GLU",8,7]
+  { "Ticker": "PCB", "AI1-AskPrice": 22, "AI1-BidPrice": 20 },
+  { "Ticker": "COP", "AI1-AskPrice": 5,  "AI1-BidPrice": 4.5 },
+  { "Ticker": "SEN", "AI1-AskPrice": 8,  "AI1-BidPrice": 7.2 }
 ]
