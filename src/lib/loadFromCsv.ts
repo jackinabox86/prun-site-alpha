@@ -1,5 +1,5 @@
 import { fetchCsv } from "./csvFetch";
-import { buildRecipeMap } from "@/core/Maps";
+import { buildRecipeMap } from "@/core/maps";
 import { readBestRecipeMap } from "@/core/bestMap";
 import { PricesMap, RecipeMap, BestMap } from "@/types";
 
