@@ -5,12 +5,12 @@
     "Output1MAT","Output1CNT","Output2MAT","Output2CNT"
   ],
 
-  /* Parent that needs BOTH PCB and SEN */
+ 
   ["SAR","SAR-R1",100,50,10,2000,10,null, "PCB",1,"SEN",1,null,null, "SAR",1,null,null],
 
-  /* PCB recipe (made from COP + PLS) */
+
   ["PCB","PCB-R1",40,20,5,1000,20,null, "COP",3,"PLS",1,null,null, "PCB",1,null,null],
 
-  /* SEN recipe (made from SIL + GLU) */
+
   ["SEN","SEN-R1",30,10,4,800,24,null, "SIL",2,"GLU",1,null,null, "SEN",1,null,null]
 ]
