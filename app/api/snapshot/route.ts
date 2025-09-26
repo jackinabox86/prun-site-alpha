@@ -8,7 +8,7 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 // Folders to scan (adjust if you want more/less)
-const BASE_DIRS = ["app", "src"];
+const BASE_DIRS = ["app", "src", "docs"];
 
 // Ignore these directories
 const IGNORE_DIRS = new Set([
