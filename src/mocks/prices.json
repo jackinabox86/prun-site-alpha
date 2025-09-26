@@ -1,5 +1,5 @@
 [
-  { "Ticker": "PCB", "AI1-AskPrice": 22, "AI1-BidPrice": 20 },
-  { "Ticker": "COP", "AI1-AskPrice": 5,  "AI1-BidPrice": 4.5 },
-  { "Ticker": "SEN", "AI1-AskPrice": 8,  "AI1-BidPrice": 7.2 }
+  { "Ticker": "PCB", "RecipeID": "PCB-R1" },
+  { "Ticker": "COP", "RecipeID": "COP-R1" },
+  { "Ticker": "SEN", "RecipeID": "SEN-R1" }
 ]
