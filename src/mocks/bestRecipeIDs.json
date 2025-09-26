@@ -1,5 +1,5 @@
 [
+  { "Ticker": "SAR", "RecipeID": "SAR-R1" },
   { "Ticker": "PCB", "RecipeID": "PCB-R1" },
-  { "Ticker": "SEN", "RecipeID": "SEN-R2" }
+  { "Ticker": "SEN", "RecipeID": "SEN-R1" }
 ]
-
