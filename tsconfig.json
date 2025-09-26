@@ -16,12 +16,9 @@
     "forceConsistentCasingInFileNames": true,
     "baseUrl": ".",
     "paths": {
-      "@core/*": [
-        "src/core/*"
-      ],
-      "@mocks/*": [
-        "src/mocks/*"
-      ],
+      "@core/*": ["src/core/*"],
+      "@mocks/*": ["src/mocks/*"],
+      "@/core/*": ["src/core/*"],
       "@/lib/*": ["src/lib/*"]
     },
     "allowJs": true,
