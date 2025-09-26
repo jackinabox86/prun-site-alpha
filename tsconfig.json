@@ -21,7 +21,8 @@
       ],
       "@mocks/*": [
         "src/mocks/*"
-      ]
+      ],
+      "@/lib/*": ["src/lib/*"]
     },
     "allowJs": true,
     "skipLibCheck": true,
