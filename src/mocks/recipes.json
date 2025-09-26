@@ -1,16 +1,6 @@
 [
-  [
-    "Ticker","RecipeID","WfCst","Deprec","Area","AllBuildCst","Runs P/D","AreaPerOutput",
-    "Input1MAT","Input1CNT","Input2MAT","Input2CNT","Input3MAT","Input3CNT",
-    "Output1MAT","Output1CNT","Output2MAT","Output2CNT"
-  ],
-
- 
-  ["SAR","SAR-R1",100,50,10,2000,10,null, "PCB",1,"SEN",1,null,null, "SAR",1,null,null],
-
-
-  ["PCB","PCB-R1",40,20,5,1000,20,null, "COP",3,"PLS",1,null,null, "PCB",1,null,null],
-
-
-  ["SEN","SEN-R1",30,10,4,800,24,null, "SIL",2,"GLU",1,null,null, "SEN",1,null,null]
+  ["Ticker","RecipeID","WfCst","Deprec","Area","AllBuildCst","Runs P/D","AreaPerOutput","Input1MAT","Input1CNT","Input2MAT","Input2CNT","Output1MAT","Output1CNT","Output2MAT","Output2CNT"],
+  ["PCB","PCB-R1",10,5,2,100,24,0.05,"COP",2,"SEN",1,"PCB",1,null,null],
+  ["COP","COP-R1",2,1,1,10,24,0.02,null,null,null,null,"COP",1,null,null],
+  ["SEN","SEN-R1",3,1,1,12,24,0.02,null,null,null,null,"SEN",1,null,null]
 ]
