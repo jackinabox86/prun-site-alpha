@@ -8,7 +8,7 @@ export function findAllMakeOptions(
   recipeMap: RecipeMap,
   priceMap: PricesMap,
   priceMode: PriceMode,
-  bestMap?: BestMap | null,
+  bestMap: BestMap,
   depth = 0
 ): MakeOption[] {
   if (depth > 5) return [];
