@@ -242,7 +242,7 @@ export function buildScenarioRows(
 
   for (const item of allChildren) {
     const childDemandPerDay = (item.amountNeeded || 0) * runsPerDayRequiredHere;
-    const child = buildScenarioRows(item.details!, indentLevel + 1, childDemandPerDay, false);
+    const child = buildScenarioRows(item.details!, indentLevel + 1, childDemandPerDay, showChildren);
     childCalcs.push(child);
     childrenAreaNeededSum += (child.subtreeAreaNeededPerDay || 0);
   }
