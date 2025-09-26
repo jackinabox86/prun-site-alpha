@@ -1,14 +1,22 @@
-export type PriceMode = "bid" | "ask";
+/** ===== Price mode selector ===== */
+export type PriceMode = "bid" | "ask" | "pp7" | "pp30";
 
 /** ===== Prices ===== */
 export interface PriceEntry {
   ticker: string;
   ask: number | null;
   bid: number | null;
+  pp7: number | null;
+  pp30: number | null;
 }
 
 export interface PricesMap {
-  [ticker: string]: { ask: number | null; bid: number | null };
+  [ticker: string]: {
+    ask: number | null;
+    bid: number | null;
+    pp7: number | null;
+    pp30: number | null;
+  };
 }
 
 /** ===== Recipes sheet typing =====
