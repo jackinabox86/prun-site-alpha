@@ -1,1 +1,4 @@
-
+[
+  { "Ticker": "PCB", "AI1-AskPrice": 12, "AI1-BidPrice": 10 },
+  { "Ticker": "SEN", "AI1-AskPrice": 20, "AI1-BidPrice": 18 }
+]
