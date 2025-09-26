@@ -96,25 +96,30 @@ export function findAllMakeOptions(
     inputs.forEach(input => {
       const newScenarios: typeof scenarios = [];
 
-      // BUY branch
-      if (input.buyCost != null) {
-        scenarios.forEach(scn => {
-          const branchName = `Buy ${input.ticker}`;
-          const fullName = scn.scenarioName ? `${scn.scenarioName}, ${branchName}` : branchName;
-          newScenarios.push({
-            scenarioName: fullName,
-            totalInputCost: scn.totalInputCost + input.buyCost,
-            totalOpportunityCost: scn.totalOpportunityCost,
-            madeInputDetails: [...scn.madeInputDetails, {
-              recipeId: null,
-              ticker: input.ticker,
-              details: null,
-              amountNeeded: input.amount,
-              scenarioName: branchName
-            }]
-          });
-        });
-      }
+      // BUY branch — only if ask price exists
+if (input.buyCost !== null) {
+  const buyCost: number = input.buyCost; // helps TS narrow
+  scenarios.forEach((scn) => {
+    const branchName = `Buy ${input.ticker}`;
+    const fullName = scn.scenarioName ? `${scn.scenarioName}, ${branchName}` : branchName;
+
+    newScenarios.push({
+      scenarioName: fullName,
+      totalInputCost: scn.totalInputCost + buyCost,
+      totalOpportunityCost: scn.totalOpportunityCost,
+      madeInputDetails: [
+        ...scn.madeInputDetails,
+        {
+          recipeId: null,
+          ticker: input.ticker,
+          details: null,
+          amountNeeded: input.amount,
+          scenarioName: branchName,
+        },
+      ],
+    });
+  });
+}
 
       // MAKE branches
       if (input.makeOptions && input.makeOptions.length > 0) {
