@@ -19,7 +19,8 @@
       "@core/*": ["src/core/*"],
       "@mocks/*": ["src/mocks/*"],
       "@/core/*": ["src/core/*"],
-      "@/lib/*": ["src/lib/*"]
+      "@/lib/*": ["src/lib/*"],
+      "@/types": ["src/types"]
     },
     "allowJs": true,
     "skipLibCheck": true,
