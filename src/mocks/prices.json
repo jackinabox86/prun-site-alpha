@@ -1,4 +1,14 @@
 [
-  { "Ticker": "PCB", "AI1-AskPrice": 12, "AI1-BidPrice": 10 },
-  { "Ticker": "SEN", "AI1-AskPrice": 20, "AI1-BidPrice": 18 }
+  ["Ticker","AI1-AskPrice","AI1-BidPrice"],
+
+  /* Final outputs (we only need a bid to compute revenue) */
+  ["SAR",null,500],
+  ["PCB",null,120],
+  ["SEN",null,200],
+
+  /* Raw materials (need ask for cost, optional bid if they’re also sellable) */
+  ["COP",10,9],
+  ["PLS",20,18],
+  ["SIL",15,13],
+  ["GLU",8,7]
 ]
