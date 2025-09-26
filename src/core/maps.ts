@@ -18,14 +18,27 @@ export function buildPriceMap(
 export function buildRecipeMap(recipes: RecipeSheet): RecipeMap {
   const headers = recipes[0]; // string[]
   const tickerIndex = headers.indexOf("Ticker");
+
+  if (tickerIndex === -1) {
+    throw new Error("Recipes sheet is missing required 'Ticker' column header");
+  }
+
   const map: RecipeMap["map"] = {};
 
   for (let i = 1; i < recipes.length; i++) {
     const row = recipes[i] as RecipeRow;
-    const ticker = String(row[tickerIndex] ?? "");
+
+    const rawTicker = row[tickerIndex];
+    if (rawTicker == null) continue;
+
+    const ticker =
+      typeof rawTicker === "string" ? rawTicker.trim() : String(rawTicker);
+
     if (!ticker) continue;
+
     if (!map[ticker]) map[ticker] = [];
     map[ticker].push(row);
   }
+
   return { map, headers };
 }
