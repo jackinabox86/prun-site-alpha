@@ -64,7 +64,7 @@ export function findAllMakeOptions(
       if (matIndex !== -1 && row[matIndex]) {
         const inputTicker = String(row[matIndex]);            // ticker cell
         const inputAmount = Number(row[cntIndex] ?? 0);       // quantity
-        const unitPrice   = findPrice(inputTicker, priceMap, priceMode);
+        const unitPrice = findPrice(inputTicker, priceMap, "ask"); // ALWAYS ask for buy branch (Apps Script parity)
         const makeOptions = findAllMakeOptions(inputTicker, recipeMap, priceMap, priceMode, bestMap, depth + 1);
 
         inputs.push({
@@ -87,7 +87,7 @@ export function findAllMakeOptions(
       if (matIndex !== -1 && row[matIndex]) {
         const outputTicker = String(row[matIndex]);
         const outputAmount = Number(row[cntIndex] ?? 0);
-        const outputPrice  = findPrice(outputTicker, priceMap, "bid"); // keep P&L on bid
+        const outputPrice = findPrice(outputTicker, priceMap, priceMode); // use caller-selected side (bid/ask/pp7/pp30)
         if (!outputPrice) continue;
 
         const totalValue = outputAmount * outputPrice;
