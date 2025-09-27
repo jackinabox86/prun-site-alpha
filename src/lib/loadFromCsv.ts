@@ -1,20 +1,20 @@
 // src/lib/loadFromCsv.ts
 import { fetchCsv } from "./csvFetch";
-// NOTE: your file is lowercase 'maps.ts'
-import { buildRecipeMap } from "@/core/maps";
+import { buildRecipeMap } from "@/core/maps";        // note: lowercase 'maps'
 import { readBestRecipeMap } from "@/core/bestMap";
 
-// 👇 import the types so we can build a properly typed RecipeSheet
 import type {
   PricesMap,
   RecipeMap,
   BestMap,
   RecipeRow,
-  RecipeSheet
+  RecipeSheet,
 } from "@/types";
 
 export async function loadAllFromCsv(urls: {
-  recipes: string; prices: string; best: string;
+  recipes: string;
+  prices: string;
+  best: string;
 }): Promise<{ recipeMap: RecipeMap; pricesMap: PricesMap; bestMap: BestMap }> {
   const [recipesRows, pricesRows, bestRows] = await Promise.all([
     fetchCsv(urls.recipes), // -> Array<Record<string, any>>
@@ -26,17 +26,19 @@ export async function loadAllFromCsv(urls: {
   if (!recipesRows.length) throw new Error("Recipes CSV returned no rows");
   if (!pricesRows.length)  throw new Error("Prices CSV returned no rows");
   if (!bestRows.length)    throw new Error("BestRecipeIDs CSV returned no rows");
-  if (!("Ticker" in recipesRows[0])) throw new Error("Recipes CSV missing 'Ticker' header");
+  if (!("Ticker" in recipesRows[0])) {
+    throw new Error("Recipes CSV missing 'Ticker' header");
+  }
 
-  // Recipes: object rows -> sheet-like rows for buildRecipeMap([headers, ...rows])
+  // Recipes: object rows -> sheet-like rows expected by buildRecipeMap([headers, ...rows])
   const recipeHeaders = Object.keys(recipesRows[0]) as string[];
 
-  // Each data row must match your RecipeRow type
-  const typedRows: RecipeRow[] = recipesRows.map(obj =>
-    recipeHeaders.map(h => coerce(obj[h])) as RecipeRow
+  // Map object rows to your RecipeRow element shape
+  const typedRows: RecipeRow[] = recipesRows.map((obj) =>
+    recipeHeaders.map((h) => coerce(obj[h])) as RecipeRow
   );
 
-  // The full sheet must match RecipeSheet (header row + RecipeRow[])
+  // Full sheet = header row + data rows
   const recipeSheet: RecipeSheet = [recipeHeaders, ...typedRows];
   const recipeMap: RecipeMap = buildRecipeMap(recipeSheet);
 
@@ -53,7 +55,7 @@ export async function loadAllFromCsv(urls: {
     return acc;
   }, {} as PricesMap);
 
-  // Best map: pass object rows directly
+  // Best map: pass object rows directly (now returns { recipeId, scenario } per ticker)
   const bestMap: BestMap = readBestRecipeMap(bestRows as Array<Record<string, any>>);
 
   return { recipeMap, pricesMap, bestMap };
@@ -61,11 +63,11 @@ export async function loadAllFromCsv(urls: {
 
 function toNum(v: unknown): number | null {
   const n = Number(v);
-  return Number.isFinite(n) && n > 0 ? n : null; // mirrors Apps Script: only >0 counts
+  return Number.isFinite(n) && n > 0 ? n : null; // mirrors your Apps Script (>0)
 }
 
-// IMPORTANT: Make sure this return type matches your RecipeRow element type.
-// If your RecipeRow does NOT allow `null`, change the first line to: if (v === "" || v == null) return "";
+// IMPORTANT: If your RecipeRow type does not allow `null`, change the first line to:
+// if (v === "" || v == null) return "";
 function coerce(v: unknown): string | number | null {
   if (v === "" || v == null) return null;
   const n = Number(v);
