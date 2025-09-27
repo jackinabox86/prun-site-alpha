@@ -34,10 +34,11 @@ export function readBestRecipeMap(rows: Array<Record<string, any>>): BestMap {
     return best;
   }
 
-  for (const r of rows) {
-    const t = r["Ticker"];
-    const rid = r[idKey];
-    if (t && rid) best[t] = rid;
-  }
-  return best;
+  // no PA column: take the listed recipe id
+for (const r of rows) {           // ← remove .slice(1)
+  const t = r["Ticker"];
+  const rid = r[idKey];
+  if (t && rid) best[t] = rid;
+}
+return best;
 }
