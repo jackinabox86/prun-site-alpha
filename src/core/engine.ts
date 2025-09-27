@@ -135,8 +135,13 @@ const rowsToUse = rowsToUse0.length ? rowsToUse0 : rows;
       // BUY branch
       if (input.buyCost != null) {
         for (const scn of scenarios) {
-          const branchName = `Buy ${input.ticker}`;
-          const fullName = scn.scenarioName ? `${scn.scenarioName}, ${branchName}` : branchName;
+          import { composeScenario } from "@/core/scenario";
+
+// BUY branch
+const fullName = composeScenario(scn.scenarioName, {
+  type: "BUY",
+  inputTicker: input.ticker,
+});
           branched.push({
             scenarioName: fullName,
             totalInputCost: scn.totalInputCost + input.buyCost,
@@ -158,10 +163,12 @@ const rowsToUse = rowsToUse0.length ? rowsToUse0 : rows;
           const mo = input.childBest;
           const childScenarioName = mo.scenario || "";
           const recipeLabel = mo.recipeId ? mo.recipeId : mo.ticker;
-          const branchName = `Make ${recipeLabel} (for ${input.ticker})`;
-          const fullName = scn.scenarioName
-            ? `${scn.scenarioName}, ${branchName}${childScenarioName ? " [" + childScenarioName + "]" : ""}`
-            : `${branchName}${childScenarioName ? " [" + childScenarioName + "]" : ""}`;
+const fullName = composeScenario(scn.scenarioName, {
+  type: "MAKE",
+  inputTicker: input.ticker,
+  recipeLabel,
+  childScenario: mo.scenario || "", // pass through
+});
 
           branched.push({
             scenarioName: fullName,
@@ -369,8 +376,13 @@ export function findAllMakeOptions(
       // BUY
       if (input.buyCost != null) {
         for (const scn of scenarios) {
-          const branchName = `Buy ${input.ticker}`;
-          const fullName = scn.scenarioName ? `${scn.scenarioName}, ${branchName}` : branchName;
+          import { composeScenario } from "@/core/scenario";
+
+// BUY branch
+const fullName = composeScenario(scn.scenarioName, {
+  type: "BUY",
+  inputTicker: input.ticker,
+});
           branched.push({
             scenarioName: fullName,
             totalInputCost: scn.totalInputCost + input.buyCost,
@@ -392,10 +404,12 @@ export function findAllMakeOptions(
           const mo = input.childBest;
           const childScenarioName = mo.scenario || "";
           const recipeLabel = mo.recipeId ? mo.recipeId : mo.ticker;
-          const branchName = `Make ${recipeLabel} (for ${input.ticker})`;
-          const fullName = scn.scenarioName
-            ? `${scn.scenarioName}, ${branchName}${childScenarioName ? " [" + childScenarioName + "]" : ""}`
-            : `${branchName}${childScenarioName ? " [" + childScenarioName + "]" : ""}`;
+const fullName = composeScenario(scn.scenarioName, {
+  type: "MAKE",
+  inputTicker: input.ticker,
+  recipeLabel,
+  childScenario: mo.scenario || "", // pass through
+});
 
           branched.push({
             scenarioName: fullName,
