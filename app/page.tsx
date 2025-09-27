@@ -6,21 +6,26 @@ import type { PriceMode } from "@/types";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-type SearchParams = {
-  ticker?: string;
-  mode?: PriceMode; // "bid" | "ask" | "pp7" | "pp30"
-  expand?: string;  // "1" to show child rows
-};
+type NextSearchParams = { [key: string]: string | string[] | undefined };
 
-export default async function Page({ searchParams }: { searchParams?: SearchParams } = {}) {
-  const ticker = (searchParams?.ticker ?? "PCB").toUpperCase();
-  const mode = (searchParams?.mode ?? "bid") as PriceMode;
-  const showChildren = searchParams?.expand === "1";
+export default async function Page({
+  searchParams,
+}: {
+  searchParams?: NextSearchParams;
+}) {
+  // helpers to read string values from searchParams
+  const sp = searchParams ?? {};
+  const getStr = (k: string, fallback: string) =>
+    (Array.isArray(sp[k]) ? sp[k]?.[0] : sp[k]) ?? fallback;
+
+  const ticker = getStr("ticker", "PCB").toUpperCase();
+  const mode = getStr("mode", "bid") as PriceMode; // "bid" | "ask" | "pp7" | "pp30"
+  const showChildren = getStr("expand", "") === "1";
 
   const CSV_URLS = {
     recipes: process.env.CSV_RECIPES_URL!,
-    prices:  process.env.CSV_PRICES_URL!,
-    best:    process.env.CSV_BEST_URL!,
+    prices: process.env.CSV_PRICES_URL!,
+    best: process.env.CSV_BEST_URL!,
   };
 
   if (!CSV_URLS.recipes || !CSV_URLS.prices || !CSV_URLS.best) {
@@ -70,9 +75,7 @@ export default async function Page({ searchParams }: { searchParams?: SearchPara
         </p>
 
         <h2>Best Scenario (full object)</h2>
-        <pre style={{ whiteSpace: "pre-wrap" }}>
-          {JSON.stringify(best, null, 2)}
-        </pre>
+        <pre style={{ whiteSpace: "pre-wrap" }}>{JSON.stringify(best, null, 2)}</pre>
 
         <h2>Top 5 (summary only)</h2>
         <pre style={{ whiteSpace: "pre-wrap" }}>
@@ -93,9 +96,7 @@ export default async function Page({ searchParams }: { searchParams?: SearchPara
     return (
       <main style={{ padding: 24 }}>
         <h1>Error</h1>
-        <pre style={{ whiteSpace: "pre-wrap" }}>
-          {String(err?.message ?? err)}
-        </pre>
+        <pre style={{ whiteSpace: "pre-wrap" }}>{String(err?.message ?? err)}</pre>
       </main>
     );
   }
