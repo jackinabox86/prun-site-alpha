@@ -1,6 +1,6 @@
 // src/lib/loadFromCsv.ts
 import { fetchCsv } from "./csvFetch";
-import { buildRecipeMap } from "@/core/maps";        // note: lowercase 'maps'
+import { buildRecipeMap, buildPriceMap } from "@/core/maps";       // <- lowercase 'maps'
 import { readBestRecipeMap } from "@/core/bestMap";
 
 import type {
@@ -15,7 +15,12 @@ export async function loadAllFromCsv(urls: {
   recipes: string;
   prices: string;
   best: string;
-}): Promise<{ recipeMap: RecipeMap; pricesMap: PricesMap; bestMap: BestMap }> {
+}): Promise<{
+  recipeMap: RecipeMap;
+  pricesMap: PricesMap;
+  bestMap: BestMap;
+  __rawBestRows: Array<Record<string, any>>;
+}> {
   const [recipesRows, pricesRows, bestRows] = await Promise.all([
     fetchCsv(urls.recipes), // -> Array<Record<string, any>>
     fetchCsv(urls.prices),
@@ -32,42 +37,35 @@ export async function loadAllFromCsv(urls: {
 
   // Recipes: object rows -> sheet-like rows expected by buildRecipeMap([headers, ...rows])
   const recipeHeaders = Object.keys(recipesRows[0]) as string[];
-
-  // Map object rows to your RecipeRow element shape
   const typedRows: RecipeRow[] = recipesRows.map((obj) =>
     recipeHeaders.map((h) => coerce(obj[h])) as RecipeRow
   );
-
-  // Full sheet = header row + data rows
   const recipeSheet: RecipeSheet = [recipeHeaders, ...typedRows];
   const recipeMap: RecipeMap = buildRecipeMap(recipeSheet);
 
   // Prices: build PricesMap (ask/bid/pp7/pp30)
-  const pricesMap: PricesMap = pricesRows.reduce((acc, r) => {
-    const t = r["Ticker"];
-    if (!t) return acc;
-    acc[t] = {
-      ask:  toNum(r["AI1-AskPrice"]),
-      bid:  toNum(r["AI1-BidPrice"]),
-      pp7:  toNum(r["A1-PP7"]),
-      pp30: toNum(r["A1-PP30"]),
-    };
-    return acc;
-  }, {} as PricesMap);
+  const pricesMap: PricesMap = buildPriceMap(
+  pricesRows.map(r => ({
+    Ticker: r["Ticker"],
+    "AI1-AskPrice": Number(r["AI1-AskPrice"]) || 0,
+    "AI1-BidPrice": Number(r["AI1-BidPrice"]) || 0,
+    "A1-PP7":       Number(r["A1-PP7"])       || 0,
+    "A1-PP30":      Number(r["A1-PP30"])      || 0,
+  }))
+);
 
-  // Best map: pass object rows directly (now returns { recipeId, scenario } per ticker)
+  // Best map: pass object rows directly (returns { recipeId, scenario } per ticker)
   const bestMap: BestMap = readBestRecipeMap(bestRows as Array<Record<string, any>>);
 
-  return { recipeMap, pricesMap, bestMap };
+  // include raw best rows for parity checks / debugging
+  return { recipeMap, pricesMap, bestMap, __rawBestRows: bestRows };
 }
 
 function toNum(v: unknown): number | null {
   const n = Number(v);
-  return Number.isFinite(n) && n > 0 ? n : null; // mirrors your Apps Script (>0)
+  return Number.isFinite(n) && n > 0 ? n : null;
 }
 
-// IMPORTANT: If your RecipeRow type does not allow `null`, change the first line to:
-// if (v === "" || v == null) return "";
 function coerce(v: unknown): string | number | null {
   if (v === "" || v == null) return null;
   const n = Number(v);

@@ -23,7 +23,7 @@ export interface PricesMap {
  * Row 0 is the header row (string[]).
  * Subsequent rows are data rows; each is an array of cell values from the sheet.
  */
-export type RecipeRow = (string | number | null)[];
+export type RecipeRow = Array<string | number | null>;
 export type RecipeSheet = [string[], ...RecipeRow[]];
 
 export interface RecipeMap {
