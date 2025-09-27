@@ -6,20 +6,20 @@ import type { PriceMode } from "@/types";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-type NextSearchParams = { [key: string]: string | string[] | undefined };
+export default async function Page(props: any) {
+  // Normalize searchParams: support object OR Promise
+  const raw = props?.searchParams;
+  const sp: Record<string, string | string[] | undefined> =
+    raw && typeof raw.then === "function" ? await raw : (raw ?? {});
 
-export default async function Page({
-  searchParams,
-}: {
-  searchParams?: NextSearchParams;
-}) {
-  // helpers to read string values from searchParams
-  const sp = searchParams ?? {};
-  const getStr = (k: string, fallback: string) =>
-    (Array.isArray(sp[k]) ? sp[k]?.[0] : sp[k]) ?? fallback;
+  const getStr = (k: string, fallback: string) => {
+    const v = Array.isArray(sp[k]) ? sp[k]?.[0] : sp[k];
+    return (v as string | undefined) ?? fallback;
+  };
 
   const ticker = getStr("ticker", "PCB").toUpperCase();
-  const mode = getStr("mode", "bid") as PriceMode; // "bid" | "ask" | "pp7" | "pp30"
+  // accept both ?mode= and legacy ?priceMode=
+  const mode = (getStr("mode", getStr("priceMode", "bid")) as PriceMode); // "bid" | "ask" | "pp7" | "pp30"
   const showChildren = getStr("expand", "") === "1";
 
   const CSV_URLS = {
@@ -32,7 +32,7 @@ export default async function Page({
     return (
       <main style={{ padding: 24 }}>
         <h1>Missing CSV_* env vars</h1>
-        <p>Please set CSV_RECIPES_URL, CSV_PRICES_URL, CSV_BEST_URL.</p>
+        <p>Please set CSV_RECIPES_URL, CSV_PRICES_URL, CSV_BEST_URL (in .env.local and Vercel).</p>
       </main>
     );
   }
@@ -87,7 +87,7 @@ export default async function Page({
         </pre>
 
         <p style={{ marginTop: 16, color: "#666" }}>
-          Tip: use <code>?ticker=XYZ&amp;mode=pp7</code> or add{" "}
+          Tip: try <code>?ticker=XYZ&amp;mode=pp7</code> or add{" "}
           <code>&amp;expand=1</code> to include child rows in the best option.
         </p>
       </main>
