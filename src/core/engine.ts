@@ -7,6 +7,8 @@ import { findPrice } from "./price";
 const BEST_MEMO = new Map<string, MakeOption>();
 const memoKey = (mode: PriceMode, ticker: string) => `${mode}::${ticker}`;
 
+const norm = (s: string) => s.replace(/\s+/g, " ").trim();
+
 function deepClone<T>(v: T): T {
   return JSON.parse(JSON.stringify(v));
 }
@@ -55,10 +57,13 @@ function bestOptionForTicker(
   const expectedScenario = (bestEntry?.scenario ?? "").trim();
 
   // If bestMap gives a recipeId, only consider that recipe for this ticker
-  const rowsToUse = bestId
-    ? rows.filter(r => String(r[idx.recipeId] ?? "") === bestId)
-    : rows;
+ const rowsToUse0 = bestId
+  ? rows.filter(r => String(r[idx.recipeId] ?? "") === bestId)
+  : rows;
 
+// Fallback if recipeId filter empties due to formatting mismatches
+const rowsToUse = rowsToUse0.length ? rowsToUse0 : rows;
+  
   let chosenByPA: { opt: MakeOption; pa: number } | null = null;
   let chosenByScenario: MakeOption | null = null;
 
@@ -228,17 +233,17 @@ function bestOptionForTicker(
       const res = buildScenarioRows(opt, 0, dailyCapacity, false);
       const pa = res.subtreeProfitPerArea ?? -Infinity;
 
-      // 1) Prefer exact Scenario match if provided by bestMap
-      if (expectedScenario) {
-        if (opt.scenario === expectedScenario) {
-          chosenByScenario = opt;
-          break; // exact match found for this recipe
-        }
-      } else {
-        // 2) Otherwise, track best by P/A
-        if (!chosenByPA || pa > chosenByPA.pa) chosenByPA = { opt, pa };
-      }
-    }
+      // Always track best-by-PA as a fallback
+if (!chosenByPA || pa > chosenByPA.pa) {
+  chosenByPA = { opt, pa };
+}
+
+// Prefer exact Scenario match when provided (tolerate whitespace differences)
+if (expectedScenario && norm(opt.scenario) === norm(expectedScenario)) {
+  chosenByScenario = opt;
+  // (optional) don’t return yet; we keep scanning in case there’s an even better PA,
+  // but chosenByScenario will still be preferred below.
+}
 
     // If we had an expectedScenario but didn't find it in this recipe's combos,
     // we'll keep checking other rowsToUse. If none match across recipes, fall back to best P/A.
