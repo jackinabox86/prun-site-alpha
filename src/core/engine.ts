@@ -1,5 +1,6 @@
 import { BestMap, MakeOption, PriceMode, PricesMap, RecipeMap, ScenarioRowsResult } from "../types";
 import { findPrice } from "./price";
+import { composeScenario } from "./scenario"; // <-- top-level import (relative path)
 
 /**──────────────────────────────────────────────────────────────────────────────
  * Child “best option” memo (keyed by priceMode+ticker) to avoid recomputation
@@ -135,7 +136,7 @@ const rowsToUse = rowsToUse0.length ? rowsToUse0 : rows;
       // BUY branch
       if (input.buyCost != null) {
         for (const scn of scenarios) {
-          import { composeScenario } from "@/core/scenario";
+          
 
 // BUY branch
 const fullName = composeScenario(scn.scenarioName, {
@@ -161,13 +162,11 @@ const fullName = composeScenario(scn.scenarioName, {
       if (input.childBest) {
         for (const scn of scenarios) {
           const mo = input.childBest;
-          const childScenarioName = mo.scenario || "";
-          const recipeLabel = mo.recipeId ? mo.recipeId : mo.ticker;
 const fullName = composeScenario(scn.scenarioName, {
   type: "MAKE",
   inputTicker: input.ticker,
-  recipeLabel,
-  childScenario: mo.scenario || "", // pass through
+  recipeLabel: mo?.recipeId ? mo.recipeId : mo?.ticker,
+  childScenario: mo?.scenario || "",
 });
 
           branched.push({
@@ -376,7 +375,7 @@ export function findAllMakeOptions(
       // BUY
       if (input.buyCost != null) {
         for (const scn of scenarios) {
-          import { composeScenario } from "@/core/scenario";
+          
 
 // BUY branch
 const fullName = composeScenario(scn.scenarioName, {
@@ -401,14 +400,12 @@ const fullName = composeScenario(scn.scenarioName, {
       // MAKE(childBest)
       if (input.childBest) {
         for (const scn of scenarios) {
-          const mo = input.childBest;
-          const childScenarioName = mo.scenario || "";
-          const recipeLabel = mo.recipeId ? mo.recipeId : mo.ticker;
+          const mo = input.childBest!;
 const fullName = composeScenario(scn.scenarioName, {
   type: "MAKE",
   inputTicker: input.ticker,
-  recipeLabel,
-  childScenario: mo.scenario || "", // pass through
+  recipeLabel: mo.recipeId ? mo.recipeId : mo.ticker,
+  childScenario: mo.scenario || "",
 });
 
           branched.push({
