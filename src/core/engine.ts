@@ -1,8 +1,262 @@
 import { BestMap, MakeOption, PriceMode, PricesMap, RecipeMap, ScenarioRowsResult } from "../types";
 import { findPrice } from "./price";
 
-// Stage 1: keep pure / stateless (no Apps Script caches here)
+/**──────────────────────────────────────────────────────────────────────────────
+ * Child “best option” memo (keyed by priceMode+ticker) to avoid recomputation
+ *─────────────────────────────────────────────────────────────────────────────*/
+const BEST_MEMO = new Map<string, MakeOption>();
+const memoKey = (mode: PriceMode, ticker: string) => `${mode}::${ticker}`;
 
+function deepClone<T>(v: T): T {
+  return JSON.parse(JSON.stringify(v));
+}
+
+/**
+ * Build the single best option for a ticker (used for children/grandchildren).
+ * Selection logic:
+ *   1) Build scenarios for THIS ticker only (each input → BUY or MAKE(childBest)).
+ *   2) If bestMap has a Scenario string for this ticker, select the option whose
+ *      `scenario` matches that string exactly.
+ *   3) Otherwise (no Scenario in bestMap or no exact match), fall back to the
+ *      option with the highest Profit/Area at this ticker’s capacity.
+ * Also honors bestMap.recipeId by filtering candidate recipes to that ID.
+ */
+function bestOptionForTicker(
+  materialTicker: string,
+  recipeMap: RecipeMap,
+  priceMap: PricesMap,
+  priceMode: PriceMode,
+  bestMap: BestMap,
+  seen: Set<string> = new Set()
+): MakeOption | null {
+  const mkey = memoKey(priceMode, materialTicker);
+  if (BEST_MEMO.has(mkey)) return deepClone(BEST_MEMO.get(mkey)!);
+
+  // guard against cycles
+  if (seen.has(materialTicker)) return null;
+  seen.add(materialTicker);
+
+  const headers = recipeMap.headers;
+  const rows = recipeMap.map[materialTicker] || [];
+  if (!rows.length) return null;
+
+  const idx = {
+    recipeId: headers.indexOf("RecipeID"),
+    wf: headers.indexOf("WfCst"),
+    dep: headers.indexOf("Deprec"),
+    area: headers.indexOf("Area"),
+    build: headers.indexOf("AllBuildCst"),
+    runs: headers.indexOf("Runs P/D"),
+    areaPerOut: headers.indexOf("AreaPerOutput"),
+  };
+
+  const bestEntry = bestMap?.[materialTicker] ?? null;
+  const bestId = bestEntry?.recipeId ?? null;
+  const expectedScenario = (bestEntry?.scenario ?? "").trim();
+
+  // If bestMap gives a recipeId, only consider that recipe for this ticker
+  const rowsToUse = bestId
+    ? rows.filter(r => String(r[idx.recipeId] ?? "") === bestId)
+    : rows;
+
+  let chosenByPA: { opt: MakeOption; pa: number } | null = null;
+  let chosenByScenario: MakeOption | null = null;
+
+  for (const row of rowsToUse) {
+    const recipeId = idx.recipeId !== -1 ? String(row[idx.recipeId] ?? "") : null;
+
+    const runsPerDay = Math.max(1, Number(row[idx.runs] ?? 0) || 1);
+    const area       = Math.max(1, Number(row[idx.area] ?? 0) || 1);
+    const areaPerOutCell = Number(row[idx.areaPerOut] ?? 0);
+    const areaPerOutput  = areaPerOutCell > 0 ? areaPerOutCell : null;
+
+    const workforceCost    = Number(row[idx.wf]  ?? 0) || 0;
+    const depreciationCost = Number(row[idx.dep] ?? 0) || 0;
+    const totalProductionCostBase = workforceCost + depreciationCost;
+    const buildCost        = Number(row[idx.build] ?? 0) || 0;
+
+    // Collect inputs (up to 10) → for each input, use BUY(ask) or MAKE(childBest)
+    type InputItem = { ticker: string; amount: number; buyCost: number | null; childBest: MakeOption | null };
+    const inputs: InputItem[] = [];
+    for (let j = 0; j < 10; j++) {
+      const matIndex = headers.indexOf(`Input${j + 1}MAT`);
+      const cntIndex = headers.indexOf(`Input${j + 1}CNT`);
+      if (matIndex !== -1 && row[matIndex]) {
+        const inputTicker = String(row[matIndex]);
+        const inputAmount = Number(row[cntIndex] ?? 0);
+        const ask         = findPrice(inputTicker, priceMap, "ask");
+        const buyCost     = ask != null ? inputAmount * ask : null;
+        const childBest   = bestOptionForTicker(inputTicker, recipeMap, priceMap, priceMode, bestMap, new Set(seen));
+        inputs.push({ ticker: inputTicker, amount: inputAmount, buyCost, childBest });
+      }
+    }
+
+    // Outputs (valuation on selected side for this ticker)
+    let totalOutputValue = 0;
+    let byproductValue = 0;
+    let output1Amount = 0;
+    for (let j = 0; j < 10; j++) {
+      const matIndex = headers.indexOf(`Output${j + 1}MAT`);
+      const cntIndex = headers.indexOf(`Output${j + 1}CNT`);
+      if (matIndex !== -1 && row[matIndex]) {
+        const outTicker = String(row[matIndex]);
+        const outAmt    = Number(row[cntIndex] ?? 0);
+        const outPrice  = findPrice(outTicker, priceMap, priceMode);
+        if (!outPrice) continue;
+        const totalVal = outAmt * outPrice;
+        totalOutputValue += totalVal;
+        if (j === 0) output1Amount = outAmt;
+        else byproductValue += totalVal;
+      }
+    }
+
+    // Build scenarios for THIS ticker only: each input → BUY or MAKE(childBest)
+    type Scn = {
+      scenarioName: string;
+      totalInputCost: number;
+      totalOpportunityCost: number;
+      madeInputDetails: any[];
+    };
+    let scenarios: Scn[] = [{
+      scenarioName: "",
+      totalInputCost: 0,
+      totalOpportunityCost: 0,
+      madeInputDetails: [],
+    }];
+
+    for (const input of inputs) {
+      const branched: Scn[] = [];
+
+      // BUY branch
+      if (input.buyCost != null) {
+        for (const scn of scenarios) {
+          const branchName = `Buy ${input.ticker}`;
+          const fullName = scn.scenarioName ? `${scn.scenarioName}, ${branchName}` : branchName;
+          branched.push({
+            scenarioName: fullName,
+            totalInputCost: scn.totalInputCost + input.buyCost,
+            totalOpportunityCost: scn.totalOpportunityCost,
+            madeInputDetails: [...scn.madeInputDetails, {
+              recipeId: null,
+              ticker: input.ticker,
+              details: null,
+              amountNeeded: input.amount,
+              scenarioName: branchName,
+            }],
+          });
+        }
+      }
+
+      // MAKE branch (single best child only, if available)
+      if (input.childBest) {
+        for (const scn of scenarios) {
+          const mo = input.childBest;
+          const childScenarioName = mo.scenario || "";
+          const recipeLabel = mo.recipeId ? mo.recipeId : mo.ticker;
+          const branchName = `Make ${recipeLabel} (for ${input.ticker})`;
+          const fullName = scn.scenarioName
+            ? `${scn.scenarioName}, ${branchName}${childScenarioName ? " [" + childScenarioName + "]" : ""}`
+            : `${branchName}${childScenarioName ? " [" + childScenarioName + "]" : ""}`;
+
+          branched.push({
+            scenarioName: fullName,
+            totalInputCost: scn.totalInputCost + (mo.cogmPerOutput * input.amount),
+            totalOpportunityCost: scn.totalOpportunityCost + (mo.baseProfitPerOutput * input.amount),
+            madeInputDetails: [...scn.madeInputDetails, {
+              recipeId: mo.recipeId,
+              ticker: input.ticker,
+              details: mo,
+              amountNeeded: input.amount,
+              scenarioName: branchName + (childScenarioName ? " [" + childScenarioName + "]" : ""),
+            }],
+          });
+        }
+      }
+
+      scenarios = branched;
+    }
+
+    // Convert scenarios → MakeOption(s) and select by Scenario string OR best P/A
+    for (const scn of scenarios) {
+      const totalInputCost = scn.totalInputCost;
+      const totalProductionCost = totalInputCost + totalProductionCostBase;
+      const baseProfit = totalOutputValue - totalProductionCost;
+      const finalProfit = baseProfit - scn.totalOpportunityCost;
+
+      const cogmPerOutput =
+        (output1Amount > 0) ? (totalProductionCost - byproductValue) / output1Amount : 0;
+      const baseProfitPerOutput =
+        (output1Amount > 0) ? baseProfit / output1Amount : 0;
+      const adjProfitPerOutput =
+        (output1Amount > 0) ? finalProfit / output1Amount : 0;
+      const valuePerOutput =
+        (output1Amount > 0) ? totalOutputValue / output1Amount : 0;
+
+      const selfAreaPerDay =
+        (areaPerOutput && areaPerOutput > 0) ? areaPerOutput :
+        (runsPerDay > 0 && output1Amount > 0) ? area / (runsPerDay * output1Amount) : null;
+
+      const opt: MakeOption = {
+        recipeId,
+        ticker: materialTicker,
+        scenario: scn.scenarioName, // <-- important for Scenario matching
+        baseProfit,
+        profit: finalProfit,
+        cogmPerOutput,
+        baseProfitPerOutput,
+        adjProfitPerOutput,
+        valuePerOutput,
+        selfAreaPerDay,
+        fullSelfAreaPerDay: area,
+        profitPerDay: finalProfit * runsPerDay,
+        baseProfitPerDay: baseProfit * runsPerDay,
+        cost: totalInputCost,
+        workforceCost,
+        depreciationCost,
+        totalOutputValue,
+        byproductValue,
+        totalOpportunityCost: scn.totalOpportunityCost,
+        runsPerDay,
+        area,
+        buildCost,
+        output1Amount,
+        madeInputDetails: scn.madeInputDetails,
+      };
+
+      // Evaluate P/A at this ticker's capacity
+      const dailyCapacity = (opt.output1Amount || 0) * (opt.runsPerDay || 0);
+      const res = buildScenarioRows(opt, 0, dailyCapacity, false);
+      const pa = res.subtreeProfitPerArea ?? -Infinity;
+
+      // 1) Prefer exact Scenario match if provided by bestMap
+      if (expectedScenario) {
+        if (opt.scenario === expectedScenario) {
+          chosenByScenario = opt;
+          break; // exact match found for this recipe
+        }
+      } else {
+        // 2) Otherwise, track best by P/A
+        if (!chosenByPA || pa > chosenByPA.pa) chosenByPA = { opt, pa };
+      }
+    }
+
+    // If we had an expectedScenario but didn't find it in this recipe's combos,
+    // we'll keep checking other rowsToUse. If none match across recipes, fall back to best P/A.
+  }
+
+  const chosen = chosenByScenario ?? chosenByPA?.opt ?? null;
+  if (chosen) {
+    BEST_MEMO.set(mkey, chosen);
+    return deepClone(chosen);
+  }
+  return null;
+}
+
+/**──────────────────────────────────────────────────────────────────────────────
+ * Public API: findAllMakeOptions
+ * - depth === 0 (root): explore BUY vs MAKE(childBest) for each direct input.
+ * - depth  >  0       : return exactly ONE option = child's best scenario.
+ *─────────────────────────────────────────────────────────────────────────────*/
 export function findAllMakeOptions(
   materialTicker: string,
   recipeMap: RecipeMap,
@@ -11,8 +265,13 @@ export function findAllMakeOptions(
   bestMap: BestMap,
   depth = 0
 ): MakeOption[] {
-  if (depth > 5) return [];
+  // Collapse non-root levels: single best based on BestRecipeIDs (Scenario)
+  if (depth > 0) {
+    const best = bestOptionForTicker(materialTicker, recipeMap, priceMap, priceMode, bestMap);
+    return best ? [best] : [];
+  }
 
+  // Root exploration (at most 2^N per root recipe)
   const results: MakeOption[] = [];
   const headers = recipeMap.headers;
   const rows = recipeMap.map[materialTicker] || [];
@@ -28,13 +287,6 @@ export function findAllMakeOptions(
   for (const row of rows) {
     const recipeId = recipeIdIndex !== -1 ? String(row[recipeIdIndex] ?? "") : null;
 
-    // Prune children to "best" when descending (matches your Apps Script)
-    if (bestMap && depth > 0) {
-      const bestId = bestMap[materialTicker];
-      if (bestId && recipeId !== bestId) continue;
-    }
-
-    // Safely coerce numbers
     const runsPerDayVal   = runsPerDayIndex     !== -1 ? Number(row[runsPerDayIndex]    ?? 0) : 0;
     const areaVal         = areaIndex           !== -1 ? Number(row[areaIndex]          ?? 0) : 0;
     const areaPerOutVal   = areaPerOutputIndex  !== -1 ? Number(row[areaPerOutputIndex] ?? 0) : 0;
@@ -45,38 +297,32 @@ export function findAllMakeOptions(
 
     const workforceCost   = workforceCostIndex    !== -1 ? Number(row[workforceCostIndex]    ?? 0) : 0;
     const depreciationCost= depreciationCostIndex !== -1 ? Number(row[depreciationCostIndex] ?? 0) : 0;
-    const totalProductionCostBase = (Number.isFinite(workforceCost) ? workforceCost : 0)
-                                  + (Number.isFinite(depreciationCost) ? depreciationCost : 0);
+    const totalProductionCostBase = workforceCost + depreciationCost;
 
     const buildCost       = buildCostIndex !== -1 ? Number(row[buildCostIndex] ?? 0) : 0;
 
-    // ---- INPUTS ----
+    // Inputs at root: BUY(ask) vs MAKE(childBest) only
     const inputs: Array<{
       ticker: string;
       amount: number;
       buyCost: number | null;
-      makeOptions: MakeOption[];
+      childBest: MakeOption | null;
     }> = [];
 
     for (let j = 0; j < 10; j++) {
       const matIndex = headers.indexOf(`Input${j + 1}MAT`);
       const cntIndex = headers.indexOf(`Input${j + 1}CNT`);
       if (matIndex !== -1 && row[matIndex]) {
-        const inputTicker = String(row[matIndex]);            // ticker cell
-        const inputAmount = Number(row[cntIndex] ?? 0);       // quantity
-        const unitPrice = findPrice(inputTicker, priceMap, "ask"); // ALWAYS ask for buy branch (Apps Script parity)
-        const makeOptions = findAllMakeOptions(inputTicker, recipeMap, priceMap, priceMode, bestMap, depth + 1);
-
-        inputs.push({
-          ticker: inputTicker,
-          amount: inputAmount,
-          buyCost: unitPrice != null ? inputAmount * unitPrice : null,
-          makeOptions
-        });
+        const inputTicker = String(row[matIndex]);
+        const inputAmount = Number(row[cntIndex] ?? 0);
+        const ask         = findPrice(inputTicker, priceMap, "ask");
+        const buyCost     = ask != null ? inputAmount * ask : null;
+        const childBest   = bestOptionForTicker(inputTicker, recipeMap, priceMap, priceMode, bestMap);
+        inputs.push({ ticker: inputTicker, amount: inputAmount, buyCost, childBest });
       }
     }
 
-    // ---- OUTPUTS ----
+    // Outputs (valuation on selected side for the root ticker)
     let totalOutputValue = 0;
     let byproductValue = 0;
     let output1Amount = 0;
@@ -87,7 +333,7 @@ export function findAllMakeOptions(
       if (matIndex !== -1 && row[matIndex]) {
         const outputTicker = String(row[matIndex]);
         const outputAmount = Number(row[cntIndex] ?? 0);
-        const outputPrice = findPrice(outputTicker, priceMap, priceMode); // use caller-selected side (bid/ask/pp7/pp30)
+        const outputPrice = findPrice(outputTicker, priceMap, priceMode);
         if (!outputPrice) continue;
 
         const totalValue = outputAmount * outputPrice;
@@ -98,77 +344,74 @@ export function findAllMakeOptions(
       }
     }
 
-    // ---- SCENARIO EXPANSION ----
-    let scenarios = [{
+    // Root scenarios: each input → BUY or MAKE(childBest)
+    type Scn = {
+      scenarioName: string;
+      totalInputCost: number;
+      totalOpportunityCost: number;
+      madeInputDetails: any[];
+    };
+    let scenarios: Scn[] = [{
       scenarioName: "",
       totalInputCost: 0,
       totalOpportunityCost: 0,
-      madeInputDetails: [] as any[]
+      madeInputDetails: [],
     }];
 
-    inputs.forEach(input => {
-      const newScenarios: typeof scenarios = [];
+    for (const input of inputs) {
+      const branched: Scn[] = [];
 
-      // BUY branch
-      if (input.buyCost !== null) {
-        const buyCost = input.buyCost;
-        scenarios.forEach(scn => {
+      // BUY
+      if (input.buyCost != null) {
+        for (const scn of scenarios) {
           const branchName = `Buy ${input.ticker}`;
           const fullName = scn.scenarioName ? `${scn.scenarioName}, ${branchName}` : branchName;
-
-          newScenarios.push({
+          branched.push({
             scenarioName: fullName,
-            totalInputCost: scn.totalInputCost + buyCost,
+            totalInputCost: scn.totalInputCost + input.buyCost,
             totalOpportunityCost: scn.totalOpportunityCost,
-            madeInputDetails: [
-              ...scn.madeInputDetails,
-              {
-                recipeId: null,
-                ticker: input.ticker,
-                details: null,
-                amountNeeded: input.amount,
-                scenarioName: branchName
-              }
-            ]
+            madeInputDetails: [...scn.madeInputDetails, {
+              recipeId: null,
+              ticker: input.ticker,
+              details: null,
+              amountNeeded: input.amount,
+              scenarioName: branchName,
+            }],
           });
-        });
+        }
       }
 
-      // MAKE branches
-      if (input.makeOptions && input.makeOptions.length > 0) {
-        input.makeOptions.forEach(mo => {
-          scenarios.forEach(scn => {
-            const childScenarioName = mo.scenario || "";
-            const recipeLabel = mo.recipeId ? mo.recipeId : mo.ticker;
-            const branchName = `Make ${recipeLabel} (for ${input.ticker})`;
-            const fullName = scn.scenarioName
-              ? `${scn.scenarioName}, ${branchName}${childScenarioName ? " [" + childScenarioName + "]" : ""}`
-              : `${branchName}${childScenarioName ? " [" + childScenarioName + "]" : ""}`;
+      // MAKE(childBest)
+      if (input.childBest) {
+        for (const scn of scenarios) {
+          const mo = input.childBest;
+          const childScenarioName = mo.scenario || "";
+          const recipeLabel = mo.recipeId ? mo.recipeId : mo.ticker;
+          const branchName = `Make ${recipeLabel} (for ${input.ticker})`;
+          const fullName = scn.scenarioName
+            ? `${scn.scenarioName}, ${branchName}${childScenarioName ? " [" + childScenarioName + "]" : ""}`
+            : `${branchName}${childScenarioName ? " [" + childScenarioName + "]" : ""}`;
 
-            newScenarios.push({
-              scenarioName: fullName,
-              totalInputCost: scn.totalInputCost + mo.cogmPerOutput * input.amount,
-              totalOpportunityCost: scn.totalOpportunityCost + (mo.baseProfitPerOutput * input.amount),
-              madeInputDetails: [
-                ...scn.madeInputDetails,
-                {
-                  recipeId: mo.recipeId,
-                  ticker: input.ticker,
-                  details: mo,
-                  amountNeeded: input.amount,
-                  scenarioName: branchName + (childScenarioName ? " [" + childScenarioName + "]" : "")
-                }
-              ]
-            });
+          branched.push({
+            scenarioName: fullName,
+            totalInputCost: scn.totalInputCost + (mo.cogmPerOutput * input.amount),
+            totalOpportunityCost: scn.totalOpportunityCost + (mo.baseProfitPerOutput * input.amount),
+            madeInputDetails: [...scn.madeInputDetails, {
+              recipeId: mo.recipeId,
+              ticker: input.ticker,
+              details: mo,
+              amountNeeded: input.amount,
+              scenarioName: branchName + (childScenarioName ? " [" + childScenarioName + "]" : ""),
+            }],
           });
-        });
+        }
       }
 
-      scenarios = newScenarios;
-    });
+      scenarios = branched;
+    }
 
-    // ---- METRICS -> MakeOption(s) ----
-    scenarios.forEach(scn => {
+    // Convert to MakeOption(s)
+    for (const scn of scenarios) {
       const totalInputCost = scn.totalInputCost;
       const totalProductionCost = totalInputCost + totalProductionCostBase;
       const baseProfit = totalOutputValue - totalProductionCost;
@@ -211,9 +454,9 @@ export function findAllMakeOptions(
         area,
         buildCost,
         output1Amount,
-        madeInputDetails: scn.madeInputDetails
+        madeInputDetails: scn.madeInputDetails,
       });
-    });
+    }
   }
 
   return results;
