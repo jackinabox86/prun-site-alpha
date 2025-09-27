@@ -1,21 +1,14 @@
 // src/lib/loadFromCsv.ts
-import { fetchCsv } from "./csvFetch";
-import { buildRecipeMap } from "@/core/maps";        // note: lowercase 'maps'
-import { readBestRecipeMap } from "@/core/bestMap";
-
-import type {
-  PricesMap,
-  RecipeMap,
-  BestMap,
-  RecipeRow,
-  RecipeSheet,
-} from "@/types";
-
 export async function loadAllFromCsv(urls: {
   recipes: string;
   prices: string;
   best: string;
-}): Promise<{ recipeMap: RecipeMap; pricesMap: PricesMap; bestMap: BestMap }> {
+}): Promise<{
+  recipeMap: RecipeMap;
+  pricesMap: PricesMap;
+  bestMap: BestMap;
+  __rawBestRows: Array<Record<string, any>>; // <-- added
+}> {
   const [recipesRows, pricesRows, bestRows] = await Promise.all([
     fetchCsv(urls.recipes), // -> Array<Record<string, any>>
     fetchCsv(urls.prices),
@@ -32,13 +25,9 @@ export async function loadAllFromCsv(urls: {
 
   // Recipes: object rows -> sheet-like rows expected by buildRecipeMap([headers, ...rows])
   const recipeHeaders = Object.keys(recipesRows[0]) as string[];
-
-  // Map object rows to your RecipeRow element shape
   const typedRows: RecipeRow[] = recipesRows.map((obj) =>
     recipeHeaders.map((h) => coerce(obj[h])) as RecipeRow
   );
-
-  // Full sheet = header row + data rows
   const recipeSheet: RecipeSheet = [recipeHeaders, ...typedRows];
   const recipeMap: RecipeMap = buildRecipeMap(recipeSheet);
 
@@ -58,18 +47,6 @@ export async function loadAllFromCsv(urls: {
   // Best map: pass object rows directly (now returns { recipeId, scenario } per ticker)
   const bestMap: BestMap = readBestRecipeMap(bestRows as Array<Record<string, any>>);
 
-  return { recipeMap, pricesMap, bestMap };
-}
-
-function toNum(v: unknown): number | null {
-  const n = Number(v);
-  return Number.isFinite(n) && n > 0 ? n : null; // mirrors your Apps Script (>0)
-}
-
-// IMPORTANT: If your RecipeRow type does not allow `null`, change the first line to:
-// if (v === "" || v == null) return "";
-function coerce(v: unknown): string | number | null {
-  if (v === "" || v == null) return null;
-  const n = Number(v);
-  return Number.isFinite(n) ? n : String(v);
+  // ✅ extra field for parity checks / debugging; does not break existing callers
+  return { recipeMap, pricesMap, bestMap, __rawBestRows: bestRows };
 }
