@@ -1,4 +1,4 @@
-import { PricesMap, RecipeMap, RecipeRow, RecipeSheet } from "../types";
+import { PricesMap, RecipeMap, RecipeRow, RecipeSheet } from "@/types";
 
 export function buildPriceMap(
   prices: Array<{
