@@ -1,6 +1,6 @@
 // src/lib/loadFromCsv.ts
 import { fetchCsv } from "./csvFetch";
-import { buildRecipeMap } from "@/core/maps";       // <- lowercase 'maps'
+import { buildRecipeMap, buildPriceMap } from "@/core/maps";       // <- lowercase 'maps'
 import { readBestRecipeMap } from "@/core/bestMap";
 
 import type {
@@ -44,17 +44,15 @@ export async function loadAllFromCsv(urls: {
   const recipeMap: RecipeMap = buildRecipeMap(recipeSheet);
 
   // Prices: build PricesMap (ask/bid/pp7/pp30)
-  const pricesMap: PricesMap = pricesRows.reduce((acc, r) => {
-    const t = r["Ticker"];
-    if (!t) return acc;
-    acc[t] = {
-      ask:  toNum(r["AI1-AskPrice"]),
-      bid:  toNum(r["AI1-BidPrice"]),
-      pp7:  toNum(r["A1-PP7"]),
-      pp30: toNum(r["A1-PP30"]),
-    };
-    return acc;
-  }, {} as PricesMap);
+  const pricesMap: PricesMap = buildPriceMap(
+  pricesRows.map(r => ({
+    Ticker: r["Ticker"],
+    "AI1-AskPrice": Number(r["AI1-AskPrice"]) || 0,
+    "AI1-BidPrice": Number(r["AI1-BidPrice"]) || 0,
+    "A1-PP7":       Number(r["A1-PP7"])       || 0,
+    "A1-PP30":      Number(r["A1-PP30"])      || 0,
+  }))
+);
 
   // Best map: pass object rows directly (returns { recipeId, scenario } per ticker)
   const bestMap: BestMap = readBestRecipeMap(bestRows as Array<Record<string, any>>);
