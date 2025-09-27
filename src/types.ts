@@ -84,6 +84,9 @@ export interface ScenarioRowsResult {
 }
 
 /** ===== Best recipe mapping ===== */
-export interface BestMap {
-  [ticker: string]: string; // ticker -> best RecipeID
+// Each ticker has exactly one best Scenario (string) and a chosen RecipeID.
+export interface BestMapEntry {
+  recipeId: string | null;
+  scenario: string; // full scenario string from BestRecipeIDs
 }
+export type BestMap = Record<string, BestMapEntry>;
