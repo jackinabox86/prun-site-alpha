@@ -1,60 +1,34 @@
 import { NextResponse } from "next/server";
-import pricesRaw from "@mocks/prices.json";
-import bestRaw from "@mocks/bestRecipeIDs.json";
-import recipesRaw from "@mocks/recipes.json";
+import { loadAllFromCsv } from "@/lib/loadFromCsv";
+import { findAllMakeOptions, buildScenarioRows } from "@/core/engine";
+import type { PriceMode, BestMap } from "@/types";
 
-import { buildPriceMap, buildRecipeMap } from "@core/maps";
-import { findAllMakeOptions, buildScenarioRows } from "@core/engine";
-
-type PriceMode = 'bid' | 'ask';
-type BestMap = Record<string, string>;
+export const runtime = "nodejs";
 
 export async function GET(req: Request) {
-  const { searchParams } = new URL(req.url);
-  const ticker = searchParams.get("ticker") || "";
-  const priceMode = (searchParams.get("priceMode") as PriceMode) || "bid";
+  const url = new URL(req.url);
+  const ticker = (url.searchParams.get("ticker") ?? "PCB").toUpperCase();
+  const priceMode = (url.searchParams.get("priceMode") ?? "bid") as PriceMode;
 
-  if (!ticker) {
-    return NextResponse.json({ error: "ticker is required" }, { status: 400 });
-  }
-
-  // Build maps
-  const recipeMap = buildRecipeMap(recipesRaw as any);
-  const priceMap = buildPriceMap(pricesRaw as any);
-
-  // Best map (Ticker -> RecipeID)
-  const bestMap: BestMap = {};
-  (bestRaw as any[]).forEach((r: any) => {
-    if (r?.Ticker && r?.RecipeID) bestMap[r.Ticker] = r.RecipeID;
+  const { recipeMap, pricesMap, bestMap } = await loadAllFromCsv({
+    recipes: process.env.CSV_RECIPES_URL!,
+    prices:  process.env.CSV_PRICES_URL!,
+    best:    process.env.CSV_BEST_URL!,
   });
 
-  // Compute
-  const options = findAllMakeOptions(ticker, recipeMap, priceMap, priceMode, bestMap);
-  if (!options.length) return NextResponse.json({ ticker, scenarios: [] });
+  // bestMap is already the correct type (no casting needed)
+  const options = findAllMakeOptions(ticker, recipeMap, pricesMap, priceMode, bestMap);
 
-  // Rank + format (best full, rest summaries)
-  const scenarioResults = options.map(option => {
-    const optionDailyCapacity = option.output1Amount * (option.runsPerDay || 0);
-    const result = buildScenarioRows(option, 0, optionDailyCapacity, true);
-    return {
-      option,
-      rows: result.rows,
-      profitPA: result.subtreeProfitPerArea || 0,
-      areaDenom: result.subtreeAreaPerDay || 0,
-    };
-  }).sort((a, b) => b.profitPA - a.profitPA);
-
-  const best = scenarioResults[0];
-  const others = scenarioResults.slice(1).map(r => ({
-    profitPA: r.profitPA,
-    scenario: r.option.scenario,
-    areaPerDay: r.areaDenom,
-  }));
+  // rank/format etc...
+  const dailyCapacity = (options[0]?.output1Amount ?? 0) * (options[0]?.runsPerDay ?? 0);
+  const ranked = options
+    .map(o => ({ o, r: buildScenarioRows(o, 0, dailyCapacity, false) }))
+    .sort((a, b) => (b.r.subtreeProfitPerArea ?? 0) - (a.r.subtreeProfitPerArea ?? 0));
 
   return NextResponse.json({
     ticker,
-    priceMode,
-    best: { rows: best.rows, profitPA: best.profitPA },
-    others,
+    totalOptions: ranked.length,
+    bestPA: ranked[0]?.r.subtreeProfitPerArea ?? null,
+    bestScenario: ranked[0]?.o.scenario ?? "",
   });
 }
