@@ -1,4 +1,16 @@
 // src/lib/loadFromCsv.ts
+import { fetchCsv } from "./csvFetch";
+import { buildRecipeMap } from "@/core/maps";       // <- lowercase 'maps'
+import { readBestRecipeMap } from "@/core/bestMap";
+
+import type {
+  PricesMap,
+  RecipeMap,
+  BestMap,
+  RecipeRow,
+  RecipeSheet,
+} from "@/types";
+
 export async function loadAllFromCsv(urls: {
   recipes: string;
   prices: string;
@@ -7,7 +19,7 @@ export async function loadAllFromCsv(urls: {
   recipeMap: RecipeMap;
   pricesMap: PricesMap;
   bestMap: BestMap;
-  __rawBestRows: Array<Record<string, any>>; // <-- added
+  __rawBestRows: Array<Record<string, any>>;
 }> {
   const [recipesRows, pricesRows, bestRows] = await Promise.all([
     fetchCsv(urls.recipes), // -> Array<Record<string, any>>
@@ -44,9 +56,20 @@ export async function loadAllFromCsv(urls: {
     return acc;
   }, {} as PricesMap);
 
-  // Best map: pass object rows directly (now returns { recipeId, scenario } per ticker)
+  // Best map: pass object rows directly (returns { recipeId, scenario } per ticker)
   const bestMap: BestMap = readBestRecipeMap(bestRows as Array<Record<string, any>>);
 
-  // ✅ extra field for parity checks / debugging; does not break existing callers
+  // include raw best rows for parity checks / debugging
   return { recipeMap, pricesMap, bestMap, __rawBestRows: bestRows };
+}
+
+function toNum(v: unknown): number | null {
+  const n = Number(v);
+  return Number.isFinite(n) && n > 0 ? n : null;
+}
+
+function coerce(v: unknown): string | number | null {
+  if (v === "" || v == null) return null;
+  const n = Number(v);
+  return Number.isFinite(n) ? n : String(v);
 }
