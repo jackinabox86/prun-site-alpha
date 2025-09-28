@@ -10,6 +10,7 @@ import {
 import { findPrice } from "./price";
 import { composeScenario } from "./scenario";
 import { computeRoiNarrow } from "./roi"; // <-- ADD THIS IMPORT
+import { computeInputPayback } from "./inputPayback"; // <-- ADD THIS
 
 /**──────────────────────────────────────────────────────────────────────────────
  * Child “best option” memo (keyed by priceMode+ticker) to avoid recomputation
@@ -634,9 +635,15 @@ export function buildScenarioRows(
   rows.push([`${indentStr}Adj. Stage Profit / Day:`, adjStageProfitPerDay || 0]);
   rows.push([`${indentStr}Adjusted Area (per day):`, selfAreaDisplay || 0]);
   rows.push([`${indentStr}Total Area (per day):`, totalAreaForOwnDenominator || 0]);
+  
+  // Root-only annotations:
   if (indentLevel === 0) {
     const roi = computeRoiNarrow(option);
     rows.push([`${indentStr}ROI (narrow) [days]:`, roi.narrowDays ?? "n/a"]);
+
+    // ✅ Input Payback (7-day buffer of inputs + workforce) on the root
+    const ip = computeInputPayback(option, 7);
+    rows.push([`${indentStr}Input Payback (7d buffer) [days]:`, ip.days ?? "n/a"]);
   }
 
   return {
