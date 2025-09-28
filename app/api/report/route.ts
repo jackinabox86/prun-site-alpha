@@ -1,7 +1,8 @@
 import { NextResponse } from "next/server";
 import { loadAllFromCsv } from "@/lib/loadFromCsv";
 import { findAllMakeOptions, buildScenarioRows } from "@/core/engine";
-import { computeRoiNarrow } from "@/core/roi"; // <-- added
+import { computeRoiNarrow } from "@/core/roi";             // (already added previously)
+import { computeInputPayback } from "@/core/inputPayback"; // <-- NEW
 import type { PriceMode, BestMap } from "@/types";
 
 export const runtime = "nodejs";
@@ -26,20 +27,27 @@ export async function GET(req: Request) {
     .map(o => ({ o, r: buildScenarioRows(o, 0, dailyCapacity, false) }))
     .sort((a, b) => (b.r.subtreeProfitPerArea ?? 0) - (a.r.subtreeProfitPerArea ?? 0));
 
-  // NEW: ROI (narrow) for the parent stage = AllBuildCst / baseProfitPerDay
+  // ROI (narrow) for parent stage
   const bestOption = ranked[0]?.o;
   const roi = bestOption ? computeRoiNarrow(bestOption) : null;
+
+  // NEW: Input Payback (7-day buffer of inputs + workforce)
+  const inputPayback = bestOption ? computeInputPayback(bestOption, 7) : null;
 
   return NextResponse.json({
     ticker,
     totalOptions: ranked.length,
     bestPA: ranked[0]?.r.subtreeProfitPerArea ?? null,
     bestScenario: ranked[0]?.o.scenario ?? "",
-    // Added field; everything else unchanged
     roi: roi ? {
-      narrowDays: roi.narrowDays, // number | null (payback period in days)
-      capex: roi.capex,           // AllBuildCst for the parent stage
-      basis: roi.basis,           // "baseProfitPerDay"
+      narrowDays: roi.narrowDays,
+      capex: roi.capex,
+      basis: roi.basis,
+    } : null,
+    inputPayback: inputPayback ? {
+      days: inputPayback.days,
+      windowDays: inputPayback.windowDays, // 7
+      basis: inputPayback.basis,           // "baseProfitPerDay"
     } : null,
   });
 }
