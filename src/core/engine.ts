@@ -9,6 +9,7 @@ import {
 } from "../types";
 import { findPrice } from "./price";
 import { composeScenario } from "./scenario";
+import { computeRoiNarrow } from "./roi"; // <-- ADD THIS IMPORT
 
 /**──────────────────────────────────────────────────────────────────────────────
  * Child “best option” memo (keyed by priceMode+ticker) to avoid recomputation
@@ -633,6 +634,10 @@ export function buildScenarioRows(
   rows.push([`${indentStr}Adj. Stage Profit / Day:`, adjStageProfitPerDay || 0]);
   rows.push([`${indentStr}Adjusted Area (per day):`, selfAreaDisplay || 0]);
   rows.push([`${indentStr}Total Area (per day):`, totalAreaForOwnDenominator || 0]);
+  if (indentLevel === 0) {
+    const roi = computeRoiNarrow(option);
+    rows.push([`${indentStr}ROI (narrow) [days]:`, roi.narrowDays ?? "n/a"]);
+  }
 
   return {
     rows,
