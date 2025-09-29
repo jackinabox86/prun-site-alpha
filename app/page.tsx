@@ -8,8 +8,9 @@ export const revalidate = 0;
 
 type SP = Record<string, string | string[] | undefined>;
 
-export default async function Page(props: { searchParams?: SP }) {
-  const sp = props?.searchParams ?? {};
+export default async function Page(props: { searchParams?: Promise<SP> }) {
+  // Next may pass searchParams as a Promise; awaiting also works if it's a plain object or undefined
+  const sp = (await props.searchParams) ?? ({} as SP);
 
   const getStr = (k: string, fallback: string) => {
     const v = Array.isArray(sp[k]) ? sp[k]?.[0] : sp[k];
@@ -17,6 +18,7 @@ export default async function Page(props: { searchParams?: SP }) {
   };
 
   const ticker = getStr("ticker", "PCB").toUpperCase();
+  // accept both ?mode= and legacy ?priceMode=
   const priceMode = (getStr("mode", getStr("priceMode", "bid")) as PriceMode);
   const expand = getStr("expand", "") === "1";
 
