@@ -13,7 +13,7 @@ export async function GET(req: Request) {
     const ticker = (url.searchParams.get("ticker") ?? "PCB").toUpperCase();
     const priceMode = (url.searchParams.get("priceMode") ?? "bid") as PriceMode;
     const expand = url.searchParams.get("expand") === "1";
-    const includeRows = url.searchParams.get("rows") === "1"; // <-- opt-in
+    const includeRows = url.searchParams.get("rows") === "1"; // <-- NEW
 
     const report = await buildReport({ ticker, priceMode, expand, includeRows });
     const status = (report as any)?.ok === false ? 500 : 200;
