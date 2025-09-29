@@ -6,18 +6,20 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
 
-type SearchParams = Record<string, string | string[] | undefined>;
-type PageProps = { searchParams?: SearchParams | Promise<SearchParams> };
+type SP = Record<string, string | string[] | undefined>;
 
-export default async function Page(props: PageProps) {
-  // Normalize searchParams: support object OR Promise (Next can pass either)
-  const raw = props?.searchParams;
-  const sp: SearchParams =
-    raw && typeof (raw as any).then === "function" ? await raw : (raw ?? {});
+export default async function Page({
+  searchParams,
+}: {
+  // IMPORTANT: Next expects this to be a Promise
+  searchParams?: Promise<SP>;
+}) {
+  // Works whether Next gives us a Promise or a plain object
+  const sp = (await searchParams) ?? ({} as SP);
 
   const getStr = (k: string, fallback: string) => {
-    const v = Array.isArray(sp[k]) ? sp[k]?.[0] : sp[k];
-    return (v as string | undefined) ?? fallback;
+    const v = sp[k];
+    return (Array.isArray(v) ? v[0] : v) ?? fallback;
   };
 
   const ticker = getStr("ticker", "PCB").toUpperCase();
@@ -40,7 +42,7 @@ export default async function Page(props: PageProps) {
           {JSON.stringify(data, null, 2)}
         </pre>
         <p style={{ marginTop: 16, color: "#666" }}>
-          Tip: open <code>/api/report?ticker={ticker}&amp;priceMode={priceMode}</code> to inspect the JSON output shape.
+          Tip: open <code>/api/report?ticker={ticker}&amp;priceMode={priceMode}</code> to inspect the JSON output.
         </p>
       </main>
     );
