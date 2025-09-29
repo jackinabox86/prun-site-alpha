@@ -16,11 +16,13 @@
     "forceConsistentCasingInFileNames": true,
     "baseUrl": ".",
     "paths": {
+      "@/*": ["./*"],
       "@core/*": ["src/core/*"],
       "@mocks/*": ["src/mocks/*"],
       "@/core/*": ["src/core/*"],
       "@/lib/*": ["src/lib/*"],
-      "@/types": ["src/types"]
+      "@/types": ["src/types"],
+      "@/server/*": ["src/server/*"]
     },
     "allowJs": true,
     "skipLibCheck": true,

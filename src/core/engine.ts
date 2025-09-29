@@ -10,6 +10,7 @@ import {
 import { findPrice } from "./price";
 import { composeScenario } from "./scenario";
 import { computeRoiNarrow } from "./roi"; // <-- ADD THIS IMPORT
+import { computeInputPayback } from "./inputPayback"; // <-- ADD THIS
 
 /**──────────────────────────────────────────────────────────────────────────────
  * Child “best option” memo (keyed by priceMode+ticker) to avoid recomputation
@@ -238,6 +239,9 @@ function bestOptionForTicker(
           ? area / (runsPerDay * output1Amount)
           : null;
 
+      const inputBuffer7 =
+  7 * ((totalInputCost + workforceCost) * runsPerDay);
+
       const opt: MakeOption = {
         recipeId,
         ticker: materialTicker,
@@ -263,6 +267,7 @@ function bestOptionForTicker(
         buildCost,
         output1Amount,
         madeInputDetails: scn.madeInputDetails,
+        inputBuffer7,
       };
 
       // Evaluate P/A at this ticker's capacity
@@ -502,6 +507,9 @@ export function findAllMakeOptions(
           : runsPerDay > 0 && output1Amount > 0
           ? area / (runsPerDay * output1Amount)
           : null;
+      
+      const inputBuffer7 =
+  7 * ((totalInputCost + workforceCost) * runsPerDay);
 
       results.push({
         recipeId,
@@ -528,6 +536,7 @@ export function findAllMakeOptions(
         buildCost,
         output1Amount,
         madeInputDetails: scn.madeInputDetails,
+        inputBuffer7,
       });
     }
   }
@@ -634,9 +643,15 @@ export function buildScenarioRows(
   rows.push([`${indentStr}Adj. Stage Profit / Day:`, adjStageProfitPerDay || 0]);
   rows.push([`${indentStr}Adjusted Area (per day):`, selfAreaDisplay || 0]);
   rows.push([`${indentStr}Total Area (per day):`, totalAreaForOwnDenominator || 0]);
+  
+  // Root-only annotations:
   if (indentLevel === 0) {
     const roi = computeRoiNarrow(option);
     rows.push([`${indentStr}ROI (narrow) [days]:`, roi.narrowDays ?? "n/a"]);
+
+    // ✅ Input Payback (7-day buffer of inputs + workforce) on the root
+    const ip = computeInputPayback(option, 7);
+    rows.push([`${indentStr}Input Payback (7d buffer) [days]:`, ip.days ?? "n/a"]);
   }
 
   return {
