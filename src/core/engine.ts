@@ -265,9 +265,9 @@ function bestOptionForTicker(
         runsPerDay,
         area,
         buildCost,
+        inputBuffer7,
         output1Amount,
         madeInputDetails: scn.madeInputDetails,
-        inputBuffer7,
       };
 
       // Evaluate P/A at this ticker's capacity
@@ -534,9 +534,10 @@ export function findAllMakeOptions(
         runsPerDay,
         area,
         buildCost,
+        inputBuffer7,
         output1Amount,
         madeInputDetails: scn.madeInputDetails,
-        inputBuffer7,
+        
       });
     }
   }
