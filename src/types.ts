@@ -38,6 +38,10 @@ export interface MadeInputDetail {
   details: MakeOption | null;   // recursive option (child)
   amountNeeded: number;
   scenarioName: string;
+  source: "BUY" | "MAKE";
+  unitCost?: number | null;          // cost per unit when BUYing
+  totalCostPerBatch?: number | null; // total input cost for one parent batch
+  childScenario?: string | null;     // scenario string chosen for the child (MAKE)
 }
 
 export interface MakeOption {
