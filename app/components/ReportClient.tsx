@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import type { PriceMode } from "@/types";
+import BestScenarioSankey from "./BestScenarioSankey";
 
 type ApiReport = any; // keep your existing type if you have one
 
@@ -184,20 +185,49 @@ export default function ReportClient() {
       {/* Results */}
       {data && !error && (
         <>
-          <h2>Best Scenario (full object)</h2>
-          <pre style={{ whiteSpace: "pre-wrap" }}>
-            {JSON.stringify(data.best, null, 2)}
-          </pre>
+          {data.best ? (
+            <section style={{ marginTop: 32 }}>
+              <h2>Best Scenario Sankey</h2>
+              <p style={{ margin: "8px 0 16px", color: "#555", maxWidth: 760 }}>
+                Visualizes the best-performing production chain. Each link width
+                represents units consumed per day; hover nodes or links for
+                profit, area, and sourcing context.
+              </p>
+              <BestScenarioSankey
+                best={data.best}
+                ticker={data.ticker}
+                priceMode={data.priceMode}
+              />
+            </section>
+          ) : (
+            <p style={{ marginTop: 32 }}>No best scenario available for this ticker.</p>
+          )}
 
-          <h2>Top 5 (summary only)</h2>
-          <pre style={{ whiteSpace: "pre-wrap" }}>
-            {JSON.stringify(data.top5, null, 2)}
-          </pre>
+          <section style={{ marginTop: 32 }}>
+            <details>
+              <summary style={{ cursor: "pointer", fontWeight: 600 }}>
+                Inspect raw best scenario data
+              </summary>
+              <pre style={{ whiteSpace: "pre-wrap", marginTop: 12 }}>
+                {JSON.stringify(data.best, null, 2)}
+              </pre>
+            </details>
+          </section>
 
-          <p style={{ marginTop: 16, color: "#666" }}>
-            Tip: try <code>?ticker=XYZ&amp;mode=pp7</code> or toggle{" "}
-            <strong>Expand children</strong> to include child rows in the best
-            option.
+          <section style={{ marginTop: 32 }}>
+            <details>
+              <summary style={{ cursor: "pointer", fontWeight: 600 }}>
+                View top 5 options (JSON)
+              </summary>
+              <pre style={{ whiteSpace: "pre-wrap", marginTop: 12 }}>
+                {JSON.stringify(data.top5, null, 2)}
+              </pre>
+            </details>
+          </section>
+
+          <p style={{ marginTop: 24, color: "#666" }}>
+            Tip: try <code>?ticker=XYZ&amp;mode=pp7</code> or toggle <strong>Expand
+            children</strong> to include child rows in the best option.
           </p>
         </>
       )}

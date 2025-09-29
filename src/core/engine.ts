@@ -176,6 +176,11 @@ function bestOptionForTicker(
                 details: null,
                 amountNeeded: input.amount,
                 scenarioName: fullName,
+                source: "BUY" as const,
+                unitCost:
+                  input.amount > 0 ? input.buyCost / input.amount : input.buyCost,
+                totalCostPerBatch: input.buyCost,
+                childScenario: null,
               },
             ],
           });
@@ -205,6 +210,10 @@ function bestOptionForTicker(
                 details: mo,
                 amountNeeded: input.amount,
                 scenarioName: fullName,
+                source: "MAKE" as const,
+                unitCost: null,
+                totalCostPerBatch: mo.cogmPerOutput * input.amount,
+                childScenario: mo.scenario || null,
               },
             ],
           });
@@ -445,6 +454,11 @@ export function findAllMakeOptions(
                 details: null,
                 amountNeeded: input.amount,
                 scenarioName: fullName,
+                source: "BUY" as const,
+                unitCost:
+                  input.amount > 0 ? input.buyCost / input.amount : input.buyCost,
+                totalCostPerBatch: input.buyCost,
+                childScenario: null,
               },
             ],
           });
@@ -474,6 +488,10 @@ export function findAllMakeOptions(
                 details: mo,
                 amountNeeded: input.amount,
                 scenarioName: fullName,
+                source: "MAKE" as const,
+                unitCost: null,
+                totalCostPerBatch: mo.cogmPerOutput * input.amount,
+                childScenario: mo.scenario || null,
               },
             ],
           });
