@@ -3,201 +3,158 @@
 import { useEffect, useMemo, useState } from "react";
 import type { PriceMode } from "@/types";
 
-type ApiReport = any; // keep your existing type if you have one
+type ApiReport = {
+  schemaVersion: number;
+  ok?: boolean;
+  error?: string;
+  ticker: string;
+  priceMode: PriceMode;
+  totalOptions: number;
+  bestPA: number | null;
+  best: any;
+  top5: any[];
+};
 
 export default function ReportClient() {
   const [tickers, setTickers] = useState<string[]>([]);
-  const [tickerInput, setTickerInput] = useState<string>("REP"); // free-typed value
+  const [tickerInput, setTickerInput] = useState<string>("REP"); // default you set
   const [priceMode, setPriceMode] = useState<PriceMode>("bid");
-  const [expand, setExpand] = useState<boolean>(false);
+  const [expand, setExpand] = useState(false);
+  const [includeRows, setIncludeRows] = useState(false);
 
-  const [data, setData] = useState<ApiReport | null>(null);
-  const [loading, setLoading] = useState<boolean>(false);
+  const [loading, setLoading] = useState(false);
+  const [report, setReport] = useState<ApiReport | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  // Load tickers for suggestions
+  // Load tickers once (from a tiny API that reads your CSVs)
   useEffect(() => {
-    let alive = true;
-    (async () => {
-      try {
-        const res = await fetch("/api/tickers", { cache: "no-store" });
-        const json = await res.json();
-        if (!alive) return;
-        setTickers(Array.isArray(json?.tickers) ? json.tickers : []);
-      } catch {
-        /* non-fatal for UI */
-      }
-    })();
-    return () => {
-      alive = false;
-    };
+    fetch("/api/tickers", { cache: "no-store" })
+      .then(r => r.ok ? r.json() : Promise.reject(new Error("Failed to load tickers")))
+      .then((data: { tickers: string[] }) => setTickers(data.tickers ?? []))
+      .catch(() => setTickers([]));
   }, []);
 
-  // Filter suggestions to those that START WITH what the user typed
   const filteredTickers = useMemo(() => {
-    const q = tickerInput.trim().toLowerCase();
-    if (!q) return tickers.slice(0, 100);
-    return tickers.filter(t => t.toLowerCase().startsWith(q)).slice(0, 100);
+    if (!tickerInput) return tickers.slice(0, 50);
+    const q = tickerInput.toUpperCase();
+    return tickers.filter(t => t.toUpperCase().startsWith(q)).slice(0, 50);
   }, [tickers, tickerInput]);
 
-  async function run() {
+  const run = async () => {
     setLoading(true);
     setError(null);
-    setData(null);
     try {
       const qs = new URLSearchParams({
-        ticker: tickerInput.toUpperCase(),
+        ticker: tickerInput.trim().toUpperCase(),
         priceMode,
         ...(expand ? { expand: "1" } : {}),
+        ...(includeRows ? { rows: "1" } : {}),
       });
       const res = await fetch(`/api/report?${qs.toString()}`, { cache: "no-store" });
       const json = await res.json();
       if (!res.ok || json?.ok === false) {
         throw new Error(json?.error || `${res.status} ${res.statusText}`);
       }
-      setData(json);
+      setReport(json);
     } catch (e: any) {
-      setError(e?.message || "Request failed");
+      setError(String(e?.message ?? e));
+      setReport(null);
     } finally {
       setLoading(false);
     }
-  }
+  };
 
-  // Kick off an initial run on mount
   useEffect(() => {
+    // run once on mount with defaults
     run();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   return (
-    <main style={{ padding: 24, maxWidth: 1100, margin: "0 auto" }}>
+    <main style={{ padding: 24 }}>
       <h1>Report (live Sheets)</h1>
 
       {/* Controls */}
-      <div
-        style={{
-          display: "grid",
-          gridTemplateColumns: "1fr 1fr auto auto",
-          gap: 12,
-          alignItems: "end",
-          marginBottom: 16,
-          maxWidth: 820,
-        }}
-      >
-        {/* Ticker combobox (input + datalist) */}
-        <label style={{ display: "grid", gap: 6 }}>
-          <span style={{ fontSize: 12, color: "#666" }}>Ticker</span>
+      <div style={{ display: "grid", gap: 12, gridTemplateColumns: "1fr auto auto auto auto", alignItems: "end", maxWidth: 900 }}>
+        <div>
+          <label style={{ display: "block", fontSize: 12, color: "#666", marginBottom: 4 }}>Ticker</label>
           <input
             list="ticker-list"
             value={tickerInput}
             onChange={(e) => setTickerInput(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === "Enter") run();
-            }}
-            placeholder="Type to filter… (e.g., b → BCO, BGO, …)"
-            style={{
-              padding: "8px 10px",
-              border: "1px solid #ddd",
-              borderRadius: 8,
-              fontFamily: "inherit",
-              fontSize: 14,
-            }}
+            placeholder="Type a ticker (e.g., PCB)"
+            style={{ width: "100%", padding: "8px 10px" }}
           />
-          {/* Dynamic suggestions (startsWith filter) */}
           <datalist id="ticker-list">
-            {filteredTickers.map((t) => (
+            {filteredTickers.map(t => (
               <option key={t} value={t} />
             ))}
           </datalist>
-        </label>
+        </div>
 
-        {/* Price mode */}
-        <label style={{ display: "grid", gap: 6 }}>
-          <span style={{ fontSize: 12, color: "#666" }}>Price mode</span>
+        <div>
+          <label style={{ display: "block", fontSize: 12, color: "#666", marginBottom: 4 }}>Price Mode</label>
           <select
             value={priceMode}
             onChange={(e) => setPriceMode(e.target.value as PriceMode)}
-            style={{
-              padding: "8px 10px",
-              border: "1px solid #ddd",
-              borderRadius: 8,
-              fontFamily: "inherit",
-              fontSize: 14,
-            }}
+            style={{ padding: "8px 10px" }}
           >
             <option value="bid">bid</option>
             <option value="ask">ask</option>
             <option value="pp7">pp7</option>
             <option value="pp30">pp30</option>
           </select>
+        </div>
+
+        <label style={{ display: "flex", gap: 8, alignItems: "center" }}>
+          <input type="checkbox" checked={expand} onChange={(e) => setExpand(e.target.checked)} />
+          Expand children
         </label>
 
-        {/* Expand toggle */}
-        <label style={{ display: "grid", gap: 6 }}>
-          <span style={{ fontSize: 12, color: "#666" }}>Expand children</span>
-          <input
-            type="checkbox"
-            checked={expand}
-            onChange={(e) => setExpand(e.target.checked)}
-            style={{ width: 20, height: 20, cursor: "pointer" }}
-            title="Include child rows in the best option"
-          />
+        <label style={{ display: "flex", gap: 8, alignItems: "center" }}>
+          <input type="checkbox" checked={includeRows} onChange={(e) => setIncludeRows(e.target.checked)} />
+          Include rows
         </label>
 
         <button
           onClick={run}
-          disabled={loading}
-          style={{
-            padding: "10px 14px",
-            borderRadius: 8,
-            border: "1px solid #0b6",
-            background: loading ? "#9dd" : "#0c7",
-            color: "white",
-            fontWeight: 600,
-            cursor: loading ? "default" : "pointer",
-            userSelect: "none",
-          }}
+          disabled={loading || !tickerInput.trim()}
+          style={{ padding: "10px 14px", fontWeight: 600 }}
         >
-          {loading ? "Running…" : "Run"}
+          {loading ? "Running..." : "Run"}
         </button>
       </div>
 
-      {/* Status line (keeps your nice header) */}
-      {data && (
-        <p>
-          <strong>Ticker:</strong> {data.ticker} &nbsp; | &nbsp;
-          <strong>Mode:</strong> {data.priceMode} &nbsp; | &nbsp;
-          <strong>Total Options:</strong> {data.totalOptions} &nbsp; | &nbsp;
-          <strong>Best P/A:</strong>{" "}
-          {data.bestPA != null ? Number(data.bestPA).toFixed(6) : "n/a"}
+      {/* Summary */}
+      {error && (
+        <p style={{ marginTop: 12, color: "#b00" }}>
+          Error: {error}
         </p>
       )}
 
-      {/* Error */}
-      {error && (
+      {report && (
         <>
-          <h2 style={{ color: "#b00" }}>API Error</h2>
-          <pre style={{ whiteSpace: "pre-wrap" }}>{error}</pre>
-        </>
-      )}
+          <p style={{ marginTop: 12 }}>
+            <strong>Ticker:</strong> {report.ticker} &nbsp; | &nbsp;
+            <strong>Mode:</strong> {report.priceMode} &nbsp; | &nbsp;
+            <strong>Total Options:</strong> {report.totalOptions} &nbsp; | &nbsp;
+            <strong>Best P/A:</strong>{" "}
+            {report.bestPA != null ? Number(report.bestPA).toFixed(6) : "n/a"}
+          </p>
 
-      {/* Results */}
-      {data && !error && (
-        <>
-          <h2>Best Scenario (full object)</h2>
+          <h2>Best Scenario (raw)</h2>
           <pre style={{ whiteSpace: "pre-wrap" }}>
-            {JSON.stringify(data.best, null, 2)}
+            {JSON.stringify(report.best, null, 2)}
           </pre>
 
           <h2>Top 5 (summary only)</h2>
           <pre style={{ whiteSpace: "pre-wrap" }}>
-            {JSON.stringify(data.top5, null, 2)}
+            {JSON.stringify(report.top5, null, 2)}
           </pre>
 
           <p style={{ marginTop: 16, color: "#666" }}>
-            Tip: try <code>?ticker=XYZ&amp;mode=pp7</code> or toggle{" "}
-            <strong>Expand children</strong> to include child rows in the best
-            option.
+            Tip: try <code>?ticker=XYZ&amp;mode=pp7</code>. For a human-readable tree,
+            turn on <em>Include rows</em> (and optionally <em>Expand children</em>).
           </p>
         </>
       )}
