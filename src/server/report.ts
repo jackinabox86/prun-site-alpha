@@ -73,9 +73,6 @@ export async function buildReport(opts: {
   const roi = computeRoiNarrow(best.o);       // { narrowDays, capex, basis }
   const ip  = computeInputPayback(best.o, 7); // { days, windowDays }
 
-  // Add Input Payback row (ROI row already added inside engine.ts root)
-  bestRows.push(["Input Payback (7d buffer) [days]:", ip.days ?? "n/a"]);
-
   // Enrich BEST raw object with numeric fields
   const bestRaw: WithMetrics<typeof best.o> = {
     ...best.o,
