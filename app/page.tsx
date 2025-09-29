@@ -1,5 +1,5 @@
-// app/page.tsx — Server Component that renders the client UI
-import ReportClient from "./components/ReportClient";
+// app/page.tsx
+import ReportClient from "@/components/ReportClient";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";

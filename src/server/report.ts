@@ -15,9 +15,10 @@ type WithMetrics<T> = T & {
 export async function buildReport(opts: {
   ticker: string;
   priceMode: PriceMode;
-  expand: boolean;
+  expand: boolean;      // controls child expansion in rows (if rows are requested)
+  includeRows?: boolean; // <-- NEW: return human-readable rows only if true
 }) {
-  const { ticker, priceMode, expand } = opts;
+  const { ticker, priceMode, expand, includeRows = false } = opts;
 
   const REC = process.env.CSV_RECIPES_URL;
   const PRI = process.env.CSV_PRICES_URL;
@@ -59,21 +60,18 @@ export async function buildReport(opts: {
   const ranked = options
     .map(o => {
       const capacity = (o.output1Amount || 0) * (o.runsPerDay || 0);
-      const r = buildScenarioRows(o, 0, capacity, false);
+      const r = buildScenarioRows(o, 0, capacity, false); // used for PA/area math only
       return { o, r, capacity };
     })
     .sort((a, b) => (b.r.subtreeProfitPerArea ?? 0) - (a.r.subtreeProfitPerArea ?? 0));
 
-  // Best (expanded rows)
+  // Best
   const best = ranked[0];
-  const bestRowsRes = buildScenarioRows(best.o, 0, best.capacity, expand);
-  const bestRows = bestRowsRes.rows.slice();
 
-  // Metrics
+  // Numeric metrics for BEST (go on the raw object)
   const roi = computeRoiNarrow(best.o);       // { narrowDays, capex, basis }
   const ip  = computeInputPayback(best.o, 7); // { days, windowDays }
 
-  // Enrich BEST raw object with numeric fields
   const bestRaw: WithMetrics<typeof best.o> = {
     ...best.o,
     totalProfitPA: best.r.subtreeProfitPerArea ?? 0,
@@ -82,7 +80,16 @@ export async function buildReport(opts: {
     inputPaybackDays7: ip.days ?? null,
   };
 
-  // Top 5 summary: include ROI only
+  // Only build/return human-readable rows if requested
+  let bestRows: [string, number | string][] | undefined = undefined;
+  if (includeRows) {
+    const bestRowsRes = buildScenarioRows(best.o, 0, best.capacity, expand);
+    bestRows = bestRowsRes.rows.slice();
+    // The engine already adds ROI (narrow). We add Input Payback label here:
+    bestRows.push(["Input Payback (7d buffer) [days]:", ip.days ?? "n/a"]);
+  }
+
+  // Top 5 summary: include ROI only (no rows here)
   const top5: Array<WithMetrics<typeof ranked[number]["o"]>> = ranked.slice(0, 5).map(({ o, r }) => {
     const roi = computeRoiNarrow(o);
     return {
@@ -100,10 +107,7 @@ export async function buildReport(opts: {
     totalOptions: ranked.length,
     bestPA: best.r.subtreeProfitPerArea ?? null,
     bestScenario: best.o.scenario ?? "",
-    best: {
-      ...bestRaw,     // raw metrics
-      rows: bestRows, // human-readable block
-    },
+    best: includeRows ? { ...bestRaw, rows: bestRows } : bestRaw,
     top5,
   };
 }
