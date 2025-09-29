@@ -23,7 +23,7 @@ export default async function Page(props: any) {
   const expand = getStr("expand", "") === "1";
 
   // Build absolute URL for the API route (works locally, Vercel, Codespaces)
-  const h = headers();
+  const h = await headers(); // <-- await fixes TS error
   const proto = h.get("x-forwarded-proto") ?? "http";
   const host = h.get("host") ?? "localhost:3000";
   const baseUrl = `${proto}://${host}`;
@@ -35,9 +35,7 @@ export default async function Page(props: any) {
   });
 
   const res = await fetch(`${baseUrl}/api/report?${qs.toString()}`, {
-    // ensure fresh data and parity with the API route
     cache: "no-store",
-    // if you want ISR later, you can remove dynamic/revalidate above and tweak here
   });
 
   if (!res.ok) {
