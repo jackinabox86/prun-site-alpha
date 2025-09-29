@@ -1,5 +1,4 @@
-// app/page.tsx — Server Component that delegates to /api/report
-import { headers } from "next/headers";
+// app/page.tsx — Server Component that delegates to /api/report (relative fetch)
 import type { PriceMode } from "@/types";
 
 export const runtime = "nodejs";
@@ -22,19 +21,14 @@ export default async function Page(props: any) {
   const priceMode = (getStr("mode", getStr("priceMode", "bid")) as PriceMode);
   const expand = getStr("expand", "") === "1";
 
-  // Build absolute URL for the API route (works locally, Vercel, Codespaces)
-  const h = await headers(); // <-- await fixes TS error
-  const proto = h.get("x-forwarded-proto") ?? "http";
-  const host = h.get("host") ?? "localhost:3000";
-  const baseUrl = `${proto}://${host}`;
-
   const qs = new URLSearchParams({
     ticker,
     priceMode,
     ...(expand ? { expand: "1" } : {}),
   });
 
-  const res = await fetch(`${baseUrl}/api/report?${qs.toString()}`, {
+  // ✅ Relative URL avoids preview/proxy auth issues (no 401)
+  const res = await fetch(`/api/report?${qs.toString()}`, {
     cache: "no-store",
   });
 
