@@ -74,6 +74,7 @@ export interface MakeOption {
 
   madeInputDetails: MadeInputDetail[];
   totalProfitPA?: number; // computed later
+  inputBuffer7?: number; // 7-day buffer = 7 * ((cost + workforceCost) * runsPerDay)
 }
 
 export interface ScenarioRowsResult {
