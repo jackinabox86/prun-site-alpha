@@ -6,19 +6,24 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
 
-type SP = Record<string, string | string[] | undefined>;
+type SearchParams = Record<string, string | string[] | undefined>;
+type PageProps = { searchParams?: SearchParams | Promise<SearchParams> };
 
-export default async function Page(props: { searchParams?: SP }) {
-  const sp = props?.searchParams ?? {};
+export default async function Page(props: PageProps) {
+  // Normalize searchParams: support object OR Promise (Next can pass either)
+  const raw = props?.searchParams;
+  const sp: SearchParams =
+    raw && typeof (raw as any).then === "function" ? await raw : (raw ?? {});
+
   const getStr = (k: string, fallback: string) => {
     const v = Array.isArray(sp[k]) ? sp[k]?.[0] : sp[k];
     return (v as string | undefined) ?? fallback;
   };
 
-  const ticker = getStr("ticker", "REP").toUpperCase();
+  const ticker = getStr("ticker", "PCB").toUpperCase();
   const priceMode = (getStr("mode", getStr("priceMode", "bid")) as PriceMode);
-  const expand = getStr("expand", "") === "1"; // still passed through for ?rows=1 scenarios
-  const includeRows = getStr("rows", "") === "1"; // default off
+  const expand = getStr("expand", "") === "1";
+  const includeRows = getStr("rows", "") === "1"; // rows off by default
 
   const data = await buildReport({ ticker, priceMode, expand, includeRows });
 
@@ -64,7 +69,7 @@ export default async function Page(props: { searchParams?: SP }) {
 
       <p style={{ marginTop: 16, color: "#666" }}>
         Tip: try <code>?ticker=XYZ&amp;mode=pp7</code>. For a human-readable tree,
-        add <code>&amp;rows=1</code> (and optionally <code>&amp;expand=1</code> to show child rows).
+        add <code>&amp;rows=1</code> (and optionally <code>&amp;expand=1</code>).
       </p>
     </main>
   );
