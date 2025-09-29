@@ -239,6 +239,9 @@ function bestOptionForTicker(
           ? area / (runsPerDay * output1Amount)
           : null;
 
+      const inputBuffer7 =
+  7 * ((totalInputCost + workforceCost) * runsPerDay);
+
       const opt: MakeOption = {
         recipeId,
         ticker: materialTicker,
@@ -264,6 +267,7 @@ function bestOptionForTicker(
         buildCost,
         output1Amount,
         madeInputDetails: scn.madeInputDetails,
+        inputBuffer7,
       };
 
       // Evaluate P/A at this ticker's capacity
@@ -503,6 +507,9 @@ export function findAllMakeOptions(
           : runsPerDay > 0 && output1Amount > 0
           ? area / (runsPerDay * output1Amount)
           : null;
+      
+      const inputBuffer7 =
+  7 * ((totalInputCost + workforceCost) * runsPerDay);
 
       results.push({
         recipeId,
@@ -529,6 +536,7 @@ export function findAllMakeOptions(
         buildCost,
         output1Amount,
         madeInputDetails: scn.madeInputDetails,
+        inputBuffer7,
       });
     }
   }
