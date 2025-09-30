@@ -54,7 +54,7 @@ export default function BestScenarioSankey({
     const TOP_PAD_PX = 24;             // top padding for layout
     const BOT_PAD_PX = 24;             // bottom padding for layout
     const X_PAD = 0.06;                // keep columns away from edges (0..1)
-    const EXTRA_DRAG_BUFFER_PX = 120;  // extra headroom (px)
+    const EXTRA_DRAG_BUFFER_PX = 80;   // extra headroom (px)
 
     const palette = {
       root:   "#2563eb",
@@ -221,7 +221,7 @@ export default function BestScenarioSankey({
 
     traverse(best, rootIdx, best.runsPerDay || 0, 0);
 
-    // ---------- LAYOUT: global row assignment to prevent overlaps ----------
+    // ---------- LAYOUT: Stack nodes within columns, use explicit positions ----------
     const N = nodeLabels.length;
 
     // Group by depth
@@ -249,33 +249,17 @@ export default function BestScenarioSankey({
       });
     }
 
-    // === KEY FIX: Assign unique global rows to prevent overlaps ===
-    // We'll assign each node to a unique row number, ensuring no two nodes share a row
-    const nodeRow = new Array<number>(N).fill(-1);
-    let nextAvailableRow = 0;
-
-    // Process columns left to right, assigning rows sequentially
-    for (let d = 0; d <= maxDepth; d++) {
-      const column = cols[d];
-      for (const idx of column) {
-        nodeRow[idx] = nextAvailableRow;
-        nextAvailableRow++;
-      }
-    }
-
-    // Total number of unique rows needed
-    const totalRows = nextAvailableRow;
-
-    // Dynamic height based on total rows
+    // Find the densest column to calculate proper height
+    const densest = Math.max(1, ...cols.map(c => c.length || 0));
     const dynamicHeight = Math.max(
       height,
       Math.min(
         2200,
-        Math.round(TOP_PAD_PX + BOT_PAD_PX + totalRows * (THICK_PX + GAP_PX) + EXTRA_DRAG_BUFFER_PX)
+        Math.round(TOP_PAD_PX + BOT_PAD_PX + densest * (THICK_PX + GAP_PX) + EXTRA_DRAG_BUFFER_PX)
       )
     );
 
-    // Calculate normalized units for y positioning
+    // Calculate normalized units
     const tn   = THICK_PX / dynamicHeight;   // normalized node thickness
     const gapN = GAP_PX   / dynamicHeight;   // normalized gap
     const topN = TOP_PAD_PX / dynamicHeight;
@@ -289,33 +273,41 @@ export default function BestScenarioSankey({
     const nodeX = new Array<number>(N).fill(0);
     const nodeY = new Array<number>(N).fill(0);
 
-    // Calculate available vertical space and row height
-    const avail = 1 - topN - botN;
-    const rowHeight = totalRows > 1 ? avail / (totalRows - 1) : 0;
+    // Position nodes within each column
+    for (let d = 0; d <= maxDepth; d++) {
+      const column = cols[d];
+      if (!column.length) continue;
 
-    for (let i = 0; i < N; i++) {
-      const d = nodeDepth[i];
-      const row = nodeRow[i];
+      // X position for this depth
+      const x = maxDepth > 0 ? left + d * step : 0.5;
       
-      // X position based on depth
-      nodeX[i] = maxDepth > 0 ? left + d * step : 0.5;
-      
-      // Y position based on global row (evenly distributed)
-      if (totalRows === 1) {
-        nodeY[i] = 0.5;
-      } else {
-        nodeY[i] = topN + row * rowHeight;
-      }
+      // Calculate Y positions within this column (centered vertically)
+      const avail = 1 - topN - botN;
+      const totalNeeded = column.length * tn + (column.length - 1) * gapN;
+      const startTop = topN + Math.max(0, (avail - totalNeeded) / 2);
+
+      column.forEach((idx, i) => {
+        nodeX[idx] = x;
+        
+        // Y position (using top of node, not center)
+        let yTop = startTop + i * (tn + gapN);
+        
+        // Clamp to keep node visible
+        if (yTop < topN) yTop = topN;
+        if (yTop > 1 - botN - tn) yTop = 1 - botN - tn;
+        
+        nodeY[idx] = yTop;
+      });
     }
 
     return {
       data: [
         {
           type: "sankey",
-          arrangement: "freeform",   // respect both x and y
+          arrangement: "snap",   // snap mode with explicit positions
           uirevision: "keep",
           node: {
-            pad: GAP_PX,             // visual spacing hint (though we control positioning)
+            pad: GAP_PX,             // vertical spacing between nodes (px)
             thickness: THICK_PX,     // in pixels
             line: { color: palette.border, width: 1 },
             label: nodeLabels,
@@ -323,7 +315,7 @@ export default function BestScenarioSankey({
             hovertemplate: "%{customdata}<extra></extra>",
             customdata: nodeHover,
             x: nodeX,               // explicit x positions by depth
-            y: nodeY,               // explicit y positions by global row
+            y: nodeY,               // explicit y positions (top of node)
           },
           link: {
             source: links.source,
