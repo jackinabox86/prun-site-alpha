@@ -18,7 +18,7 @@ type ApiReport = {
 
 export default function ReportClient() {
   const [tickers, setTickers] = useState<string[]>([]);
-  const [tickerInput, setTickerInput] = useState<string>("REP"); // default you set
+  const [tickerInput, setTickerInput] = useState<string>("REP"); // default
   const [priceMode, setPriceMode] = useState<PriceMode>("bid");
   const [expand, setExpand] = useState(false);
   const [includeRows, setIncludeRows] = useState(false);
@@ -27,10 +27,10 @@ export default function ReportClient() {
   const [report, setReport] = useState<ApiReport | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  // Load tickers once (from a tiny API that reads your CSVs)
+  // Load tickers once
   useEffect(() => {
     fetch("/api/tickers", { cache: "no-store" })
-      .then(r => r.ok ? r.json() : Promise.reject(new Error("Failed to load tickers")))
+      .then((r) => (r.ok ? r.json() : Promise.reject(new Error("Failed to load tickers"))))
       .then((data: { tickers: string[] }) => setTickers(data.tickers ?? []))
       .catch(() => setTickers([]));
   }, []);
@@ -38,7 +38,7 @@ export default function ReportClient() {
   const filteredTickers = useMemo(() => {
     if (!tickerInput) return tickers.slice(0, 50);
     const q = tickerInput.toUpperCase();
-    return tickers.filter(t => t.toUpperCase().startsWith(q)).slice(0, 50);
+    return tickers.filter((t) => t.toUpperCase().startsWith(q)).slice(0, 50);
   }, [tickers, tickerInput]);
 
   const run = async () => {
@@ -56,7 +56,7 @@ export default function ReportClient() {
       if (!res.ok || json?.ok === false) {
         throw new Error(json?.error || `${res.status} ${res.statusText}`);
       }
-      setReport(json);
+      setReport(json as ApiReport);
     } catch (e: any) {
       setError(String(e?.message ?? e));
       setReport(null);
@@ -67,6 +67,7 @@ export default function ReportClient() {
 
   useEffect(() => {
     // run once on mount with defaults
+    // eslint-disable-next-line @typescript-eslint/no-floating-promises
     run();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -76,9 +77,19 @@ export default function ReportClient() {
       <h1>Report (live Sheets)</h1>
 
       {/* Controls */}
-      <div style={{ display: "grid", gap: 12, gridTemplateColumns: "1fr auto auto auto auto", alignItems: "end", maxWidth: 900 }}>
+      <div
+        style={{
+          display: "grid",
+          gap: 12,
+          gridTemplateColumns: "1fr auto auto auto auto",
+          alignItems: "end",
+          maxWidth: 900,
+        }}
+      >
         <div>
-          <label style={{ display: "block", fontSize: 12, color: "#666", marginBottom: 4 }}>Ticker</label>
+          <label style={{ display: "block", fontSize: 12, color: "#666", marginBottom: 4 }}>
+            Ticker
+          </label>
           <input
             list="ticker-list"
             value={tickerInput}
@@ -87,14 +98,16 @@ export default function ReportClient() {
             style={{ width: "100%", padding: "8px 10px" }}
           />
           <datalist id="ticker-list">
-            {filteredTickers.map(t => (
+            {filteredTickers.map((t) => (
               <option key={t} value={t} />
             ))}
           </datalist>
         </div>
 
         <div>
-          <label style={{ display: "block", fontSize: 12, color: "#666", marginBottom: 4 }}>Price Mode</label>
+          <label style={{ display: "block", fontSize: 12, color: "#666", marginBottom: 4 }}>
+            Price Mode
+          </label>
           <select
             value={priceMode}
             onChange={(e) => setPriceMode(e.target.value as PriceMode)}
@@ -108,12 +121,20 @@ export default function ReportClient() {
         </div>
 
         <label style={{ display: "flex", gap: 8, alignItems: "center" }}>
-          <input type="checkbox" checked={expand} onChange={(e) => setExpand(e.target.checked)} />
+          <input
+            type="checkbox"
+            checked={expand}
+            onChange={(e) => setExpand(e.target.checked)}
+          />
           Expand children
         </label>
 
         <label style={{ display: "flex", gap: 8, alignItems: "center" }}>
-          <input type="checkbox" checked={includeRows} onChange={(e) => setIncludeRows(e.target.checked)} />
+          <input
+            type="checkbox"
+            checked={includeRows}
+            onChange={(e) => setIncludeRows(e.target.checked)}
+          />
           Include rows
         </label>
 
@@ -142,54 +163,56 @@ export default function ReportClient() {
             <strong>Best P/A:</strong>{" "}
             {report.bestPA != null ? Number(report.bestPA).toFixed(6) : "n/a"}
           </p>
-          
-         {/* Results */}
-      {data && !error && (
-        <>
-          {data.best ? (
-            <section style={{ marginTop: 32 }}>
-              <h2>Best Scenario Sankey</h2>
-              <p style={{ margin: "8px 0 16px", color: "#555", maxWidth: 760 }}>
-                Visualizes the best-performing production chain. Each link width
-                represents units consumed per day; hover nodes or links for
-                profit, area, and sourcing context.
+
+          {/* Results */}
+          {report && !error && (
+            <>
+              {report.best ? (
+                <section style={{ marginTop: 32 }}>
+                  <h2>Best Scenario Sankey</h2>
+                  <p style={{ margin: "8px 0 16px", color: "#555", maxWidth: 760 }}>
+                    Visualizes the best-performing production chain. Each link width represents
+                    units consumed per day; hover nodes or links for profit, area, and sourcing
+                    context.
+                  </p>
+                  <BestScenarioSankey
+                    best={report.best}
+                    ticker={report.ticker}
+                    priceMode={report.priceMode}
+                  />
+                </section>
+              ) : (
+                <p style={{ marginTop: 32 }}>No best scenario available for this ticker.</p>
+              )}
+
+              <section style={{ marginTop: 32 }}>
+                <details>
+                  <summary style={{ cursor: "pointer", fontWeight: 600 }}>
+                    Inspect raw best scenario data
+                  </summary>
+                  <pre style={{ whiteSpace: "pre-wrap", marginTop: 12 }}>
+                    {JSON.stringify(report.best, null, 2)}
+                  </pre>
+                </details>
+              </section>
+
+              <section style={{ marginTop: 32 }}>
+                <details>
+                  <summary style={{ cursor: "pointer", fontWeight: 600 }}>
+                    View top 5 options (JSON)
+                  </summary>
+                  <pre style={{ whiteSpace: "pre-wrap", marginTop: 12 }}>
+                    {JSON.stringify(report.top5, null, 2)}
+                  </pre>
+                </details>
+              </section>
+
+              <p style={{ marginTop: 24, color: "#666" }}>
+                Tip: try <code>?ticker=XYZ&amp;mode=pp7</code> or toggle <strong>Expand children</strong> to
+                include child rows in the best option.
               </p>
-              <BestScenarioSankey
-                best={data.best}
-                ticker={data.ticker}
-                priceMode={data.priceMode}
-              />
-            </section>
-          ) : (
-            <p style={{ marginTop: 32 }}>No best scenario available for this ticker.</p>
+            </>
           )}
-
-          <section style={{ marginTop: 32 }}>
-            <details>
-              <summary style={{ cursor: "pointer", fontWeight: 600 }}>
-                Inspect raw best scenario data
-              </summary>
-              <pre style={{ whiteSpace: "pre-wrap", marginTop: 12 }}>
-                {JSON.stringify(data.best, null, 2)}
-              </pre>
-            </details>
-          </section>
-
-          <section style={{ marginTop: 32 }}>
-            <details>
-              <summary style={{ cursor: "pointer", fontWeight: 600 }}>
-                View top 5 options (JSON)
-              </summary>
-              <pre style={{ whiteSpace: "pre-wrap", marginTop: 12 }}>
-                {JSON.stringify(data.top5, null, 2)}
-              </pre>
-            </details>
-          </section>
-
-          <p style={{ marginTop: 24, color: "#666" }}>
-            Tip: try <code>?ticker=XYZ&amp;mode=pp7</code> or toggle <strong>Expand
-            children</strong> to include child rows in the best option.
-          </p>
         </>
       )}
     </main>
