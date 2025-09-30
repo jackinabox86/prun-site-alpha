@@ -175,11 +175,7 @@ export default function ReportClient() {
                     units consumed per day; hover nodes or links for profit, area, and sourcing
                     context.
                   </p>
-                  <BestScenarioSankey
-                    best={report.best}
-                    ticker={report.ticker}
-                    priceMode={report.priceMode}
-                  />
+                  <BestScenarioSankey best={report.best} />
                 </section>
               ) : (
                 <p style={{ marginTop: 32 }}>No best scenario available for this ticker.</p>
