@@ -117,7 +117,7 @@ export default function BestScenarioSankey({
     };
 
     // Root node (the parent stage)
-    const rootId = `STAGE::${best.recipeId || best.ticker}`;
+    const rootId = `STAGE::${best.recipeId || best.ticker}::0`;
     const rootHover = [
       `<b>${best.ticker}</b>`,
       best.scenario ? `Scenario: ${best.scenario}` : null,
@@ -154,7 +154,7 @@ export default function BestScenarioSankey({
           const batchCost = Number(inp.totalCostPerBatch ?? 0);
           const costPerDay = Math.max(0, batchCost * stageRunsPerDay);
 
-          const buyNodeId = `BUY::${(stage.recipeId || stage.ticker)}::${inp.ticker}`;
+          const buyNodeId = `BUY::${stage.recipeId || stage.ticker}::${inp.ticker}::${depth}`;
           const buyHover = [
             `<b>Buy ${inp.ticker}</b>`,
             inp.unitCost != null ? `Unit price: ${money(inp.unitCost)}` : null,
@@ -178,7 +178,7 @@ export default function BestScenarioSankey({
         const cogm  = Number(child.cogmPerOutput ?? 0);
         const costPerDay = Math.max(0, cogm * amount * stageRunsPerDay);
 
-        const childId = `STAGE::${child.recipeId || child.ticker}`;
+        const childId = `STAGE::${child.recipeId || child.ticker}::${depth + 1}`;
         const childHover = [
           `<b>Make ${child.recipeId || child.ticker}</b>`,
           inp.childScenario ? `Child scenario: ${inp.childScenario}` : null,
@@ -289,7 +289,7 @@ for (const column of cols) {
   });
 }
 
-// Stack nodes by constant thickness + gap (center-based y for Plotly, clamped)
+// Stack nodes by constant thickness + gap (TOP y for Plotly)
 const nodeY = new Array<number>(N).fill(0);
 for (const column of cols) {
   if (!column.length) continue;
@@ -298,19 +298,16 @@ for (const column of cols) {
   const totalNeeded = column.length * tn + (column.length - 1) * gapN;
   const startTop = topN + Math.max(0, (avail - totalNeeded)) / 2;
 
-  let yTop = startTop;
   column.forEach((idx, i) => {
-    // center y
-    let yCenter = yTop + tn / 2 + i * EPS_N; // tiny jitter per row index
-    // clamp to keep full node visible
-    const half = tn / 2;
-    if (yCenter < half) yCenter = half;
-    if (yCenter > 1 - half) yCenter = 1 - half;
-    nodeY[idx] = yCenter;
-
-    yTop += tn + gapN;
+    // TOP y (not center). Add tiny jitter to avoid exact-equality collisions.
+    let yTop = startTop + i * (tn + gapN) + i * EPS_N;
+    // Clamp so the full node stays in-bounds (remember: y is TOP)
+    if (yTop < 0) yTop = 0;
+    if (yTop > 1 - tn) yTop = 1 - tn;
+    nodeY[idx] = yTop;
   });
 }
+
 
 return {
   data: [
