@@ -50,9 +50,9 @@ export default function BestScenarioSankey({
     // ----- visual tuning -----
     const ALPHA = 0.5;                 // link width ∝ (cost/day)^ALPHA
     const THICK_PX = 20;               // node rectangle thickness (px)
-    const GAP_PX = 10;                 // vertical gap between nodes (px)
-    const TOP_PAD_PX = 24;             // inner top margin (px)
-    const BOT_PAD_PX = 24;             // inner bottom margin (px)
+    const GAP_PX = 10;                 // vertical gap between nodes (px) → used as node.pad
+    const TOP_PAD_PX = 24;             // used only to estimate height
+    const BOT_PAD_PX = 24;             // used only to estimate height
     const X_PAD = 0.06;                // keep columns away from edges (0..1)
     const EXTRA_DRAG_BUFFER_PX = 120;  // extra headroom (px)
     const EPS_X = 1e-6;                // tiny bias so x strictly increases with depth
@@ -230,7 +230,7 @@ export default function BestScenarioSankey({
     const cols: number[][] = Array.from({ length: maxDepth + 1 }, () => []);
     for (let i = 0; i < N; i++) cols[nodeDepth[i]].push(i);
 
-    // Dynamic height from densest column
+    // Dynamic height from densest column (for comfort)
     const densest = Math.max(1, ...cols.map(c => c.length || 0));
     const dynamicHeight = Math.max(
       height,
@@ -239,12 +239,6 @@ export default function BestScenarioSankey({
         Math.round(TOP_PAD_PX + BOT_PAD_PX + densest * (THICK_PX + GAP_PX) + EXTRA_DRAG_BUFFER_PX)
       )
     );
-
-    // Convert px → normalized units for freeform positioning
-    const tn   = THICK_PX / dynamicHeight; // normalized thickness
-    const gapN = GAP_PX   / dynamicHeight; // normalized gap
-    const topN = TOP_PAD_PX / dynamicHeight;
-    const botN = BOT_PAD_PX / dynamicHeight;
 
     // Horizontal x for each depth column (kept away from edges)
     const left = X_PAD, right = 1 - X_PAD;
@@ -257,9 +251,8 @@ export default function BestScenarioSankey({
       for (const idx of cols[d]) nodeX[idx] = x;
     }
 
-    // Sort within each column:
-    //   (1) Stage (MAKE) nodes first, BUY after
-    //   (2) Desc by total incoming cost/day
+    // (Optional) sort each column to hint a nicer vertical order;
+    // Plotly will still choose the final y, but consistent ordering helps.
     const inCost = new Array<number>(N).fill(0);
     for (let i = 0; i < links.source.length; i++) {
       const t = links.target[i];
@@ -267,32 +260,13 @@ export default function BestScenarioSankey({
       if (Number.isFinite(t)) inCost[t] += v;
     }
     const isBuyNode = (idx: number) => (nodeLabels[idx] || "").startsWith("Buy ");
-
     for (const column of cols) {
       column.sort((a, b) => {
         const aBuy = isBuyNode(a), bBuy = isBuyNode(b);
-        if (aBuy !== bBuy) return aBuy ? 1 : -1;
-        const delta = (inCost[b] || 0) - (inCost[a] || 0);
+        if (aBuy !== bBuy) return aBuy ? 1 : -1;          // MAKE first, then BUY
+        const delta = (inCost[b] || 0) - (inCost[a] || 0); // larger inbound first
         if (delta !== 0) return delta;
         return a - b;
-      });
-    }
-
-    // Vertical TOP y placement (no overlaps)
-    const nodeY = new Array<number>(N).fill(0);
-    for (const column of cols) {
-      if (!column.length) continue;
-      const avail = 1 - topN - botN;
-      const totalNeeded = column.length * tn + (column.length - 1) * gapN;
-      const startTop = topN + Math.max(0, (avail - totalNeeded)) / 2;
-
-      let yTop = startTop;
-      column.forEach((idx) => {
-        let y = yTop;
-        if (y < 0) y = 0;
-        if (y > 1 - tn) y = 1 - tn;
-        nodeY[idx] = y;
-        yTop += tn + gapN;
       });
     }
 
@@ -300,18 +274,18 @@ export default function BestScenarioSankey({
       data: [
         {
           type: "sankey",
-          arrangement: "freeform",   // we fully control x & y
+          arrangement: "freeform",   // we set x, Plotly picks y (no overlaps)
           uirevision: "keep",
           node: {
-            pad: 0,                  // vertical spacing handled by us
+            pad: GAP_PX,             // vertical spacing between nodes (px)
             thickness: THICK_PX,     // in pixels
             line: { color: palette.border, width: 1 },
             label: nodeLabels,
             color: nodeColors,
             hovertemplate: "%{customdata}<extra></extra>",
             customdata: nodeHover,
-            x: nodeX,
-            y: nodeY,               // TOP positions (freeform expects top-left)
+            x: nodeX,               // ONLY x is set; y is auto
+            // y: (omitted on purpose)
           },
           link: {
             source: links.source,
