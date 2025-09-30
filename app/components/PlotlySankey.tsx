@@ -1,88 +1,36 @@
+// app/components/PlotlySankey.tsx
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import dynamic from "next/dynamic";
+import { useMemo } from "react";
 
-// Type guard for Plotly loaded on window
-function getPlotly(): any {
-  if (typeof window === "undefined") return null;
-  return (window as any).Plotly;
-}
+const Plot = dynamic(() => import("react-plotly.js"), { ssr: false });
 
-const PLOTLY_CDN = "https://cdn.plot.ly/plotly-2.27.0.min.js";
-
-type PlotlySankeyProps = {
+export type PlotlySankeyProps = {
   data: any[];
-  layout: Record<string, any>;
+  layout?: any;
+  className?: string;
+  /** Optional height (px). If provided, we set both layout.height and container style height. */
+  height?: number;
 };
 
-export default function PlotlySankey({ data, layout }: PlotlySankeyProps) {
-  const containerRef = useRef<HTMLDivElement | null>(null);
-  const [ready, setReady] = useState(false);
+export default function PlotlySankey({ data, layout, className, height }: PlotlySankeyProps) {
+  const finalLayout = useMemo(() => {
+    const L = { ...(layout || {}) };
+    if (height != null) L.height = height;
+    // good defaults for responsiveness
+    if (L.margin == null) L.margin = { l: 12, r: 12, t: 24, b: 12 };
+    return L;
+  }, [layout, height]);
 
-  const frozenData = useMemo(() => JSON.parse(JSON.stringify(data)) as any[], [data]);
-  const frozenLayout = useMemo(
-    () => JSON.parse(JSON.stringify(layout)) as Record<string, any>,
-    [layout]
+  return (
+    <Plot
+      data={data}
+      layout={finalLayout}
+      className={className}
+      style={{ width: "100%", ...(height != null ? { height } : {}) }}
+      useResizeHandler
+      config={{ displayModeBar: false, responsive: true }}
+    />
   );
-
-  useEffect(() => {
-    if (typeof window === "undefined") return;
-    let cancelled = false;
-
-    async function ensurePlotly() {
-      if (getPlotly()) {
-        setReady(true);
-        return;
-      }
-
-      await new Promise<void>((resolve, reject) => {
-        const existing = document.querySelector(`script[src="${PLOTLY_CDN}"]`);
-        if (existing) {
-          existing.addEventListener("load", () => resolve());
-          existing.addEventListener("error", () => reject(new Error("Plotly failed to load")));
-          return;
-        }
-
-        const script = document.createElement("script");
-        script.src = PLOTLY_CDN;
-        script.async = true;
-        script.onload = () => resolve();
-        script.onerror = () => reject(new Error("Plotly failed to load"));
-        document.head.appendChild(script);
-      });
-
-      if (!cancelled && getPlotly()) {
-        setReady(true);
-      }
-    }
-
-    ensurePlotly().catch((err) => {
-      console.error("Failed to load Plotly", err);
-    });
-
-    return () => {
-      cancelled = true;
-    };
-  }, []);
-
-  useEffect(() => {
-    if (!ready) return;
-    const target = containerRef.current;
-    const PlotlyInstance = getPlotly();
-    if (!target || !PlotlyInstance) return;
-
-    PlotlyInstance.react(target, frozenData, frozenLayout, { responsive: true });
-
-    return () => {
-      PlotlyInstance.purge(target);
-    };
-  }, [ready, frozenData, frozenLayout]);
-
-  return <div ref={containerRef} style={{ width: "100%", minHeight: 520 }} />;
-}
-
-declare global {
-  interface Window {
-    Plotly?: any;
-  }
 }
