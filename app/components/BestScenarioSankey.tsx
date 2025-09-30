@@ -48,6 +48,10 @@ export default function BestScenarioSankey({
   const data = useMemo(() => {
     if (!best) return null;
 
+    // 🔧 Non-linear width mapping (tunable)
+    // width = (cost/day)^ALPHA   with 0<ALPHA<=1 (0.5 = sqrt)
+    const ALPHA = 0.5;
+
     const palette = {
       root:   "#2563eb",
       make:   "#3b82f6",
@@ -65,7 +69,7 @@ export default function BestScenarioSankey({
     const links = {
       source: [] as number[],
       target: [] as number[],
-      value:  [] as number[],
+      value:  [] as number[],  // <-- transformed width values
       color:  [] as string[],
       hover:  [] as string[],
       label:  [] as string[],
@@ -90,14 +94,14 @@ export default function BestScenarioSankey({
       fromIdx: number,
       toIdx: number,
       label: string,
-      v: number,
+      widthValue: number, // transformed
       color: string,
       hover: string
     ) => {
-      if (!(Number.isFinite(v) && v > 0)) return;
+      if (!(Number.isFinite(widthValue) && widthValue > 0)) return;
       links.source.push(fromIdx);
       links.target.push(toIdx);
-      links.value.push(v);
+      links.value.push(widthValue);
       links.color.push(color);
       links.hover.push(hover);
       links.label.push(label);
@@ -116,12 +120,12 @@ export default function BestScenarioSankey({
       `Area/day (full): ${fmt(best.fullSelfAreaPerDay)}`,
       best.roiNarrowDays != null ? `ROI (narrow): ${fmt(best.roiNarrowDays)} days` : null,
       best.inputBuffer7 != null ? `Input buffer (7d): ${money(best.inputBuffer7)}` : null,
-      `<i>Flow metric: Cost/day</i>`,
+      `<i>Flow metric: Cost/day (rendered width ∝ (cost/day)^${ALPHA})</i>`,
     ].filter(Boolean).join("<br/>");
 
     const rootIdx = ensureNode(rootId, best.ticker, palette.root, rootHover);
 
-    // Recursive traversal (expands MAKE children, keeps flow = Cost/day)
+    // Recursive traversal (expands MAKE children, flow = cost/day; width = cost^ALPHA)
     const visited = new Set<string>();
     const MAX_DEPTH = 8;
 
@@ -136,17 +140,17 @@ export default function BestScenarioSankey({
       for (const inp of inputs) {
         const amount = Number(inp.amountNeeded ?? 0);
 
-        // BUY edge: cost/day = totalCostPerBatch * stageRunsPerDay
+        // BUY edge
         if (!inp.details) {
-          const batchCost = Number(inp.totalCostPerBatch ?? 0);
-          const costPerDay = batchCost * stageRunsPerDay;
+          const costPerDay = Number(inp.totalCostPerBatch ?? 0) * stageRunsPerDay; // true cost/day
+          const widthValue = Math.pow(Math.max(0, costPerDay), ALPHA);
 
           const buyNodeId = `BUY::${(stage.recipeId || stage.ticker)}::${inp.ticker}`;
           const buyHover = [
             `<b>Buy ${inp.ticker}</b>`,
             inp.unitCost != null ? `Unit price: ${money(inp.unitCost)}` : null,
-            `Total cost/day: ${money(costPerDay)}`,
-            `<i>Flow metric: Cost/day</i>`,
+            `Cost/day: ${money(costPerDay)}`,
+            `<i>Rendered width ∝ (cost/day)^${ALPHA}</i>`,
           ].filter(Boolean).join("<br/>");
 
           const buyIdx = ensureNode(buyNodeId, `Buy ${inp.ticker}`, palette.buy, buyHover);
@@ -154,16 +158,18 @@ export default function BestScenarioSankey({
           const linkHover = [
             `<b>${stage.ticker} → Buy ${inp.ticker}</b>`,
             `Cost/day: ${money(costPerDay)}`,
+            `Width value: ${fmt(widthValue)}`,
           ].join("<br/>");
 
-          addLink(stageIdx, buyIdx, `Buy ${inp.ticker}`, costPerDay, palette.linkBuy, linkHover);
+          addLink(stageIdx, buyIdx, `Buy ${inp.ticker}`, widthValue, palette.linkBuy, linkHover);
           continue;
         }
 
-        // MAKE edge: cost/day = cogmPerOutput * amountNeeded * stageRunsPerDay
+        // MAKE edge
         const child = inp.details;
         const cogm  = Number(child.cogmPerOutput ?? 0);
-        const costPerDay = cogm * amount * stageRunsPerDay;
+        const costPerDay = cogm * amount * stageRunsPerDay; // true cost/day
+        const widthValue = Math.pow(Math.max(0, costPerDay), ALPHA);
 
         const childId = `STAGE::${child.recipeId || child.ticker}`;
         const childHover = [
@@ -174,7 +180,7 @@ export default function BestScenarioSankey({
           `Area/day (full): ${fmt(child.fullSelfAreaPerDay)}`,
           child.roiNarrowDays != null ? `ROI (narrow): ${fmt(child.roiNarrowDays)} days` : null,
           child.inputBuffer7 != null ? `Input buffer (7d): ${money(child.inputBuffer7)}` : null,
-          `<i>Flow metric: Cost/day</i>`,
+          `<i>Rendered width ∝ (cost/day)^${ALPHA}</i>`,
         ].filter(Boolean).join("<br/>");
 
         const childIdx = ensureNode(childId, `Make ${child.recipeId || child.ticker}`, palette.make, childHover);
@@ -182,15 +188,15 @@ export default function BestScenarioSankey({
         const linkHover = [
           `<b>${stage.ticker} → Make ${child.recipeId || child.ticker}</b>`,
           `COGM/day: ${money(costPerDay)}`,
+          `Width value: ${fmt(widthValue)}`,
         ].join("<br/>");
 
-        addLink(stageIdx, childIdx, `Make ${child.recipeId || child.ticker}`, costPerDay, palette.linkMake, linkHover);
+        addLink(stageIdx, childIdx, `Make ${child.recipeId || child.ticker}`, widthValue, palette.linkMake, linkHover);
 
-        // Recurse: how many runs/day does the child need to satisfy parent's demand?
+        // Recurse: child runs/day to satisfy parent's *true* demand (not width-transformed)
         const childOut = Number(child.output1Amount || 0);
         const childRunsPerDayNeeded = childOut > 0 ? (amount * stageRunsPerDay) / childOut : 0;
 
-        // Continue expanding into the child's inputs
         traverse(child, childIdx, childRunsPerDayNeeded, depth + 1);
       }
     }
@@ -198,8 +204,7 @@ export default function BestScenarioSankey({
     // Start from root at its own runs/day
     traverse(best, rootIdx, best.runsPerDay || 0, 0);
 
-    // ---------- initial freeform positions so nodes don't hug edges ----------
-    // Build levels from links (BFS from zero-indegree roots)
+    // ---------- initial freeform positions so nodes don’t hug edges ----------
     const n = nodeLabels.length;
     const src: number[] = links.source;
     const tgt: number[] = links.target;
@@ -261,8 +266,7 @@ export default function BestScenarioSankey({
       data: [
         {
           type: "sankey",
-          // let users freely drag nodes around (not pinned to edges)
-          arrangement: "freeform",
+          arrangement: "freeform",  // draggable, not anchored to edges
           node: {
             pad: 20,
             thickness: 20,
@@ -277,7 +281,7 @@ export default function BestScenarioSankey({
           link: {
             source: links.source,
             target: links.target,
-            value: links.value,
+            value: links.value, // <-- transformed widths
             color: links.color,
             hovertemplate: "%{customdata}<extra></extra>",
             customdata: links.hover,
@@ -293,7 +297,7 @@ export default function BestScenarioSankey({
     };
   }, [best, priceMode]);
 
-  // ---------- Dynamic height calculation ----------
+  // ---------- Dynamic height calculation (unchanged) ----------
   const dynamicHeight = useMemo(() => {
     if (!data) return height;
 
@@ -301,14 +305,12 @@ export default function BestScenarioSankey({
     const nodeThickness = sankey?.node?.thickness ?? 20;
     const nodePad = sankey?.node?.pad ?? 8;
 
-    // count the maximum nodes in any column (level)
     const maxPerColumn = (() => {
       const n = sankey?.node?.label?.length ?? 0;
       if (!n) return 1;
       const src: number[] = sankey.link?.source ?? [];
       const tgt: number[] = sankey.link?.target ?? [];
 
-      // Build adjacency + indegree
       const adj = Array.from({ length: n }, () => [] as number[]);
       const indeg = Array(n).fill(0);
       for (let i = 0; i < src.length; i++) {
@@ -318,11 +320,9 @@ export default function BestScenarioSankey({
         indeg[t] = (indeg[t] ?? 0) + 1;
       }
 
-      // BFS-ish levels from roots
       const level = Array(n).fill(0);
       const q: number[] = [];
       for (let i = 0; i < n; i++) if (indeg[i] === 0) q.push(i);
-
       while (q.length) {
         const u = q.shift()!;
         for (const v of adj[u]) {
@@ -331,19 +331,16 @@ export default function BestScenarioSankey({
         }
       }
 
-      // Count nodes per level
       const counts: Record<number, number> = {};
       for (const l of level) counts[l] = (counts[l] ?? 0) + 1;
       return Math.max(...Object.values(counts));
     })();
 
-    // height ≈ sum of all nodes in the densest column + pads + some buffer
     const topBottomMargin = 120;
-    const extraDragBuffer = 800; // extra room to “move stuff around”
+    const extraDragBuffer = 100;
     const estimated =
       topBottomMargin + maxPerColumn * (nodeThickness + nodePad) + extraDragBuffer;
 
-    // clamp + ensure at least the provided height
     const MIN = Math.max(520, height);
     const MAX = 1600;
     return Math.max(MIN, Math.min(MAX, Math.round(estimated)));
