@@ -11,11 +11,10 @@ type ApiMadeInputDetail = {
   amountNeeded: number;
   recipeId?: string | null;
   scenarioName?: string;
-  details?: ApiMakeOption | null;     // present for MAKE
-  // optional helpers from engine:
-  unitCost?: number | null;           // BUY price
-  totalCostPerBatch?: number | null;  // BUY: amount*unitCost; MAKE: cogm*amount
-  childScenario?: string;             // MAKE child scenario label
+  details?: ApiMakeOption | null; // present for MAKE
+  unitCost?: number | null;       // BUY price
+  totalCostPerBatch?: number | null; // BUY: amount*unitCost; MAKE: cogm*amount
+  childScenario?: string;         // MAKE child scenario label
 };
 
 type ApiMakeOption = {
@@ -38,8 +37,8 @@ type ApiMakeOption = {
 
 export default function BestScenarioSankey({
   best,
-  height = 520, // MIN height
-  priceMode,    // optional (only shown in hover)
+  height = 520,                // min height
+  priceMode,                   // optional (only shown in hover)
 }: {
   best: ApiMakeOption | null | undefined;
   height?: number;
@@ -51,11 +50,11 @@ export default function BestScenarioSankey({
     // ----- visual tuning -----
     const ALPHA = 0.5;                 // link width ∝ (cost/day)^ALPHA
     const THICK_PX = 20;               // node rectangle thickness (px)
-    const GAP_PX = 10;                 // vertical gap used for height calc (px)
-    const TOP_PAD_PX = 24;             // top margin in plot area (px)
-    const BOT_PAD_PX = 24;             // bottom margin in plot area (px)
-    const X_PAD = 0.06;                // normalized left/right padding
-    const EXTRA_DRAG_BUFFER_PX = 120;  // extra headroom (px)
+    const GAP_PX = 10;                 // used only for dynamic height estimate (px)
+    const TOP_PAD_PX = 24;
+    const BOT_PAD_PX = 24;
+    const X_PAD = 0.06;                // keep columns away from the left/right edges
+    const EXTRA_DRAG_BUFFER_PX = 120;
 
     const palette = {
       root:   "#2563eb",
@@ -71,16 +70,16 @@ export default function BestScenarioSankey({
     const nodeLabels: string[] = [];
     const nodeColors: string[] = [];
     const nodeHover: string[] = [];
-    const nodeDepth: number[] = []; // depth per node index
+    const nodeDepth: number[] = []; // <— record depth per node
 
     const links = {
       source: [] as number[],
       target: [] as number[],
-      value:  [] as number[],   // scaled width for plotly
+      value:  [] as number[],
       color:  [] as string[],
       hover:  [] as string[],
       label:  [] as string[],
-      rawCostPerDay: [] as number[], // true metric (for hover if needed)
+      rawCostPerDay: [] as number[],
     };
 
     const fmt = (n: number) =>
@@ -88,6 +87,7 @@ export default function BestScenarioSankey({
     const money = (n: number) =>
       Number.isFinite(n) ? `$${n.toLocaleString(undefined, { maximumFractionDigits: 2 })}` : "n/a";
 
+    // ensureNode now also records depth, so we can align columns later
     const ensureNode = (
       id: string,
       label: string,
@@ -109,7 +109,7 @@ export default function BestScenarioSankey({
       fromIdx: number,
       toIdx: number,
       label: string,
-      costPerDay: number,   // true metric
+      costPerDay: number,
       color: string,
       hover: string
     ) => {
@@ -139,7 +139,6 @@ export default function BestScenarioSankey({
       best.inputBuffer7 != null ? `Input buffer (7d): ${money(best.inputBuffer7)}` : null,
       `<i>Flow metric: Cost/day (width ∝ (cost/day)^${ALPHA})</i>`,
     ].filter(Boolean).join("<br/>");
-
     const rootIdx = ensureNode(rootId, best.ticker, palette.root, rootHover, 0);
 
     // Expand tree (flow metric = Cost/day)
@@ -222,16 +221,15 @@ export default function BestScenarioSankey({
 
     traverse(best, rootIdx, best.runsPerDay || 0, 0);
 
-    // ---------- LAYOUT: let Plotly place Y to avoid collisions ----------
+    // ---------- LAYOUT: lock X by depth; let Plotly compute Y ----------
     const N = nodeLabels.length;
 
-    // Group by recorded depth to compute X only
     const maxDepth = Math.max(0, ...nodeDepth);
-    const cols: number[][] = Array.from({ length: maxDepth + 1 }, () => []);
-    for (let i = 0; i < N; i++) cols[nodeDepth[i]].push(i);
+    const countsByDepth = Array.from({ length: maxDepth + 1 }, () => 0);
+    for (let i = 0; i < N; i++) countsByDepth[nodeDepth[i]]++;
 
-    // Dynamic height based on densest column
-    const densest = Math.max(1, ...cols.map(c => c.length));
+    // dynamic height based on the densest depth column
+    const densest = Math.max(1, ...countsByDepth);
     const dynamicHeight = Math.max(
       height,
       Math.min(
@@ -240,36 +238,36 @@ export default function BestScenarioSankey({
       )
     );
 
-    // Horizontal x per depth column (kept away from edges)
+    // horizontal x per depth (kept away from edges)
     const nodeX = new Array<number>(N).fill(0);
     const left = X_PAD, right = 1 - X_PAD;
-    const step = (cols.length > 1) ? (right - left) / (cols.length - 1) : 0;
-    for (let c = 0; c < cols.length; c++) {
-      const x = cols.length > 1 ? (left + c * step) : 0.5;
-      for (const idx of cols[c]) nodeX[idx] = x;
+    const totalSpan = right - left;
+    const step = maxDepth > 0 ? totalSpan / maxDepth : 0;
+    for (let i = 0; i < N; i++) {
+      nodeX[i] = maxDepth > 0 ? left + nodeDepth[i] * step : 0.5;
     }
 
     return {
       data: [
         {
           type: "sankey",
-          arrangement: "freeform",  // Let Plotly compute vertical spacing (no overlaps)
+          arrangement: "freeform",  // Plotly computes Y to avoid overlaps
           uirevision: "keep",
           node: {
-            pad: 12,             // small vertical padding between auto-placed nodes
+            pad: 12,             // vertical padding between auto-placed nodes
             thickness: THICK_PX, // node height in px
             line: { color: palette.border, width: 1 },
             label: nodeLabels,
             color: nodeColors,
             hovertemplate: "%{customdata}<extra></extra>",
             customdata: nodeHover,
-            x: nodeX,            // we control columns…
-            // y omitted on purpose → Plotly computes it to avoid collisions
+            x: nodeX,            // we fix columns by depth
+            // y omitted → Plotly assigns per-column Y automatically (no overlap)
           },
           link: {
             source: links.source,
             target: links.target,
-            value:  links.value,  // width values (scaled)
+            value:  links.value,
             color:  links.color,
             hovertemplate: "%{customdata}<extra></extra>",
             customdata: links.hover,
