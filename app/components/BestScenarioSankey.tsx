@@ -354,7 +354,7 @@ export default function BestScenarioSankey({
 
     const densestCol = Math.max(1, estimateMaxPerColumn());
     const topBottomMargin = 120;
-    const extraDragBuffer = 120;
+    const extraDragBuffer = 500;
     const estimated =
       topBottomMargin + densestCol * (nodeThickness + nodePad) + extraDragBuffer;
 
