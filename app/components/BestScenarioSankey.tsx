@@ -198,11 +198,71 @@ export default function BestScenarioSankey({
     // Start from root at its own runs/day
     traverse(best, rootIdx, best.runsPerDay || 0, 0);
 
+    // ---------- initial freeform positions so nodes don't hug edges ----------
+    // Build levels from links (BFS from zero-indegree roots)
+    const n = nodeLabels.length;
+    const src: number[] = links.source;
+    const tgt: number[] = links.target;
+
+    const adj = Array.from({ length: n }, () => [] as number[]);
+    const indeg = Array(n).fill(0);
+    for (let i = 0; i < src.length; i++) {
+      const s = src[i] ?? 0, t = tgt[i] ?? 0;
+      adj[s].push(t);
+      indeg[t] = (indeg[t] ?? 0) + 1;
+    }
+
+    const level = Array(n).fill(0);
+    const q: number[] = [];
+    for (let i = 0; i < n; i++) if (indeg[i] === 0) q.push(i);
+    while (q.length) {
+      const u = q.shift()!;
+      for (const v of adj[u]) {
+        if (level[v] <= level[u]) level[v] = level[u] + 1;
+        q.push(v);
+      }
+    }
+
+    const maxLevel = Math.max(0, ...level);
+    const xPad = 0.07; // keep nodes away from hard edges
+    const yPad = 0.06;
+
+    // Count per level to vertically spread nodes
+    const perLevel: Record<number, number[]> = {};
+    for (let i = 0; i < n; i++) {
+      const L = level[i] ?? 0;
+      (perLevel[L] ||= []).push(i);
+    }
+
+    const nodeX = new Array(n).fill(0);
+    const nodeY = new Array(n).fill(0);
+
+    for (const [Lstr, indices] of Object.entries(perLevel)) {
+      const L = Number(Lstr);
+      const count = indices.length;
+      const denom = Math.max(1, count - 1);
+      indices.forEach((idx, k) => {
+        // x evenly spaced by level (with padding)
+        const x = maxLevel > 0
+          ? xPad + (L / maxLevel) * (1 - 2 * xPad)
+          : 0.5; // single level → center
+
+        // y spread within this level
+        const y = count === 1
+          ? 0.5
+          : yPad + (k / denom) * (1 - 2 * yPad);
+
+        nodeX[idx] = x;
+        nodeY[idx] = y;
+      });
+    }
+
     return {
       data: [
         {
           type: "sankey",
-          arrangement: "snap",
+          // let users freely drag nodes around (not pinned to edges)
+          arrangement: "freeform",
           node: {
             pad: 20,
             thickness: 20,
@@ -211,6 +271,8 @@ export default function BestScenarioSankey({
             color: nodeColors,
             hovertemplate: "%{customdata}<extra></extra>",
             customdata: nodeHover,
+            x: nodeX,
+            y: nodeY,
           },
           link: {
             source: links.source,
@@ -276,8 +338,8 @@ export default function BestScenarioSankey({
     })();
 
     // height ≈ sum of all nodes in the densest column + pads + some buffer
-    const topBottomMargin = 200;
-    const extraDragBuffer = 200; // extra room to “move stuff around”
+    const topBottomMargin = 120;
+    const extraDragBuffer = 100; // extra room to “move stuff around”
     const estimated =
       topBottomMargin + maxPerColumn * (nodeThickness + nodePad) + extraDragBuffer;
 
