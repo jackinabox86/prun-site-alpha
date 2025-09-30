@@ -49,13 +49,13 @@ export default function BestScenarioSankey({
     if (!best) return null;
 
     // ----- visual tuning -----
-    const ALPHA = 0.5;            // link width ∝ (cost/day)^ALPHA
-    const THICK_PX = 20;          // node rectangle thickness in pixels (fixed)
-    const GAP_PX = 10;            // vertical gap between nodes in same column
-    const TOP_PAD_PX = 24;        // top margin inside plotting area
-    const BOT_PAD_PX = 24;        // bottom margin
-    const X_PAD = 0.06;           // normalized left/right padding
-    const EXTRA_DRAG_BUFFER_PX = 120; // extra headroom
+    const ALPHA = 0.5;                 // link width ∝ (cost/day)^ALPHA
+    const THICK_PX = 20;               // node rectangle thickness in pixels (fixed)
+    const GAP_PX = 10;                 // vertical gap between nodes in same column (px)
+    const TOP_PAD_PX = 24;             // top margin inside plotting area (px)
+    const BOT_PAD_PX = 24;             // bottom margin (px)
+    const X_PAD = 0.06;                // normalized left/right padding
+    const EXTRA_DRAG_BUFFER_PX = 120;  // extra headroom (px)
 
     const palette = {
       root:   "#2563eb",
@@ -71,6 +71,7 @@ export default function BestScenarioSankey({
     const nodeLabels: string[] = [];
     const nodeColors: string[] = [];
     const nodeHover: string[] = [];
+    const nodeDepth: number[] = [];  // <— depth per node index
 
     const links = {
       source: [] as number[],
@@ -87,13 +88,21 @@ export default function BestScenarioSankey({
     const money = (n: number) =>
       Number.isFinite(n) ? `$${n.toLocaleString(undefined, { maximumFractionDigits: 2 })}` : "n/a";
 
-    const ensureNode = (id: string, label: string, color: string, hover: string) => {
+    // ensureNode now also records a depth
+    const ensureNode = (
+      id: string,
+      label: string,
+      color: string,
+      hover: string,
+      depth: number
+    ) => {
       if (nodeIndexById.has(id)) return nodeIndexById.get(id)!;
       const idx = nodeLabels.length;
       nodeIndexById.set(id, idx);
       nodeLabels.push(label);
       nodeColors.push(color);
       nodeHover.push(hover);
+      nodeDepth.push(depth);
       return idx;
     };
 
@@ -116,7 +125,7 @@ export default function BestScenarioSankey({
       links.label.push(label);
     };
 
-    // Root node (the parent stage)
+    // Root node (the parent stage) at depth 0
     const rootId = `STAGE::${best.recipeId || best.ticker}::0`;
     const rootHover = [
       `<b>${best.ticker}</b>`,
@@ -132,7 +141,7 @@ export default function BestScenarioSankey({
       `<i>Flow metric: Cost/day (width ∝ (cost/day)^${ALPHA})</i>`,
     ].filter(Boolean).join("<br/>");
 
-    const rootIdx = ensureNode(rootId, best.ticker, palette.root, rootHover);
+    const rootIdx = ensureNode(rootId, best.ticker, palette.root, rootHover, 0);
 
     // Recursive traversal (expands MAKE children; flow metric = Cost/day)
     const visited = new Set<string>();
@@ -154,7 +163,7 @@ export default function BestScenarioSankey({
           const batchCost = Number(inp.totalCostPerBatch ?? 0);
           const costPerDay = Math.max(0, batchCost * stageRunsPerDay);
 
-          const buyNodeId = `BUY::${stage.recipeId || stage.ticker}::${inp.ticker}::${depth}`;
+          const buyNodeId = `BUY::${stage.recipeId || stage.ticker}::${inp.ticker}::${depth + 1}`;
           const buyHover = [
             `<b>Buy ${inp.ticker}</b>`,
             inp.unitCost != null ? `Unit price: ${money(inp.unitCost)}` : null,
@@ -162,7 +171,7 @@ export default function BestScenarioSankey({
             `<i>Flow metric: Cost/day</i>`,
           ].filter(Boolean).join("<br/>");
 
-          const buyIdx = ensureNode(buyNodeId, `Buy ${inp.ticker}`, palette.buy, buyHover);
+          const buyIdx = ensureNode(buyNodeId, `Buy ${inp.ticker}`, palette.buy, buyHover, depth + 1);
 
           const linkHover = [
             `<b>${stage.ticker} → Buy ${inp.ticker}</b>`,
@@ -190,7 +199,13 @@ export default function BestScenarioSankey({
           `<i>Flow metric: Cost/day</i>`,
         ].filter(Boolean).join("<br/>");
 
-        const childIdx = ensureNode(childId, `Make ${child.recipeId || child.ticker}`, palette.make, childHover);
+        const childIdx = ensureNode(
+          childId,
+          `Make ${child.recipeId || child.ticker}`,
+          palette.make,
+          childHover,
+          depth + 1
+        );
 
         const linkHover = [
           `<b>${stage.ticker} → Make ${child.recipeId || child.ticker}</b>`,
@@ -208,143 +223,116 @@ export default function BestScenarioSankey({
 
     traverse(best, rootIdx, best.runsPerDay || 0, 0);
 
-       // ---------- FREEFORM LAYOUT ----------
-const N = nodeLabels.length;
+    // ---------- FREEFORM LAYOUT (explicit columns by recorded depth) ----------
+    const N = nodeLabels.length;
 
-// Build graph to compute levels (columns)
-const indeg = new Array<number>(N).fill(0);
-const adj: number[][] = Array.from({ length: N }, () => []);
-for (let i = 0; i < links.source.length; i++) {
-  const s = links.source[i], t = links.target[i];
-  if (Number.isFinite(s) && Number.isFinite(t)) {
-    adj[s].push(t);
-    indeg[t] = (indeg[t] ?? 0) + 1;
-  }
-}
+    // Group nodes by the depth we recorded (stable)
+    const maxDepth = Math.max(0, ...nodeDepth);
+    const cols: number[][] = Array.from({ length: maxDepth + 1 }, () => []);
+    for (let i = 0; i < N; i++) cols[nodeDepth[i]].push(i);
 
-// BFS levels
-const level = new Array<number>(N).fill(0);
-const q: number[] = [];
-for (let i = 0; i < N; i++) if (indeg[i] === 0) q.push(i);
-while (q.length) {
-  const u = q.shift()!;
-  for (const v of adj[u]) {
-    if (level[v] <= level[u]) level[v] = level[u] + 1;
-    q.push(v);
-  }
-}
+    // --- Dynamic height (in px) based on densest column ---
+    const densest = Math.max(1, ...cols.map(c => c.length));
 
-// Group nodes by column
-const maxLevel = Math.max(0, ...level);
-const cols: number[][] = Array.from({ length: maxLevel + 1 }, () => []);
-for (let i = 0; i < N; i++) cols[level[i]].push(i);
+    const dynamicHeight = Math.max(
+      height, // respect caller min
+      Math.min(
+        2000,
+        Math.round(
+          TOP_PAD_PX + BOT_PAD_PX + densest * (THICK_PX + GAP_PX) + EXTRA_DRAG_BUFFER_PX
+        )
+      )
+    );
 
-// --- Dynamic height (in px) based on densest column ---
-const densest = Math.max(1, ...cols.map(c => c.length));
+    // Convert pixel sizes to normalized units for y placement
+    const tn   = THICK_PX / dynamicHeight; // normalized node thickness
+    const gapN = GAP_PX   / dynamicHeight; // normalized gap
+    const topN = TOP_PAD_PX / dynamicHeight;
+    const botN = BOT_PAD_PX / dynamicHeight;
+    const EPS_N = 1 / dynamicHeight;       // ~1px jitter to avoid exact-equality collisions
 
-const dynamicHeight = Math.max(
-  height, // respect caller min
-  Math.min(
-    1800,
-    Math.round(
-      TOP_PAD_PX + BOT_PAD_PX + densest * (THICK_PX + GAP_PX) + EXTRA_DRAG_BUFFER_PX
-    )
-  )
-);
+    // Horizontal x per depth column (kept away from edges)
+    const nodeX = new Array<number>(N).fill(0);
+    const left = X_PAD, right = 1 - X_PAD;
+    const step = (cols.length > 1) ? (right - left) / (cols.length - 1) : 0;
+    for (let c = 0; c < cols.length; c++) {
+      const x = cols.length > 1 ? (left + c * step) : 0.5;
+      for (const idx of cols[c]) nodeX[idx] = x;
+    }
 
-// Convert pixel sizes to normalized units for y placement
-const tn   = THICK_PX / dynamicHeight; // normalized node thickness
-const gapN = GAP_PX   / dynamicHeight; // normalized gap
-const topN = TOP_PAD_PX / dynamicHeight;
-const botN = BOT_PAD_PX / dynamicHeight;
-const EPS_N = 1 / dynamicHeight;       // ~1px jitter to avoid rounding collisions
+    // Sort within each column for stable stacking:
+    //   1) Stage (MAKE) nodes first, BUY nodes after
+    //   2) Desc by total incoming cost/day (so big flows get more central space)
+    const inCost = new Array<number>(N).fill(0);
+    for (let i = 0; i < links.source.length; i++) {
+      const t = links.target[i];
+      const v = links.rawCostPerDay[i] ?? 0;
+      if (Number.isFinite(t)) inCost[t] += v;
+    }
+    const isBuyNode = (idx: number) => (nodeLabels[idx] || "").startsWith("Buy ");
 
-// Horizontal x per column (kept away from edges)
-const nodeX = new Array<number>(N).fill(0);
-const left = X_PAD, right = 1 - X_PAD;
-const step = (cols.length > 1) ? (right - left) / (cols.length - 1) : 0;
-for (let c = 0; c < cols.length; c++) {
-  const x = cols.length > 1 ? (left + c * step) : 0.5;
-  for (const idx of cols[c]) nodeX[idx] = x;
-}
+    for (const column of cols) {
+      column.sort((a, b) => {
+        const aBuy = isBuyNode(a), bBuy = isBuyNode(b);
+        if (aBuy !== bBuy) return aBuy ? 1 : -1;           // MAKE first
+        const delta = (inCost[b] || 0) - (inCost[a] || 0);  // then by incoming cost/day
+        if (delta !== 0) return delta;
+        return a - b; // stable
+      });
+    }
 
-// Sort nodes within each column for stable stacking:
-//   1) Stage (MAKE) nodes first, BUY nodes after
-//   2) Desc by total incoming cost/day (so big flows get more central space)
-const inCost = new Array<number>(N).fill(0);
-for (let i = 0; i < links.source.length; i++) {
-  const t = links.target[i];
-  const v = links.rawCostPerDay[i] ?? 0;
-  if (Number.isFinite(t)) inCost[t] += v;
-}
-const isBuyNode = (idx: number) => (nodeLabels[idx] || "").startsWith("Buy ");
+    // Stack nodes by constant thickness + gap using **TOP y** for Plotly
+    const nodeY = new Array<number>(N).fill(0);
+    for (const column of cols) {
+      if (!column.length) continue;
 
-for (const column of cols) {
-  column.sort((a, b) => {
-    const aBuy = isBuyNode(a), bBuy = isBuyNode(b);
-    if (aBuy !== bBuy) return aBuy ? 1 : -1;           // MAKE first
-    const delta = (inCost[b] || 0) - (inCost[a] || 0);  // then by incoming cost/day
-    if (delta !== 0) return delta;
-    return a - b; // stable
-  });
-}
+      const avail = 1 - topN - botN;
+      const totalNeeded = column.length * tn + (column.length - 1) * gapN;
+      const startTop = topN + Math.max(0, (avail - totalNeeded)) / 2;
 
-// Stack nodes by constant thickness + gap (TOP y for Plotly)
-const nodeY = new Array<number>(N).fill(0);
-for (const column of cols) {
-  if (!column.length) continue;
+      column.forEach((idx, i) => {
+        let yTop = startTop + i * (tn + gapN) + i * EPS_N; // TOP (not center)
+        if (yTop < 0) yTop = 0;
+        if (yTop > 1 - tn) yTop = 1 - tn;
+        nodeY[idx] = yTop;
+      });
+    }
 
-  const avail = 1 - topN - botN;
-  const totalNeeded = column.length * tn + (column.length - 1) * gapN;
-  const startTop = topN + Math.max(0, (avail - totalNeeded)) / 2;
-
-  column.forEach((idx, i) => {
-    // TOP y (not center). Add tiny jitter to avoid exact-equality collisions.
-    let yTop = startTop + i * (tn + gapN) + i * EPS_N;
-    // Clamp so the full node stays in-bounds (remember: y is TOP)
-    if (yTop < 0) yTop = 0;
-    if (yTop > 1 - tn) yTop = 1 - tn;
-    nodeY[idx] = yTop;
-  });
-}
-
-
-return {
-  data: [
-    {
-      type: "sankey",
-      arrangement: "freeform",
-      uirevision: "keep",
-      node: {
-        pad: 0, // horizontal-only in freeform; vertical spacing is ours
-        thickness: THICK_PX,
-        line: { color: palette.border, width: 1 },
-        label: nodeLabels,
-        color: nodeColors,
-        hovertemplate: "%{customdata}<extra></extra>",
-        customdata: nodeHover,
-        x: nodeX,
-        y: nodeY, // center-based, non-overlapping, clamped
+    return {
+      data: [
+        {
+          type: "sankey",
+          arrangement: "freeform",
+          uirevision: "keep",
+          node: {
+            pad: 0, // vertical spacing is handled by us
+            thickness: THICK_PX,
+            line: { color: palette.border, width: 1 },
+            label: nodeLabels,
+            color: nodeColors,
+            hovertemplate: "%{customdata}<extra></extra>",
+            customdata: nodeHover,
+            x: nodeX,
+            y: nodeY, // TOP positions
+          },
+          link: {
+            source: links.source,
+            target: links.target,
+            value:  links.value,  // width values (scaled)
+            color:  links.color,
+            hovertemplate: "%{customdata}<extra></extra>`,
+            customdata: links.hover,
+            label: links.label,
+          },
+        } as any,
+      ],
+      layout: {
+        margin: { l: 12, r: 12, t: 24, b: 12 },
+        font: { size: 12 },
+        hovermode: "closest",
+        height: dynamicHeight,
       },
-      link: {
-        source: links.source,
-        target: links.target,
-        value:  links.value,  // width values (scaled)
-        color:  links.color,
-        hovertemplate: "%{customdata}<extra></extra>",
-        customdata: links.hover,
-        label: links.label,
-      },
-    } as any,
-  ],
-  layout: {
-    margin: { l: 12, r: 12, t: 24, b: 12 },
-    font: { size: 12 },
-    hovermode: "closest",
-    height: dynamicHeight,
-  },
-};
-
+    };
   }, [best, priceMode, height]);
 
   if (!result || !best) return null;
