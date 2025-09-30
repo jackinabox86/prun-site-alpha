@@ -320,7 +320,7 @@ export default function BestScenarioSankey({
             target: links.target,
             value:  links.value,  // width values (scaled)
             color:  links.color,
-            hovertemplate: "%{customdata}<extra></extra>`,
+            hovertemplate: "%{customdata}<extra></extra>",
             customdata: links.hover,
             label: links.label,
           },
