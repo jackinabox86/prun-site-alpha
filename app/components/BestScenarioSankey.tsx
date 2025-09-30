@@ -208,7 +208,7 @@ export default function BestScenarioSankey({
 
     traverse(best, rootIdx, best.runsPerDay || 0, 0);
 
-    // ---------- FREEFORM LAYOUT ----------
+        // ---------- FREEFORM LAYOUT ----------
     const N = nodeLabels.length;
 
     // Build graph to compute levels (columns)
@@ -222,6 +222,7 @@ export default function BestScenarioSankey({
       }
     }
 
+    // BFS levels
     const level = new Array<number>(N).fill(0);
     const q: number[] = [];
     for (let i = 0; i < N; i++) if (indeg[i] === 0) q.push(i);
@@ -232,27 +233,36 @@ export default function BestScenarioSankey({
         q.push(v);
       }
     }
+
+    // Group nodes by column
     const maxLevel = Math.max(0, ...level);
     const cols: number[][] = Array.from({ length: maxLevel + 1 }, () => []);
     for (let i = 0; i < N; i++) cols[level[i]].push(i);
 
-    // --- Dynamic height (in pixels) based on rows needed ---
+    // --- Dynamic height (in px) based on densest column ---
     const densest = Math.max(1, ...cols.map(c => c.length));
-    const dynamicHeight =
-      Math.max(height,  // enforce caller min
-        Math.min(
-          1800,
-          Math.round(TOP_PAD_PX + BOT_PAD_PX + densest * (THICK_PX + GAP_PX) + EXTRA_DRAG_BUFFER_PX)
-        )
-      );
+    const THICK_PX = 20;           // node rectangle thickness in px
+    const GAP_PX = 10;             // vertical gap between nodes in same column (px)
+    const TOP_PAD_PX = 24, BOT_PAD_PX = 24;
+    const EXTRA_DRAG_BUFFER_PX = 120;
 
-    // Convert pixel sizes to normalized units for y-placement
-    const tn = THICK_PX / dynamicHeight; // normalized thickness
-    const gapN = GAP_PX / dynamicHeight;
+    const dynamicHeight = Math.max(
+      height,  // respect caller min
+      Math.min(
+        1800,
+        Math.round(TOP_PAD_PX + BOT_PAD_PX + densest * (THICK_PX + GAP_PX) + EXTRA_DRAG_BUFFER_PX)
+      )
+    );
+
+    // Convert pixel sizes to normalized units for y placement
+    const tn = THICK_PX / dynamicHeight;  // normalized node thickness
+    const gapN = GAP_PX / dynamicHeight;  // normalized gap
     const topN = TOP_PAD_PX / dynamicHeight;
     const botN = BOT_PAD_PX / dynamicHeight;
+    const EPS_N = 1 / dynamicHeight;      // 1px jitter to defeat rounding collisions
 
-    // X positions per column (normalized), kept away from edges
+    // Horizontal x per column (kept away from edges)
+    const X_PAD = 0.06;
     const nodeX = new Array<number>(N).fill(0);
     const left = X_PAD, right = 1 - X_PAD;
     const step = (cols.length > 1) ? (right - left) / (cols.length - 1) : 0;
@@ -261,39 +271,62 @@ export default function BestScenarioSankey({
       for (const idx of cols[c]) nodeX[idx] = x;
     }
 
-    // Y positions per column: stack by constant tn, use CENTER y (Plotly expects center in freeform)
+    // Sort nodes within each column for stable stacking:
+    //   1) Stage (MAKE) nodes first, BUY nodes after
+    //   2) Desc by total incoming cost/day (so big flows get more central space)
+    const inCost = new Array<number>(N).fill(0);
+    for (let i = 0; i < links.source.length; i++) {
+      const s = links.source[i], t = links.target[i];
+      const v = links.rawCostPerDay[i] ?? 0;
+      if (Number.isFinite(t)) inCost[t] += v;
+    }
+    const isBuyNode = (idx: number) => {
+      const lbl = nodeLabels[idx] || "";
+      return lbl.startsWith("Buy ");
+    };
+
+    for (const column of cols) {
+      column.sort((a, b) => {
+        const aBuy = isBuyNode(a), bBuy = isBuyNode(b);
+        if (aBuy !== bBuy) return aBuy ? 1 : -1;           // MAKE first
+        const delta = (inCost[b] || 0) - (inCost[a] || 0);  // then by incoming cost/day
+        if (delta !== 0) return delta;
+        return a - b; // stable
+      });
+    }
+
+    // Stack nodes by constant thickness + gap (center-based y for Plotly, clamped)
     const nodeY = new Array<number>(N).fill(0);
     for (const column of cols) {
       if (!column.length) continue;
 
-      // simple stable order: as encountered (you could sort if you prefer)
       const avail = 1 - topN - botN;
       const totalNeeded = column.length * tn + (column.length - 1) * gapN;
-
-      // start yTop so the stack is centered within [topN, 1-botN]
       const startTop = topN + Math.max(0, (avail - totalNeeded)) / 2;
 
       let yTop = startTop;
-      for (const idx of column) {
-        // center y for plotly
-        let yCenter = yTop + tn / 2;
-        // clamp so node fully visible
-        if (yCenter < tn / 2) yCenter = tn / 2;
-        if (yCenter > 1 - tn / 2) yCenter = 1 - tn / 2;
+      column.forEach((idx, i) => {
+        // center y
+        let yCenter = yTop + tn / 2 + i * EPS_N; // add tiny jitter by row index
+        // clamp to keep full node visible
+        const half = tn / 2;
+        if (yCenter < half) yCenter = half;
+        if (yCenter > 1 - half) yCenter = 1 - half;
         nodeY[idx] = yCenter;
 
         yTop += tn + gapN;
-      }
+      });
     }
 
     return {
       data: [
         {
           type: "sankey",
-          arrangement: "freeform", // user can drag freely
+          arrangement: "freeform",
           uirevision: "keep",
           node: {
-            pad: 0, // vertical padding handled by our gapN
+            // pad is horizontal-only for freeform; we control vertical spacing
+            pad: 0,
             thickness: THICK_PX,
             line: { color: palette.border, width: 1 },
             label: nodeLabels,
@@ -301,13 +334,13 @@ export default function BestScenarioSankey({
             hovertemplate: "%{customdata}<extra></extra>",
             customdata: nodeHover,
             x: nodeX,
-            y: nodeY, // center-based y, clamped
+            y: nodeY, // center-based, non-overlapping, clamped
           },
           link: {
             source: links.source,
             target: links.target,
-            value: links.value,    // width values (scaled)
-            color: links.color,
+            value:  links.value,   // width values (scaled)
+            color:  links.color,
             hovertemplate: "%{customdata}<extra></extra>",
             customdata: links.hover,
             label: links.label,
@@ -318,7 +351,7 @@ export default function BestScenarioSankey({
         margin: { l: 12, r: 12, t: 24, b: 12 },
         font: { size: 12 },
         hovermode: "closest",
-        height: dynamicHeight, // <-- final height here
+        height: dynamicHeight,
       },
     };
   }, [best, priceMode, height]);
