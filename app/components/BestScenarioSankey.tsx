@@ -232,5 +232,5 @@ export default function BestScenarioSankey({
   }, [best, priceMode]);
 
   if (!best) return null;
-  return <PlotlySankey data={data!.data} layout={data!.layout} height={height} />;
+  return <PlotlySankey data={data!.data} layout={{ ...data!.layout, height }} />;
 }
