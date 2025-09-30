@@ -251,11 +251,14 @@ export default function BestScenarioSankey({
 
     // Find the densest column to calculate proper height
     const densest = Math.max(1, ...cols.map(c => c.length || 0));
+    
+    // Add safety factor to ensure all nodes fit
+    const SAFETY_FACTOR = 1.15; // 15% extra space
     const dynamicHeight = Math.max(
       height,
       Math.min(
         2200,
-        Math.round(TOP_PAD_PX + BOT_PAD_PX + densest * (THICK_PX + GAP_PX) + EXTRA_DRAG_BUFFER_PX)
+        Math.round((TOP_PAD_PX + BOT_PAD_PX + densest * (THICK_PX + GAP_PX) + EXTRA_DRAG_BUFFER_PX) * SAFETY_FACTOR)
       )
     );
 
@@ -318,7 +321,7 @@ export default function BestScenarioSankey({
           arrangement: "snap",   // snap mode with explicit positions
           uirevision: "keep",
           node: {
-            pad: GAP_PX,             // vertical spacing between nodes (px)
+            pad: 0,                  // No extra padding - we control spacing via y positions
             thickness: THICK_PX,     // in pixels
             line: { color: palette.border, width: 1 },
             label: nodeLabels,
