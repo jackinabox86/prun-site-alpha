@@ -276,8 +276,8 @@ export default function BestScenarioSankey({
     })();
 
     // height ≈ sum of all nodes in the densest column + pads + some buffer
-    const topBottomMargin = 120;
-    const extraDragBuffer = 100; // extra room to “move stuff around”
+    const topBottomMargin = 200;
+    const extraDragBuffer = 200; // extra room to “move stuff around”
     const estimated =
       topBottomMargin + maxPerColumn * (nodeThickness + nodePad) + extraDragBuffer;
 
