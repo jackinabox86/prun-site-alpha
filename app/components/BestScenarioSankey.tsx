@@ -5,16 +5,16 @@ import { useMemo } from "react";
 import PlotlySankey from "./PlotlySankey";
 import type { PriceMode } from "@/types";
 
-// ---- API shapes (compatible with your report output) ----
+// ---- API shapes (must match your report output) ----
 type ApiMadeInputDetail = {
   ticker: string;
   amountNeeded: number;
   recipeId?: string | null;
   scenarioName?: string;
-  details?: ApiMakeOption | null; // present for MAKE
-  unitCost?: number | null;       // BUY price
-  totalCostPerBatch?: number | null; // BUY: amount*unitCost; MAKE: cogm*amount
-  childScenario?: string;         // MAKE child scenario label
+  details?: ApiMakeOption | null;     // present for MAKE
+  unitCost?: number | null;           // BUY price
+  totalCostPerBatch?: number | null;  // BUY: amount*unitCost; MAKE: cogm*amount
+  childScenario?: string;             // MAKE child scenario label
 };
 
 type ApiMakeOption = {
@@ -37,8 +37,8 @@ type ApiMakeOption = {
 
 export default function BestScenarioSankey({
   best,
-  height = 520,                // min height
-  priceMode,                   // optional (only shown in hover)
+  height = 520,         // MIN chart height
+  priceMode,            // optional (only shown in hover)
 }: {
   best: ApiMakeOption | null | undefined;
   height?: number;
@@ -50,11 +50,12 @@ export default function BestScenarioSankey({
     // ----- visual tuning -----
     const ALPHA = 0.5;                 // link width ∝ (cost/day)^ALPHA
     const THICK_PX = 20;               // node rectangle thickness (px)
-    const GAP_PX = 10;                 // used only for dynamic height estimate (px)
-    const TOP_PAD_PX = 24;
-    const BOT_PAD_PX = 24;
-    const X_PAD = 0.06;                // keep columns away from the left/right edges
-    const EXTRA_DRAG_BUFFER_PX = 120;
+    const GAP_PX = 10;                 // vertical gap between nodes (px)
+    const TOP_PAD_PX = 24;             // inner top margin (px)
+    const BOT_PAD_PX = 24;             // inner bottom margin (px)
+    const X_PAD = 0.06;                // keep columns away from edges (0..1)
+    const EXTRA_DRAG_BUFFER_PX = 120;  // extra headroom (px)
+    const EPS_X = 1e-6;                // tiny bias so x strictly increases with depth
 
     const palette = {
       root:   "#2563eb",
@@ -65,12 +66,12 @@ export default function BestScenarioSankey({
       linkMake: "rgba(59,130,246,0.45)",
     };
 
-    // ---- node/link buffers ----
+    // ---- node/link stores ----
     const nodeIndexById = new Map<string, number>();
     const nodeLabels: string[] = [];
     const nodeColors: string[] = [];
     const nodeHover: string[] = [];
-    const nodeDepth: number[] = []; // <— record depth per node
+    const nodeDepth: number[] = [];      // recorded depth per node
 
     const links = {
       source: [] as number[],
@@ -87,7 +88,7 @@ export default function BestScenarioSankey({
     const money = (n: number) =>
       Number.isFinite(n) ? `$${n.toLocaleString(undefined, { maximumFractionDigits: 2 })}` : "n/a";
 
-    // ensureNode now also records depth, so we can align columns later
+    // ensureNode: id includes depth to prevent merges across levels
     const ensureNode = (
       id: string,
       label: string,
@@ -101,7 +102,7 @@ export default function BestScenarioSankey({
       nodeLabels.push(label);
       nodeColors.push(color);
       nodeHover.push(hover);
-      nodeDepth.push(depth);
+      nodeDepth.push(Math.max(0, depth|0));
       return idx;
     };
 
@@ -221,53 +222,101 @@ export default function BestScenarioSankey({
 
     traverse(best, rootIdx, best.runsPerDay || 0, 0);
 
-    // ---------- LAYOUT: lock X by depth; let Plotly compute Y ----------
+    // ---------- LAYOUT: explicit columns by recorded depth (FREEFORM) ----------
     const N = nodeLabels.length;
 
+    // Group by depth
     const maxDepth = Math.max(0, ...nodeDepth);
-    const countsByDepth = Array.from({ length: maxDepth + 1 }, () => 0);
-    for (let i = 0; i < N; i++) countsByDepth[nodeDepth[i]]++;
+    const cols: number[][] = Array.from({ length: maxDepth + 1 }, () => []);
+    for (let i = 0; i < N; i++) cols[nodeDepth[i]].push(i);
 
-    // dynamic height based on the densest depth column
-    const densest = Math.max(1, ...countsByDepth);
+    // Dynamic height from densest column
+    const densest = Math.max(1, ...cols.map(c => c.length || 0));
     const dynamicHeight = Math.max(
       height,
       Math.min(
-        2000,
+        2200,
         Math.round(TOP_PAD_PX + BOT_PAD_PX + densest * (THICK_PX + GAP_PX) + EXTRA_DRAG_BUFFER_PX)
       )
     );
 
-    // horizontal x per depth (kept away from edges)
-    const nodeX = new Array<number>(N).fill(0);
+    // Convert px → normalized units for freeform positioning
+    const tn   = THICK_PX / dynamicHeight; // normalized thickness
+    const gapN = GAP_PX   / dynamicHeight; // normalized gap
+    const topN = TOP_PAD_PX / dynamicHeight;
+    const botN = BOT_PAD_PX / dynamicHeight;
+
+    // Horizontal x for each depth column (kept away from edges)
     const left = X_PAD, right = 1 - X_PAD;
-    const totalSpan = right - left;
+    const totalSpan = Math.max(0.05, right - left);
     const step = maxDepth > 0 ? totalSpan / maxDepth : 0;
-    for (let i = 0; i < N; i++) {
-      nodeX[i] = maxDepth > 0 ? left + nodeDepth[i] * step : 0.5;
+
+    const nodeX = new Array<number>(N).fill(0);
+    for (let d = 0; d <= maxDepth; d++) {
+      const x = maxDepth > 0 ? left + d * step + d * EPS_X : 0.5; // tiny bias per depth
+      for (const idx of cols[d]) nodeX[idx] = x;
+    }
+
+    // Sort within each column:
+    //   (1) Stage (MAKE) nodes first, BUY after
+    //   (2) Desc by total incoming cost/day
+    const inCost = new Array<number>(N).fill(0);
+    for (let i = 0; i < links.source.length; i++) {
+      const t = links.target[i];
+      const v = links.rawCostPerDay[i] ?? 0;
+      if (Number.isFinite(t)) inCost[t] += v;
+    }
+    const isBuyNode = (idx: number) => (nodeLabels[idx] || "").startsWith("Buy ");
+
+    for (const column of cols) {
+      column.sort((a, b) => {
+        const aBuy = isBuyNode(a), bBuy = isBuyNode(b);
+        if (aBuy !== bBuy) return aBuy ? 1 : -1;
+        const delta = (inCost[b] || 0) - (inCost[a] || 0);
+        if (delta !== 0) return delta;
+        return a - b;
+      });
+    }
+
+    // Vertical TOP y placement (no overlaps)
+    const nodeY = new Array<number>(N).fill(0);
+    for (const column of cols) {
+      if (!column.length) continue;
+      const avail = 1 - topN - botN;
+      const totalNeeded = column.length * tn + (column.length - 1) * gapN;
+      const startTop = topN + Math.max(0, (avail - totalNeeded)) / 2;
+
+      let yTop = startTop;
+      column.forEach((idx) => {
+        let y = yTop;
+        if (y < 0) y = 0;
+        if (y > 1 - tn) y = 1 - tn;
+        nodeY[idx] = y;
+        yTop += tn + gapN;
+      });
     }
 
     return {
       data: [
         {
           type: "sankey",
-          arrangement: "snap",  // Plotly computes Y to avoid overlaps
+          arrangement: "freeform",   // we fully control x & y
           uirevision: "keep",
           node: {
-            pad: 12,             // vertical padding between auto-placed nodes
-            thickness: THICK_PX, // node height in px
+            pad: 0,                  // vertical spacing handled by us
+            thickness: THICK_PX,     // in pixels
             line: { color: palette.border, width: 1 },
             label: nodeLabels,
             color: nodeColors,
             hovertemplate: "%{customdata}<extra></extra>",
             customdata: nodeHover,
-            x: nodeX,            // we fix columns by depth
-            // y omitted → Plotly assigns per-column Y automatically (no overlap)
+            x: nodeX,
+            y: nodeY,               // TOP positions (freeform expects top-left)
           },
           link: {
             source: links.source,
             target: links.target,
-            value:  links.value,
+            value:  links.value,    // width values (scaled)
             color:  links.color,
             hovertemplate: "%{customdata}<extra></extra>",
             customdata: links.hover,
