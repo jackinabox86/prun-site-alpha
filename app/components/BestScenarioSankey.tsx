@@ -251,7 +251,7 @@ export default function BestScenarioSankey({
       data: [
         {
           type: "sankey",
-          arrangement: "freeform",  // Plotly computes Y to avoid overlaps
+          arrangement: "snap",  // Plotly computes Y to avoid overlaps
           uirevision: "keep",
           node: {
             pad: 12,             // vertical padding between auto-placed nodes
