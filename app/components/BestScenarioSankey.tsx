@@ -51,12 +51,11 @@ export default function BestScenarioSankey({
     const ALPHA = 0.5;                 // link width ∝ (cost/day)^ALPHA
     const THICK_PX = 20;               // node rectangle thickness (px)
     const GAP_PX = 10;                 // vertical gap between nodes (px) → used as node.pad
-    const TOP_PAD_PX = 24;             // used to estimate height
-    const BOT_PAD_PX = 24;             // used to estimate height
+    const TOP_PAD_PX = 24;             // used only to estimate height
+    const BOT_PAD_PX = 24;             // used only to estimate height
     const X_PAD = 0.06;                // keep columns away from edges (0..1)
     const EXTRA_DRAG_BUFFER_PX = 120;  // extra headroom (px)
     const EPS_X = 1e-6;                // tiny bias so x strictly increases with depth
-    const EPS_Y = 1e-6;                // tiny per-row jitter to avoid exact-equality ties
 
     const palette = {
       root:   "#2563eb",
@@ -252,7 +251,8 @@ export default function BestScenarioSankey({
       for (const idx of cols[d]) nodeX[idx] = x;
     }
 
-    // Sort each column to get a stable, nice vertical order
+    // (Optional) sort each column to hint a nicer vertical order;
+    // Plotly will still choose the final y, but consistent ordering helps.
     const inCost = new Array<number>(N).fill(0);
     for (let i = 0; i < links.source.length; i++) {
       const t = links.target[i];
@@ -270,37 +270,11 @@ export default function BestScenarioSankey({
       });
     }
 
-    // ---- Y POSITIONS (TOP) to keep BUYs in the same column as their stage ----
-    // We set y explicitly to stop Plotly re-layering leaves (BUY) to the right.
-    // This keeps inputs (BUY/MAKE) aligned by stage/depth. Still draggable (freeform).
-    const tn   = THICK_PX / dynamicHeight;  // normalized thickness
-    const gapN = GAP_PX   / dynamicHeight;  // normalized gap
-    const topN = TOP_PAD_PX / dynamicHeight;
-    const botN = BOT_PAD_PX / dynamicHeight;
-
-    const nodeY = new Array<number>(N).fill(0);
-    for (const column of cols) {
-      if (!column.length) continue;
-
-      const avail = 1 - topN - botN;
-      const totalNeeded = column.length * tn + (column.length - 1) * gapN;
-      const startTop = topN + Math.max(0, (avail - totalNeeded)) / 2;
-
-      let yTop = startTop;
-      column.forEach((idx, i) => {
-        let y = yTop + i * EPS_Y;   // slight jitter to avoid exact ties
-        if (y < 0) y = 0;
-        if (y > 1 - tn) y = 1 - tn;
-        nodeY[idx] = y;
-        yTop += tn + gapN;
-      });
-    }
-
     return {
       data: [
         {
           type: "sankey",
-          arrangement: "freeform",   // x/y are seeds; nodes remain draggable
+          arrangement: "freeform",   // we set x, Plotly picks y (no overlaps)
           uirevision: "keep",
           node: {
             pad: GAP_PX,             // vertical spacing between nodes (px)
@@ -310,8 +284,8 @@ export default function BestScenarioSankey({
             color: nodeColors,
             hovertemplate: "%{customdata}<extra></extra>",
             customdata: nodeHover,
-            x: nodeX,               // depth columns
-            y: nodeY,               // stacked by column → this keeps BUYs with their stage
+            x: nodeX,               // ONLY x is set; y is auto
+            // y: (omitted on purpose)
           },
           link: {
             source: links.source,
