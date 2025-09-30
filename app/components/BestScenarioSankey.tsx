@@ -281,20 +281,31 @@ export default function BestScenarioSankey({
       // X position for this depth
       const x = maxDepth > 0 ? left + d * step : 0.5;
       
-      // Calculate Y positions within this column (centered vertically)
+      // Calculate Y positions - ensure column fits within bounds
       const avail = 1 - topN - botN;
       const totalNeeded = column.length * tn + (column.length - 1) * gapN;
-      const startTop = topN + Math.max(0, (avail - totalNeeded) / 2);
+      
+      let actualGap = gapN;
+      let startTop = topN;
+      
+      if (totalNeeded > avail) {
+        // Column doesn't fit - reduce gaps to make it fit
+        const nodeSpace = column.length * tn;
+        const gapSpace = avail - nodeSpace;
+        actualGap = column.length > 1 ? gapSpace / (column.length - 1) : 0;
+        // Ensure gap doesn't go negative
+        if (actualGap < 0) actualGap = 0;
+        startTop = topN;
+      } else {
+        // Column fits - center it vertically
+        startTop = topN + (avail - totalNeeded) / 2;
+      }
 
       column.forEach((idx, i) => {
         nodeX[idx] = x;
         
-        // Y position (using top of node, not center)
-        let yTop = startTop + i * (tn + gapN);
-        
-        // Clamp to keep node visible
-        if (yTop < topN) yTop = topN;
-        if (yTop > 1 - botN - tn) yTop = 1 - botN - tn;
+        // Y position (using top of node)
+        const yTop = startTop + i * (tn + actualGap);
         
         nodeY[idx] = yTop;
       });
