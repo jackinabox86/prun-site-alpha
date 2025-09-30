@@ -336,8 +336,8 @@ export default function BestScenarioSankey({
       return Math.max(...Object.values(counts));
     })();
 
-    const topBottomMargin = 120;
-    const extraDragBuffer = 100;
+    const topBottomMargin = 250;
+    const extraDragBuffer = 250;
     const estimated =
       topBottomMargin + maxPerColumn * (nodeThickness + nodePad) + extraDragBuffer;
 
