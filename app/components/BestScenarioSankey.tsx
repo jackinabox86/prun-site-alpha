@@ -251,11 +251,16 @@ export default function BestScenarioSankey({
 
     // Find the densest column to calculate proper height
     const densest = Math.max(1, ...cols.map(c => c.length || 0));
+    
+    // Calculate the actual space needed: node thickness + gaps + padding between nodes
+    // The formula: nodes * thickness + (nodes - 1) * gap + nodes * pad (Plotly adds pad around each node)
+    const spaceNeededForDensest = densest * THICK_PX + (densest - 1) * GAP_PX + densest * GAP_PX;
+    
     const dynamicHeight = Math.max(
       height,
       Math.min(
         2200,
-        Math.round(TOP_PAD_PX + BOT_PAD_PX + densest * (THICK_PX + GAP_PX) + EXTRA_DRAG_BUFFER_PX)
+        Math.round(TOP_PAD_PX + BOT_PAD_PX + spaceNeededForDensest + EXTRA_DRAG_BUFFER_PX)
       )
     );
 
@@ -273,42 +278,7 @@ export default function BestScenarioSankey({
     const nodeX = new Array<number>(N).fill(0);
     const nodeY = new Array<number>(N).fill(0);
 
-    // NEW SOLUTION: Calculate all column bounds first, then adjust to fit
-    const columnBounds: Array<{startY: number, endY: number, nodes: number[]}> = [];
-    
-    for (let d = 0; d <= maxDepth; d++) {
-      const column = cols[d];
-      if (!column.length) {
-        columnBounds.push({startY: 0.5, endY: 0.5, nodes: []});
-        continue;
-      }
-
-      // Calculate what this column wants
-      const avail = 1 - topN - botN;
-      const totalNeeded = column.length * tn + (column.length - 1) * gapN;
-      const idealStart = topN + Math.max(0, (avail - totalNeeded) / 2);
-      const idealEnd = idealStart + totalNeeded;
-      
-      columnBounds.push({
-        startY: idealStart,
-        endY: idealEnd,
-        nodes: column
-      });
-    }
-
-    // Check if any column extends beyond bounds and adjust ALL columns proportionally
-    const maxEndY = Math.max(...columnBounds.map(cb => cb.endY));
-    const minStartY = Math.min(...columnBounds.filter(cb => cb.nodes.length > 0).map(cb => cb.startY));
-    
-    let scaleFactor = 1.0;
-    if (maxEndY > (1 - botN)) {
-      // Need to compress - calculate how much
-      const usedSpace = maxEndY - minStartY;
-      const availSpace = (1 - botN) - topN;
-      scaleFactor = availSpace / usedSpace;
-    }
-
-    // Now position nodes with the scale factor applied
+    // Position nodes within each column - simpler approach, pack from top
     for (let d = 0; d <= maxDepth; d++) {
       const column = cols[d];
       if (!column.length) continue;
@@ -316,26 +286,15 @@ export default function BestScenarioSankey({
       // X position for this depth
       const x = maxDepth > 0 ? left + d * step : 0.5;
       
-      // Calculate Y positions with scaling if needed
-      const avail = 1 - topN - botN;
-      const totalNeeded = column.length * tn + (column.length - 1) * gapN;
-      let startTop = topN + Math.max(0, (avail - totalNeeded) / 2);
-      
-      // Apply scale factor by adjusting from top
-      if (scaleFactor < 1.0) {
-        const offset = startTop - topN;
-        startTop = topN + offset * scaleFactor;
-      }
-      
-      const scaledGap = gapN * scaleFactor;
+      // Start from top and stack downward
+      let currentY = topN;
 
       column.forEach((idx, i) => {
         nodeX[idx] = x;
+        nodeY[idx] = currentY;
         
-        // Y position (using top of node)
-        const yTop = startTop + i * (tn + scaledGap);
-        
-        nodeY[idx] = yTop;
+        // Move down for next node: node thickness + gap
+        currentY += tn + gapN;
       });
     }
 
