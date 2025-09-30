@@ -8,8 +8,10 @@
   "dependencies": {
     "csv-parse": "^6.1.0",
     "next": "latest",
+    "plotly.js": "^3.1.1",
     "react": "^18.3.1",
-    "react-dom": "^18.3.1"
+    "react-dom": "^18.3.1",
+    "react-plotly.js": "^2.6.0"
   },
   "devDependencies": {
     "@types/node": "^20.11.30",
