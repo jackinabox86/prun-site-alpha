@@ -253,7 +253,7 @@ export default function BestScenarioSankey({
       data: [
         {
           type: "sankey",
-          arrangement: "snap",  // Let Plotly compute vertical spacing (no overlaps)
+          arrangement: "freeform",  // Let Plotly compute vertical spacing (no overlaps)
           uirevision: "keep",
           node: {
             pad: 12,             // small vertical padding between auto-placed nodes
