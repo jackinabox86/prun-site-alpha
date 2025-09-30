@@ -221,29 +221,13 @@ export default function BestScenarioSankey({
 
     traverse(best, rootIdx, best.runsPerDay || 0, 0);
 
-    // ---------- LAYOUT: explicit x AND y coordinates (FREEFORM) ----------
+    // ---------- LAYOUT: global row assignment to prevent overlaps ----------
     const N = nodeLabels.length;
 
     // Group by depth
     const maxDepth = Math.max(0, ...nodeDepth);
     const cols: number[][] = Array.from({ length: maxDepth + 1 }, () => []);
     for (let i = 0; i < N; i++) cols[nodeDepth[i]].push(i);
-
-    // Dynamic height from densest column
-    const densest = Math.max(1, ...cols.map(c => c.length || 0));
-    const dynamicHeight = Math.max(
-      height,
-      Math.min(
-        2200,
-        Math.round(TOP_PAD_PX + BOT_PAD_PX + densest * (THICK_PX + GAP_PX) + EXTRA_DRAG_BUFFER_PX)
-      )
-    );
-
-    // Calculate normalized units for y positioning
-    const tn   = THICK_PX / dynamicHeight;   // normalized node thickness
-    const gapN = GAP_PX   / dynamicHeight;   // normalized gap
-    const topN = TOP_PAD_PX / dynamicHeight;
-    const botN = BOT_PAD_PX / dynamicHeight;
 
     // Sort each column for consistent ordering
     const inCost = new Array<number>(N).fill(0);
@@ -265,6 +249,38 @@ export default function BestScenarioSankey({
       });
     }
 
+    // === KEY FIX: Assign unique global rows to prevent overlaps ===
+    // We'll assign each node to a unique row number, ensuring no two nodes share a row
+    const nodeRow = new Array<number>(N).fill(-1);
+    let nextAvailableRow = 0;
+
+    // Process columns left to right, assigning rows sequentially
+    for (let d = 0; d <= maxDepth; d++) {
+      const column = cols[d];
+      for (const idx of column) {
+        nodeRow[idx] = nextAvailableRow;
+        nextAvailableRow++;
+      }
+    }
+
+    // Total number of unique rows needed
+    const totalRows = nextAvailableRow;
+
+    // Dynamic height based on total rows
+    const dynamicHeight = Math.max(
+      height,
+      Math.min(
+        2200,
+        Math.round(TOP_PAD_PX + BOT_PAD_PX + totalRows * (THICK_PX + GAP_PX) + EXTRA_DRAG_BUFFER_PX)
+      )
+    );
+
+    // Calculate normalized units for y positioning
+    const tn   = THICK_PX / dynamicHeight;   // normalized node thickness
+    const gapN = GAP_PX   / dynamicHeight;   // normalized gap
+    const topN = TOP_PAD_PX / dynamicHeight;
+    const botN = BOT_PAD_PX / dynamicHeight;
+
     // Set X coordinates for each depth column
     const left = X_PAD, right = 1 - X_PAD;
     const totalSpan = Math.max(0.05, right - left);
@@ -273,31 +289,23 @@ export default function BestScenarioSankey({
     const nodeX = new Array<number>(N).fill(0);
     const nodeY = new Array<number>(N).fill(0);
 
-    for (let d = 0; d <= maxDepth; d++) {
-      const column = cols[d];
-      if (!column.length) continue;
+    // Calculate available vertical space and row height
+    const avail = 1 - topN - botN;
+    const rowHeight = totalRows > 1 ? avail / (totalRows - 1) : 0;
 
-      // X position for this depth
-      const x = maxDepth > 0 ? left + d * step : 0.5;
+    for (let i = 0; i < N; i++) {
+      const d = nodeDepth[i];
+      const row = nodeRow[i];
       
-      // Calculate Y positions (centered)
-      const avail = 1 - topN - botN;
-      const totalNeeded = column.length * tn + (column.length - 1) * gapN;
-      const startTop = topN + Math.max(0, (avail - totalNeeded) / 2);
-
-      column.forEach((idx, i) => {
-        nodeX[idx] = x;
-        
-        // Center y position
-        let yCenter = startTop + tn / 2 + i * (tn + gapN);
-        
-        // Clamp to keep full node visible
-        const half = tn / 2;
-        if (yCenter < half) yCenter = half;
-        if (yCenter > 1 - half) yCenter = 1 - half;
-        
-        nodeY[idx] = yCenter;
-      });
+      // X position based on depth
+      nodeX[i] = maxDepth > 0 ? left + d * step : 0.5;
+      
+      // Y position based on global row (evenly distributed)
+      if (totalRows === 1) {
+        nodeY[i] = 0.5;
+      } else {
+        nodeY[i] = topN + row * rowHeight;
+      }
     }
 
     return {
@@ -307,15 +315,15 @@ export default function BestScenarioSankey({
           arrangement: "freeform",   // respect both x and y
           uirevision: "keep",
           node: {
-            pad: GAP_PX,             // vertical spacing between nodes (px)
+            pad: GAP_PX,             // visual spacing hint (though we control positioning)
             thickness: THICK_PX,     // in pixels
             line: { color: palette.border, width: 1 },
             label: nodeLabels,
             color: nodeColors,
             hovertemplate: "%{customdata}<extra></extra>",
             customdata: nodeHover,
-            x: nodeX,               // explicit x positions
-            y: nodeY,               // explicit y positions (prevents auto-layout)
+            x: nodeX,               // explicit x positions by depth
+            y: nodeY,               // explicit y positions by global row
           },
           link: {
             source: links.source,
