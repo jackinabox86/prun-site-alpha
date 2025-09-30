@@ -22,7 +22,8 @@
       "@/core/*": ["src/core/*"],
       "@/lib/*": ["src/lib/*"],
       "@/types": ["src/types"],
-      "@/server/*": ["src/server/*"]
+      "@/server/*": ["src/server/*"],
+      "@/components/*": ["app/components/*"]   // <— add this line
     },
     "allowJs": true,
     "skipLibCheck": true,
