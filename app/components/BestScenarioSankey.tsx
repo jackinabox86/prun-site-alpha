@@ -3,19 +3,19 @@
 
 import { useMemo } from "react";
 import PlotlySankey from "./PlotlySankey";
+import type { PriceMode } from "@/types";
 
+// ---- API shapes (compatible with your report output) ----
 type ApiMadeInputDetail = {
-  source?: "BUY" | "MAKE";
   ticker: string;
   amountNeeded: number;
   recipeId?: string | null;
   scenarioName?: string;
-  details?: ApiMakeOption | null;
-
-  // from engine.ts (already present)
-  unitCost?: number | null;            // ask/derived
-  totalCostPerBatch?: number | null;   // amountNeeded * unitCost (BUY) or cogmPerOutput * amountNeeded (MAKE)
-  childScenario?: string;
+  details?: ApiMakeOption | null;     // present for MAKE
+  // optional helpers from engine:
+  unitCost?: number | null;           // BUY price
+  totalCostPerBatch?: number | null;  // BUY: amount*unitCost; MAKE: cogm*amount
+  childScenario?: string;             // MAKE child scenario label
 };
 
 type ApiMakeOption = {
@@ -39,18 +39,22 @@ type ApiMakeOption = {
 export default function BestScenarioSankey({
   best,
   height = 520,
+  priceMode, // optional, only shown in hover if passed
 }: {
   best: ApiMakeOption | null | undefined;
   height?: number;
+  priceMode?: PriceMode;
 }) {
   const data = useMemo(() => {
     if (!best) return null;
 
     const palette = {
-      root: "#2563eb",
-      make: "#3b82f6",
-      buy:  "#f97316",
+      root:   "#2563eb",
+      make:   "#3b82f6",
+      buy:    "#f97316",
       border: "#0f172a",
+      linkBuy:  "rgba(249,115,22,0.45)",
+      linkMake: "rgba(59,130,246,0.45)",
     };
 
     const nodeIndexById = new Map<string, number>();
@@ -82,11 +86,29 @@ export default function BestScenarioSankey({
       return idx;
     };
 
-    // root node
-    const rootId = `ROOT::${best.ticker}`;
+    const addLink = (
+      fromIdx: number,
+      toIdx: number,
+      label: string,
+      v: number,
+      color: string,
+      hover: string
+    ) => {
+      if (!(Number.isFinite(v) && v > 0)) return;
+      links.source.push(fromIdx);
+      links.target.push(toIdx);
+      links.value.push(v);
+      links.color.push(color);
+      links.hover.push(hover);
+      links.label.push(label);
+    };
+
+    // Root node (the parent stage)
+    const rootId = `STAGE::${best.recipeId || best.ticker}`;
     const rootHover = [
       `<b>${best.ticker}</b>`,
       best.scenario ? `Scenario: ${best.scenario}` : null,
+      priceMode ? `Price mode: ${priceMode}` : null,
       `Runs/day: ${fmt(best.runsPerDay)}`,
       `Output1 amount: ${fmt(best.output1Amount)}`,
       `Base profit/day: ${money(best.baseProfitPerDay)}`,
@@ -97,75 +119,84 @@ export default function BestScenarioSankey({
       `<i>Flow metric: Cost/day</i>`,
     ].filter(Boolean).join("<br/>");
 
-    const rootIdx = ensureNode(rootId, `${best.ticker}`, palette.root, rootHover);
+    const rootIdx = ensureNode(rootId, best.ticker, palette.root, rootHover);
 
-    // parent runs/day used to scale input costs per day
-    const parentRunsPerDay = best.runsPerDay || 0;
+    // Recursive traversal (expands MAKE children, keeps flow = Cost/day)
+    const visited = new Set<string>();
+    const MAX_DEPTH = 8;
 
-    const addLink = (from: number, to: number, label: string, v: number, color: string, hover: string) => {
-      if (!(Number.isFinite(v) && v > 0)) return;
-      links.source.push(from);
-      links.target.push(to);
-      links.value.push(v);
-      links.color.push(color);
-      links.hover.push(hover);
-      links.label.push(label);
-    };
+    function traverse(stage: ApiMakeOption, stageIdx: number, stageRunsPerDay: number, depth: number) {
+      if (!stage || depth > MAX_DEPTH) return;
 
-    // expand inputs as Cost/day
-    const details = best.madeInputDetails ?? [];
-    for (const d of details) {
-      const amount = Number(d.amountNeeded ?? 0);
+      const stageKey = `VIS::${stage.recipeId || stage.ticker}::${depth}`;
+      if (visited.has(stageKey)) return;
+      visited.add(stageKey);
 
-      if (d.source === "BUY" || !d.details) {
-        // BUY: cost/day = (amount * unitCost) * parent runs/day
-        const totalCostPerBatch = Number(d.totalCostPerBatch ?? 0);
-        const costPerDay = totalCostPerBatch * parentRunsPerDay;
+      const inputs = stage.madeInputDetails ?? [];
+      for (const inp of inputs) {
+        const amount = Number(inp.amountNeeded ?? 0);
 
-        const buyId = `BUY::${best.ticker}::${d.ticker}`;
-        const buyHover = [
-          `<b>Buy ${d.ticker}</b>`,
-          d.unitCost != null ? `Unit price: ${money(d.unitCost)}` : null,
-          `Total cost/day: ${money(costPerDay)}`,
+        // BUY edge: cost/day = totalCostPerBatch * stageRunsPerDay
+        if (!inp.details) {
+          const batchCost = Number(inp.totalCostPerBatch ?? 0);
+          const costPerDay = batchCost * stageRunsPerDay;
+
+          const buyNodeId = `BUY::${(stage.recipeId || stage.ticker)}::${inp.ticker}`;
+          const buyHover = [
+            `<b>Buy ${inp.ticker}</b>`,
+            inp.unitCost != null ? `Unit price: ${money(inp.unitCost)}` : null,
+            `Total cost/day: ${money(costPerDay)}`,
+            `<i>Flow metric: Cost/day</i>`,
+          ].filter(Boolean).join("<br/>");
+
+          const buyIdx = ensureNode(buyNodeId, `Buy ${inp.ticker}`, palette.buy, buyHover);
+
+          const linkHover = [
+            `<b>${stage.ticker} → Buy ${inp.ticker}</b>`,
+            `Cost/day: ${money(costPerDay)}`,
+          ].join("<br/>");
+
+          addLink(stageIdx, buyIdx, `Buy ${inp.ticker}`, costPerDay, palette.linkBuy, linkHover);
+          continue;
+        }
+
+        // MAKE edge: cost/day = cogmPerOutput * amountNeeded * stageRunsPerDay
+        const child = inp.details;
+        const cogm  = Number(child.cogmPerOutput ?? 0);
+        const costPerDay = cogm * amount * stageRunsPerDay;
+
+        const childId = `STAGE::${child.recipeId || child.ticker}`;
+        const childHover = [
+          `<b>Make ${child.recipeId || child.ticker}</b>`,
+          inp.childScenario ? `Child scenario: ${inp.childScenario}` : null,
+          `COGM/day: ${money(costPerDay)}`,
+          `Base profit/day: ${money(child.baseProfitPerDay)}`,
+          `Area/day (full): ${fmt(child.fullSelfAreaPerDay)}`,
+          child.roiNarrowDays != null ? `ROI (narrow): ${fmt(child.roiNarrowDays)} days` : null,
+          child.inputBuffer7 != null ? `Input buffer (7d): ${money(child.inputBuffer7)}` : null,
           `<i>Flow metric: Cost/day</i>`,
         ].filter(Boolean).join("<br/>");
 
-        const buyIdx = ensureNode(buyId, `Buy ${d.ticker}`, palette.buy, buyHover);
+        const childIdx = ensureNode(childId, `Make ${child.recipeId || child.ticker}`, palette.make, childHover);
+
         const linkHover = [
-          `<b>${best.ticker} → Buy ${d.ticker}</b>`,
-          `Cost/day: ${money(costPerDay)}`,
+          `<b>${stage.ticker} → Make ${child.recipeId || child.ticker}</b>`,
+          `COGM/day: ${money(costPerDay)}`,
         ].join("<br/>");
 
-        addLink(rootIdx, buyIdx, `Buy ${d.ticker}`, costPerDay, "rgba(249,115,22,0.45)", linkHover);
-        continue;
+        addLink(stageIdx, childIdx, `Make ${child.recipeId || child.ticker}`, costPerDay, palette.linkMake, linkHover);
+
+        // Recurse: how many runs/day does the child need to satisfy parent's demand?
+        const childOut = Number(child.output1Amount || 0);
+        const childRunsPerDayNeeded = childOut > 0 ? (amount * stageRunsPerDay) / childOut : 0;
+
+        // Continue expanding into the child's inputs
+        traverse(child, childIdx, childRunsPerDayNeeded, depth + 1);
       }
-
-      // MAKE: cost/day = cogmPerOutput * amountNeeded * parent runs/day
-      const child = d.details;
-      const cogm = Number(child.cogmPerOutput ?? 0);
-      const costPerDay = cogm * amount * parentRunsPerDay;
-
-      const makeId = `MAKE::${best.ticker}::${child.recipeId || child.ticker}`;
-      const makeHover = [
-        `<b>Make ${child.recipeId || child.ticker}</b>`,
-        d.childScenario ? `Child scenario: ${d.childScenario}` : null,
-        `COGM/day: ${money(costPerDay)}`,
-        `Base profit/day: ${money(child.baseProfitPerDay)}`,
-        `Area/day (full): ${fmt(child.fullSelfAreaPerDay)}`,
-        child.roiNarrowDays != null ? `ROI (narrow): ${fmt(child.roiNarrowDays)} days` : null,
-        child.inputBuffer7 != null ? `Input buffer (7d): ${money(child.inputBuffer7)}` : null,
-        `<i>Flow metric: Cost/day</i>`,
-      ].filter(Boolean).join("<br/>");
-
-      const makeIdx = ensureNode(makeId, `Make ${child.recipeId || child.ticker}`, palette.make, makeHover);
-
-      const linkHover = [
-        `<b>${best.ticker} → Make ${child.recipeId || child.ticker}</b>`,
-        `COGM/day: ${money(costPerDay)}`,
-      ].join("<br/>");
-
-      addLink(rootIdx, makeIdx, `Make ${child.recipeId || child.ticker}`, costPerDay, "rgba(59,130,246,0.45)", linkHover);
     }
+
+    // Start from root at its own runs/day
+    traverse(best, rootIdx, best.runsPerDay || 0, 0);
 
     return {
       data: [
@@ -198,7 +229,7 @@ export default function BestScenarioSankey({
         hovermode: "closest",
       },
     };
-  }, [best]); // no toggle → only depends on best
+  }, [best, priceMode]);
 
   if (!best) return null;
   return <PlotlySankey data={data!.data} layout={data!.layout} height={height} />;
