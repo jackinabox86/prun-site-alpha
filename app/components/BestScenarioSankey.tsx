@@ -50,12 +50,11 @@ export default function BestScenarioSankey({
     // ----- visual tuning -----
     const ALPHA = 0.5;                 // link width ∝ (cost/day)^ALPHA
     const THICK_PX = 20;               // node rectangle thickness (px)
-    const GAP_PX = 10;                 // vertical gap between nodes (px) → used as node.pad
-    const TOP_PAD_PX = 24;             // used only to estimate height
-    const BOT_PAD_PX = 24;             // used only to estimate height
+    const GAP_PX = 15;                 // vertical gap between nodes (px)
+    const TOP_PAD_PX = 24;             // top padding for layout
+    const BOT_PAD_PX = 24;             // bottom padding for layout
     const X_PAD = 0.06;                // keep columns away from edges (0..1)
     const EXTRA_DRAG_BUFFER_PX = 120;  // extra headroom (px)
-    const EPS_X = 1e-6;                // tiny bias so x strictly increases with depth
 
     const palette = {
       root:   "#2563eb",
@@ -222,7 +221,7 @@ export default function BestScenarioSankey({
 
     traverse(best, rootIdx, best.runsPerDay || 0, 0);
 
-    // ---------- LAYOUT: explicit columns by recorded depth (FREEFORM) ----------
+    // ---------- LAYOUT: explicit x AND y coordinates (FREEFORM) ----------
     const N = nodeLabels.length;
 
     // Group by depth
@@ -230,7 +229,7 @@ export default function BestScenarioSankey({
     const cols: number[][] = Array.from({ length: maxDepth + 1 }, () => []);
     for (let i = 0; i < N; i++) cols[nodeDepth[i]].push(i);
 
-    // Dynamic height from densest column (for comfort)
+    // Dynamic height from densest column
     const densest = Math.max(1, ...cols.map(c => c.length || 0));
     const dynamicHeight = Math.max(
       height,
@@ -240,26 +239,22 @@ export default function BestScenarioSankey({
       )
     );
 
-    // Horizontal x for each depth column (kept away from edges)
-    const left = X_PAD, right = 1 - X_PAD;
-    const totalSpan = Math.max(0.05, right - left);
-    const step = maxDepth > 0 ? totalSpan / maxDepth : 0;
+    // Calculate normalized units for y positioning
+    const tn   = THICK_PX / dynamicHeight;   // normalized node thickness
+    const gapN = GAP_PX   / dynamicHeight;   // normalized gap
+    const topN = TOP_PAD_PX / dynamicHeight;
+    const botN = BOT_PAD_PX / dynamicHeight;
 
-    const nodeX = new Array<number>(N).fill(0);
-    for (let d = 0; d <= maxDepth; d++) {
-      const x = maxDepth > 0 ? left + d * step + d * EPS_X : 0.5; // tiny bias per depth
-      for (const idx of cols[d]) nodeX[idx] = x;
-    }
-
-    // (Optional) sort each column to hint a nicer vertical order;
-    // Plotly will still choose the final y, but consistent ordering helps.
+    // Sort each column for consistent ordering
     const inCost = new Array<number>(N).fill(0);
     for (let i = 0; i < links.source.length; i++) {
       const t = links.target[i];
       const v = links.rawCostPerDay[i] ?? 0;
       if (Number.isFinite(t)) inCost[t] += v;
     }
+    
     const isBuyNode = (idx: number) => (nodeLabels[idx] || "").startsWith("Buy ");
+    
     for (const column of cols) {
       column.sort((a, b) => {
         const aBuy = isBuyNode(a), bBuy = isBuyNode(b);
@@ -270,11 +265,46 @@ export default function BestScenarioSankey({
       });
     }
 
+    // Set X coordinates for each depth column
+    const left = X_PAD, right = 1 - X_PAD;
+    const totalSpan = Math.max(0.05, right - left);
+    const step = maxDepth > 0 ? totalSpan / maxDepth : 0;
+
+    const nodeX = new Array<number>(N).fill(0);
+    const nodeY = new Array<number>(N).fill(0);
+
+    for (let d = 0; d <= maxDepth; d++) {
+      const column = cols[d];
+      if (!column.length) continue;
+
+      // X position for this depth
+      const x = maxDepth > 0 ? left + d * step : 0.5;
+      
+      // Calculate Y positions (centered)
+      const avail = 1 - topN - botN;
+      const totalNeeded = column.length * tn + (column.length - 1) * gapN;
+      const startTop = topN + Math.max(0, (avail - totalNeeded) / 2);
+
+      column.forEach((idx, i) => {
+        nodeX[idx] = x;
+        
+        // Center y position
+        let yCenter = startTop + tn / 2 + i * (tn + gapN);
+        
+        // Clamp to keep full node visible
+        const half = tn / 2;
+        if (yCenter < half) yCenter = half;
+        if (yCenter > 1 - half) yCenter = 1 - half;
+        
+        nodeY[idx] = yCenter;
+      });
+    }
+
     return {
       data: [
         {
           type: "sankey",
-          arrangement: "freeform",   // we set x, Plotly picks y (no overlaps)
+          arrangement: "freeform",   // respect both x and y
           uirevision: "keep",
           node: {
             pad: GAP_PX,             // vertical spacing between nodes (px)
@@ -284,8 +314,8 @@ export default function BestScenarioSankey({
             color: nodeColors,
             hovertemplate: "%{customdata}<extra></extra>",
             customdata: nodeHover,
-            x: nodeX,               // ONLY x is set; y is auto
-            // y: (omitted on purpose)
+            x: nodeX,               // explicit x positions
+            y: nodeY,               // explicit y positions (prevents auto-layout)
           },
           link: {
             source: links.source,
