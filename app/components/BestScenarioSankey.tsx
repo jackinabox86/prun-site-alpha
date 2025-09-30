@@ -208,152 +208,146 @@ export default function BestScenarioSankey({
 
     traverse(best, rootIdx, best.runsPerDay || 0, 0);
 
-        // ---------- FREEFORM LAYOUT ----------
-    const N = nodeLabels.length;
+       // ---------- FREEFORM LAYOUT ----------
+const N = nodeLabels.length;
 
-    // Build graph to compute levels (columns)
-    const indeg = new Array<number>(N).fill(0);
-    const adj: number[][] = Array.from({ length: N }, () => []);
-    for (let i = 0; i < links.source.length; i++) {
-      const s = links.source[i], t = links.target[i];
-      if (Number.isFinite(s) && Number.isFinite(t)) {
-        adj[s].push(t);
-        indeg[t] = (indeg[t] ?? 0) + 1;
-      }
-    }
+// Build graph to compute levels (columns)
+const indeg = new Array<number>(N).fill(0);
+const adj: number[][] = Array.from({ length: N }, () => []);
+for (let i = 0; i < links.source.length; i++) {
+  const s = links.source[i], t = links.target[i];
+  if (Number.isFinite(s) && Number.isFinite(t)) {
+    adj[s].push(t);
+    indeg[t] = (indeg[t] ?? 0) + 1;
+  }
+}
 
-    // BFS levels
-    const level = new Array<number>(N).fill(0);
-    const q: number[] = [];
-    for (let i = 0; i < N; i++) if (indeg[i] === 0) q.push(i);
-    while (q.length) {
-      const u = q.shift()!;
-      for (const v of adj[u]) {
-        if (level[v] <= level[u]) level[v] = level[u] + 1;
-        q.push(v);
-      }
-    }
+// BFS levels
+const level = new Array<number>(N).fill(0);
+const q: number[] = [];
+for (let i = 0; i < N; i++) if (indeg[i] === 0) q.push(i);
+while (q.length) {
+  const u = q.shift()!;
+  for (const v of adj[u]) {
+    if (level[v] <= level[u]) level[v] = level[u] + 1;
+    q.push(v);
+  }
+}
 
-    // Group nodes by column
-    const maxLevel = Math.max(0, ...level);
-    const cols: number[][] = Array.from({ length: maxLevel + 1 }, () => []);
-    for (let i = 0; i < N; i++) cols[level[i]].push(i);
+// Group nodes by column
+const maxLevel = Math.max(0, ...level);
+const cols: number[][] = Array.from({ length: maxLevel + 1 }, () => []);
+for (let i = 0; i < N; i++) cols[level[i]].push(i);
 
-    // --- Dynamic height (in px) based on densest column ---
-    const densest = Math.max(1, ...cols.map(c => c.length));
-    const THICK_PX = 20;           // node rectangle thickness in px
-    const GAP_PX = 10;             // vertical gap between nodes in same column (px)
-    const TOP_PAD_PX = 24, BOT_PAD_PX = 24;
-    const EXTRA_DRAG_BUFFER_PX = 120;
+// --- Dynamic height (in px) based on densest column ---
+const densest = Math.max(1, ...cols.map(c => c.length));
 
-    const dynamicHeight = Math.max(
-      height,  // respect caller min
-      Math.min(
-        1800,
-        Math.round(TOP_PAD_PX + BOT_PAD_PX + densest * (THICK_PX + GAP_PX) + EXTRA_DRAG_BUFFER_PX)
-      )
-    );
+const dynamicHeight = Math.max(
+  height, // respect caller min
+  Math.min(
+    1800,
+    Math.round(
+      TOP_PAD_PX + BOT_PAD_PX + densest * (THICK_PX + GAP_PX) + EXTRA_DRAG_BUFFER_PX
+    )
+  )
+);
 
-    // Convert pixel sizes to normalized units for y placement
-    const tn = THICK_PX / dynamicHeight;  // normalized node thickness
-    const gapN = GAP_PX / dynamicHeight;  // normalized gap
-    const topN = TOP_PAD_PX / dynamicHeight;
-    const botN = BOT_PAD_PX / dynamicHeight;
-    const EPS_N = 1 / dynamicHeight;      // 1px jitter to defeat rounding collisions
+// Convert pixel sizes to normalized units for y placement
+const tn   = THICK_PX / dynamicHeight; // normalized node thickness
+const gapN = GAP_PX   / dynamicHeight; // normalized gap
+const topN = TOP_PAD_PX / dynamicHeight;
+const botN = BOT_PAD_PX / dynamicHeight;
+const EPS_N = 1 / dynamicHeight;       // ~1px jitter to avoid rounding collisions
 
-    // Horizontal x per column (kept away from edges)
-    const X_PAD = 0.06;
-    const nodeX = new Array<number>(N).fill(0);
-    const left = X_PAD, right = 1 - X_PAD;
-    const step = (cols.length > 1) ? (right - left) / (cols.length - 1) : 0;
-    for (let c = 0; c < cols.length; c++) {
-      const x = cols.length > 1 ? (left + c * step) : 0.5;
-      for (const idx of cols[c]) nodeX[idx] = x;
-    }
+// Horizontal x per column (kept away from edges)
+const nodeX = new Array<number>(N).fill(0);
+const left = X_PAD, right = 1 - X_PAD;
+const step = (cols.length > 1) ? (right - left) / (cols.length - 1) : 0;
+for (let c = 0; c < cols.length; c++) {
+  const x = cols.length > 1 ? (left + c * step) : 0.5;
+  for (const idx of cols[c]) nodeX[idx] = x;
+}
 
-    // Sort nodes within each column for stable stacking:
-    //   1) Stage (MAKE) nodes first, BUY nodes after
-    //   2) Desc by total incoming cost/day (so big flows get more central space)
-    const inCost = new Array<number>(N).fill(0);
-    for (let i = 0; i < links.source.length; i++) {
-      const s = links.source[i], t = links.target[i];
-      const v = links.rawCostPerDay[i] ?? 0;
-      if (Number.isFinite(t)) inCost[t] += v;
-    }
-    const isBuyNode = (idx: number) => {
-      const lbl = nodeLabels[idx] || "";
-      return lbl.startsWith("Buy ");
-    };
+// Sort nodes within each column for stable stacking:
+//   1) Stage (MAKE) nodes first, BUY nodes after
+//   2) Desc by total incoming cost/day (so big flows get more central space)
+const inCost = new Array<number>(N).fill(0);
+for (let i = 0; i < links.source.length; i++) {
+  const t = links.target[i];
+  const v = links.rawCostPerDay[i] ?? 0;
+  if (Number.isFinite(t)) inCost[t] += v;
+}
+const isBuyNode = (idx: number) => (nodeLabels[idx] || "").startsWith("Buy ");
 
-    for (const column of cols) {
-      column.sort((a, b) => {
-        const aBuy = isBuyNode(a), bBuy = isBuyNode(b);
-        if (aBuy !== bBuy) return aBuy ? 1 : -1;           // MAKE first
-        const delta = (inCost[b] || 0) - (inCost[a] || 0);  // then by incoming cost/day
-        if (delta !== 0) return delta;
-        return a - b; // stable
-      });
-    }
+for (const column of cols) {
+  column.sort((a, b) => {
+    const aBuy = isBuyNode(a), bBuy = isBuyNode(b);
+    if (aBuy !== bBuy) return aBuy ? 1 : -1;           // MAKE first
+    const delta = (inCost[b] || 0) - (inCost[a] || 0);  // then by incoming cost/day
+    if (delta !== 0) return delta;
+    return a - b; // stable
+  });
+}
 
-    // Stack nodes by constant thickness + gap (center-based y for Plotly, clamped)
-    const nodeY = new Array<number>(N).fill(0);
-    for (const column of cols) {
-      if (!column.length) continue;
+// Stack nodes by constant thickness + gap (center-based y for Plotly, clamped)
+const nodeY = new Array<number>(N).fill(0);
+for (const column of cols) {
+  if (!column.length) continue;
 
-      const avail = 1 - topN - botN;
-      const totalNeeded = column.length * tn + (column.length - 1) * gapN;
-      const startTop = topN + Math.max(0, (avail - totalNeeded)) / 2;
+  const avail = 1 - topN - botN;
+  const totalNeeded = column.length * tn + (column.length - 1) * gapN;
+  const startTop = topN + Math.max(0, (avail - totalNeeded)) / 2;
 
-      let yTop = startTop;
-      column.forEach((idx, i) => {
-        // center y
-        let yCenter = yTop + tn / 2 + i * EPS_N; // add tiny jitter by row index
-        // clamp to keep full node visible
-        const half = tn / 2;
-        if (yCenter < half) yCenter = half;
-        if (yCenter > 1 - half) yCenter = 1 - half;
-        nodeY[idx] = yCenter;
+  let yTop = startTop;
+  column.forEach((idx, i) => {
+    // center y
+    let yCenter = yTop + tn / 2 + i * EPS_N; // tiny jitter per row index
+    // clamp to keep full node visible
+    const half = tn / 2;
+    if (yCenter < half) yCenter = half;
+    if (yCenter > 1 - half) yCenter = 1 - half;
+    nodeY[idx] = yCenter;
 
-        yTop += tn + gapN;
-      });
-    }
+    yTop += tn + gapN;
+  });
+}
 
-    return {
-      data: [
-        {
-          type: "sankey",
-          arrangement: "freeform",
-          uirevision: "keep",
-          node: {
-            // pad is horizontal-only for freeform; we control vertical spacing
-            pad: 0,
-            thickness: THICK_PX,
-            line: { color: palette.border, width: 1 },
-            label: nodeLabels,
-            color: nodeColors,
-            hovertemplate: "%{customdata}<extra></extra>",
-            customdata: nodeHover,
-            x: nodeX,
-            y: nodeY, // center-based, non-overlapping, clamped
-          },
-          link: {
-            source: links.source,
-            target: links.target,
-            value:  links.value,   // width values (scaled)
-            color:  links.color,
-            hovertemplate: "%{customdata}<extra></extra>",
-            customdata: links.hover,
-            label: links.label,
-          },
-        } as any,
-      ],
-      layout: {
-        margin: { l: 12, r: 12, t: 24, b: 12 },
-        font: { size: 12 },
-        hovermode: "closest",
-        height: dynamicHeight,
+return {
+  data: [
+    {
+      type: "sankey",
+      arrangement: "freeform",
+      uirevision: "keep",
+      node: {
+        pad: 0, // horizontal-only in freeform; vertical spacing is ours
+        thickness: THICK_PX,
+        line: { color: palette.border, width: 1 },
+        label: nodeLabels,
+        color: nodeColors,
+        hovertemplate: "%{customdata}<extra></extra>",
+        customdata: nodeHover,
+        x: nodeX,
+        y: nodeY, // center-based, non-overlapping, clamped
       },
-    };
+      link: {
+        source: links.source,
+        target: links.target,
+        value:  links.value,  // width values (scaled)
+        color:  links.color,
+        hovertemplate: "%{customdata}<extra></extra>",
+        customdata: links.hover,
+        label: links.label,
+      },
+    } as any,
+  ],
+  layout: {
+    margin: { l: 12, r: 12, t: 24, b: 12 },
+    font: { size: 12 },
+    hovermode: "closest",
+    height: dynamicHeight,
+  },
+};
+
   }, [best, priceMode, height]);
 
   if (!result || !best) return null;
