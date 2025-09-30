@@ -38,22 +38,24 @@ type ApiMakeOption = {
 
 export default function BestScenarioSankey({
   best,
-  height = 520,         // acts as a MIN height now
-  priceMode,            // optional, only shown in hover if passed
+  height = 520,         // MIN height
+  priceMode,            // optional (only shown in hover)
 }: {
   best: ApiMakeOption | null | undefined;
   height?: number;
   priceMode?: PriceMode;
 }) {
-  const data = useMemo(() => {
+  const result = useMemo(() => {
     if (!best) return null;
 
     // ----- visual tuning -----
-    const ALPHA = 0.5;          // width value = (cost/day)^ALPHA  (0.5 = sqrt)
-    const X_PAD = 0.06;         // keep nodes away from left/right edges
-    const Y_TOP_PAD = 0.04;     // normalized top padding
-    const Y_BOTTOM_PAD = 0.04;  // normalized bottom padding
-    const GAP_FRAC = 0.02;      // normalized gap between stacked nodes in a column
+    const ALPHA = 0.5;            // link width ∝ (cost/day)^ALPHA
+    const THICK_PX = 20;          // node rectangle thickness in pixels (fixed)
+    const GAP_PX = 10;            // vertical gap between nodes in same column
+    const TOP_PAD_PX = 24;        // top margin inside plotting area
+    const BOT_PAD_PX = 24;        // bottom margin
+    const X_PAD = 0.06;           // normalized left/right padding
+    const EXTRA_DRAG_BUFFER_PX = 120; // extra headroom
 
     const palette = {
       root:   "#2563eb",
@@ -73,11 +75,11 @@ export default function BestScenarioSankey({
     const links = {
       source: [] as number[],
       target: [] as number[],
-      value:  [] as number[],   // <-- width values fed to Plotly (scaled)
+      value:  [] as number[],   // scaled width for plotly
       color:  [] as string[],
       hover:  [] as string[],
       label:  [] as string[],
-      trueCostPerDay: [] as number[], // keep true metric for layout + hover
+      rawCostPerDay: [] as number[], // true metric (for hover if needed)
     };
 
     const fmt = (n: number) =>
@@ -108,7 +110,7 @@ export default function BestScenarioSankey({
       links.source.push(fromIdx);
       links.target.push(toIdx);
       links.value.push(v);
-      links.trueCostPerDay.push(costPerDay);
+      links.rawCostPerDay.push(costPerDay);
       links.color.push(color);
       links.hover.push(hover);
       links.label.push(label);
@@ -132,7 +134,7 @@ export default function BestScenarioSankey({
 
     const rootIdx = ensureNode(rootId, best.ticker, palette.root, rootHover);
 
-    // Recursive traversal (expands MAKE children, flow metric = Cost/day)
+    // Recursive traversal (expands MAKE children; flow metric = Cost/day)
     const visited = new Set<string>();
     const MAX_DEPTH = 8;
 
@@ -147,8 +149,8 @@ export default function BestScenarioSankey({
       for (const inp of inputs) {
         const amount = Number(inp.amountNeeded ?? 0);
 
-        // BUY edge: cost/day = totalCostPerBatch * stageRunsPerDay
         if (!inp.details) {
+          // BUY: cost/day = totalCostPerBatch * stageRunsPerDay
           const batchCost = Number(inp.totalCostPerBatch ?? 0);
           const costPerDay = Math.max(0, batchCost * stageRunsPerDay);
 
@@ -171,7 +173,7 @@ export default function BestScenarioSankey({
           continue;
         }
 
-        // MAKE edge: cost/day = cogmPerOutput * amountNeeded * stageRunsPerDay
+        // MAKE: cost/day = cogmPerOutput * amountNeeded * stageRunsPerDay
         const child = inp.details;
         const cogm  = Number(child.cogmPerOutput ?? 0);
         const costPerDay = Math.max(0, cogm * amount * stageRunsPerDay);
@@ -197,22 +199,19 @@ export default function BestScenarioSankey({
 
         addLink(stageIdx, childIdx, `Make ${child.recipeId || child.ticker}`, costPerDay, palette.linkMake, linkHover);
 
-        // Recurse: how many runs/day does the child need to satisfy parent's demand?
+        // Recurse: child runs/day needed to satisfy parent's demand
         const childOut = Number(child.output1Amount || 0);
         const childRunsPerDayNeeded = childOut > 0 ? (amount * stageRunsPerDay) / childOut : 0;
-
         traverse(child, childIdx, childRunsPerDayNeeded, depth + 1);
       }
     }
 
     traverse(best, rootIdx, best.runsPerDay || 0, 0);
 
-    // ---------- FREEFORM LAYOUT: compute x/y so nodes never overflow ----------
+    // ---------- FREEFORM LAYOUT ----------
     const N = nodeLabels.length;
-    const nodeX = new Array<number>(N).fill(0);
-    const nodeY = new Array<number>(N).fill(0);
 
-    // 1) Compute levels (columns) by BFS from roots (indegree 0)
+    // Build graph to compute levels (columns)
     const indeg = new Array<number>(N).fill(0);
     const adj: number[][] = Array.from({ length: N }, () => []);
     for (let i = 0; i < links.source.length; i++) {
@@ -222,6 +221,7 @@ export default function BestScenarioSankey({
         indeg[t] = (indeg[t] ?? 0) + 1;
       }
     }
+
     const level = new Array<number>(N).fill(0);
     const q: number[] = [];
     for (let i = 0; i < N; i++) if (indeg[i] === 0) q.push(i);
@@ -236,17 +236,24 @@ export default function BestScenarioSankey({
     const cols: number[][] = Array.from({ length: maxLevel + 1 }, () => []);
     for (let i = 0; i < N; i++) cols[level[i]].push(i);
 
-    // 2) Compute a "weight" per node = sum of incident width values
-    const inSum = new Array<number>(N).fill(0);
-    const outSum = new Array<number>(N).fill(0);
-    for (let i = 0; i < links.source.length; i++) {
-      const s = links.source[i], t = links.target[i], v = links.value[i];
-      outSum[s] += v;
-      inSum[t]  += v;
-    }
-    const nodeWeight = new Array<number>(N).fill(0).map((_, i) => Math.max(inSum[i], outSum[i], 1e-6));
+    // --- Dynamic height (in pixels) based on rows needed ---
+    const densest = Math.max(1, ...cols.map(c => c.length));
+    const dynamicHeight =
+      Math.max(height,  // enforce caller min
+        Math.min(
+          1800,
+          Math.round(TOP_PAD_PX + BOT_PAD_PX + densest * (THICK_PX + GAP_PX) + EXTRA_DRAG_BUFFER_PX)
+        )
+      );
 
-    // 3) Assign X per column with left/right padding
+    // Convert pixel sizes to normalized units for y-placement
+    const tn = THICK_PX / dynamicHeight; // normalized thickness
+    const gapN = GAP_PX / dynamicHeight;
+    const topN = TOP_PAD_PX / dynamicHeight;
+    const botN = BOT_PAD_PX / dynamicHeight;
+
+    // X positions per column (normalized), kept away from edges
+    const nodeX = new Array<number>(N).fill(0);
     const left = X_PAD, right = 1 - X_PAD;
     const step = (cols.length > 1) ? (right - left) / (cols.length - 1) : 0;
     for (let c = 0; c < cols.length; c++) {
@@ -254,29 +261,28 @@ export default function BestScenarioSankey({
       for (const idx of cols[c]) nodeX[idx] = x;
     }
 
-    // 4) Pack each column vertically into [Y_TOP_PAD, 1-Y_BOTTOM_PAD]
-    for (const col of cols) {
-      if (!col.length) continue;
+    // Y positions per column: stack by constant tn, use CENTER y (Plotly expects center in freeform)
+    const nodeY = new Array<number>(N).fill(0);
+    for (const column of cols) {
+      if (!column.length) continue;
 
-      // Sort by weight descending so tall nodes get placed first
-      const sorted = [...col].sort((a, b) => nodeWeight[b] - nodeWeight[a]);
+      // simple stable order: as encountered (you could sort if you prefer)
+      const avail = 1 - topN - botN;
+      const totalNeeded = column.length * tn + (column.length - 1) * gapN;
 
-      const avail = 1 - Y_TOP_PAD - Y_BOTTOM_PAD;
-      const totalWeight = sorted.reduce((s, i) => s + nodeWeight[i], 0);
-      const totalGaps = GAP_FRAC * (sorted.length - 1);
-      const scale = totalWeight > 0 ? Math.max(0, (avail - totalGaps)) / totalWeight : 0;
+      // start yTop so the stack is centered within [topN, 1-botN]
+      const startTop = topN + Math.max(0, (avail - totalNeeded)) / 2;
 
-      let yCursor = Y_TOP_PAD;
-      for (const idx of sorted) {
-        nodeY[idx] = yCursor;
-        yCursor += nodeWeight[idx] * scale + GAP_FRAC;
-      }
+      let yTop = startTop;
+      for (const idx of column) {
+        // center y for plotly
+        let yCenter = yTop + tn / 2;
+        // clamp so node fully visible
+        if (yCenter < tn / 2) yCenter = tn / 2;
+        if (yCenter > 1 - tn / 2) yCenter = 1 - tn / 2;
+        nodeY[idx] = yCenter;
 
-      // Center the stack if there's slack
-      const used = yCursor - Y_TOP_PAD;
-      const slack = avail - used;
-      if (slack > 0) {
-        for (const idx of sorted) nodeY[idx] += slack / 2;
+        yTop += tn + gapN;
       }
     }
 
@@ -284,18 +290,18 @@ export default function BestScenarioSankey({
       data: [
         {
           type: "sankey",
-          arrangement: "freeform", // we provide x/y; users can drag anywhere
-          uirevision: "keep",      // preserve positions on interactions
+          arrangement: "freeform", // user can drag freely
+          uirevision: "keep",
           node: {
-            pad: 0, // we're managing gaps ourselves
-            thickness: 20,
+            pad: 0, // vertical padding handled by our gapN
+            thickness: THICK_PX,
             line: { color: palette.border, width: 1 },
             label: nodeLabels,
             color: nodeColors,
             hovertemplate: "%{customdata}<extra></extra>",
             customdata: nodeHover,
             x: nodeX,
-            y: nodeY,
+            y: nodeY, // center-based y, clamped
           },
           link: {
             source: links.source,
@@ -312,62 +318,16 @@ export default function BestScenarioSankey({
         margin: { l: 12, r: 12, t: 24, b: 12 },
         font: { size: 12 },
         hovermode: "closest",
+        height: dynamicHeight, // <-- final height here
       },
     };
-  }, [best, priceMode]);
+  }, [best, priceMode, height]);
 
-  // ---------- Dynamic height calculation (stays as a MIN) ----------
-  const dynamicHeight = useMemo(() => {
-    if (!data) return height;
-    const sankey = (data.data && data.data[0]) || ({} as any);
-    const nodeThickness = sankey?.node?.thickness ?? 20;
-    const nodePad = 8; // visual buffer (we control vertical gaps ourselves)
-
-    // estimate densest column
-    const estimateMaxPerColumn = () => {
-      const n = sankey?.node?.label?.length ?? 0;
-      if (!n) return 1;
-      const src: number[] = sankey.link?.source ?? [];
-      const tgt: number[] = sankey.link?.target ?? [];
-      const adj = Array.from({ length: n }, () => [] as number[]);
-      const indeg = Array(n).fill(0);
-      for (let i = 0; i < src.length; i++) {
-        const s = src[i] ?? 0;
-        const t = tgt[i] ?? 0;
-        adj[s]?.push(t);
-        indeg[t] = (indeg[t] ?? 0) + 1;
-      }
-      const level = Array(n).fill(0);
-      const q: number[] = [];
-      for (let i = 0; i < n; i++) if (indeg[i] === 0) q.push(i);
-      while (q.length) {
-        const u = q.shift()!;
-        for (const v of adj[u]) {
-          if (level[v] <= level[u]) level[v] = level[u] + 1;
-          q.push(v);
-        }
-      }
-      const counts: Record<number, number> = {};
-      for (const l of level) counts[l] = (counts[l] ?? 0) + 1;
-      return Math.max(1, ...Object.values(counts));
-    };
-
-    const densestCol = Math.max(1, estimateMaxPerColumn());
-    const topBottomMargin = 120;
-    const extraDragBuffer = 500;
-    const estimated =
-      topBottomMargin + densestCol * (nodeThickness + nodePad) + extraDragBuffer;
-
-    const MIN = Math.max(520, height);
-    const MAX = 1800;
-    return Math.max(MIN, Math.min(MAX, Math.round(estimated)));
-  }, [data, height]);
-
-  if (!best) return null;
+  if (!result || !best) return null;
   return (
     <PlotlySankey
-      data={data!.data}
-      layout={{ ...data!.layout, height: dynamicHeight }}
+      data={result.data}
+      layout={result.layout}
     />
   );
 }
