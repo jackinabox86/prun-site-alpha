@@ -38,8 +38,8 @@ type ApiMakeOption = {
 
 export default function BestScenarioSankey({
   best,
-  height = 520,
-  priceMode, // optional, only shown in hover if passed
+  height = 520,         // acts as a MIN height now
+  priceMode,            // optional, only shown in hover if passed
 }: {
   best: ApiMakeOption | null | undefined;
   height?: number;
@@ -231,6 +231,62 @@ export default function BestScenarioSankey({
     };
   }, [best, priceMode]);
 
+  // ---------- Dynamic height calculation ----------
+  const dynamicHeight = useMemo(() => {
+    if (!data) return height;
+
+    const sankey = (data.data && data.data[0]) || ({} as any);
+    const nodeThickness = sankey?.node?.thickness ?? 20;
+    const nodePad = sankey?.node?.pad ?? 8;
+
+    // count the maximum nodes in any column (level)
+    const maxPerColumn = (() => {
+      const n = sankey?.node?.label?.length ?? 0;
+      if (!n) return 1;
+      const src: number[] = sankey.link?.source ?? [];
+      const tgt: number[] = sankey.link?.target ?? [];
+
+      // Build adjacency + indegree
+      const adj = Array.from({ length: n }, () => [] as number[]);
+      const indeg = Array(n).fill(0);
+      for (let i = 0; i < src.length; i++) {
+        const s = src[i] ?? 0;
+        const t = tgt[i] ?? 0;
+        adj[s]?.push(t);
+        indeg[t] = (indeg[t] ?? 0) + 1;
+      }
+
+      // BFS-ish levels from roots
+      const level = Array(n).fill(0);
+      const q: number[] = [];
+      for (let i = 0; i < n; i++) if (indeg[i] === 0) q.push(i);
+
+      while (q.length) {
+        const u = q.shift()!;
+        for (const v of adj[u]) {
+          if (level[v] <= level[u]) level[v] = level[u] + 1;
+          q.push(v);
+        }
+      }
+
+      // Count nodes per level
+      const counts: Record<number, number> = {};
+      for (const l of level) counts[l] = (counts[l] ?? 0) + 1;
+      return Math.max(...Object.values(counts));
+    })();
+
+    // height ≈ sum of all nodes in the densest column + pads + some buffer
+    const topBottomMargin = 120;
+    const extraDragBuffer = 100; // extra room to “move stuff around”
+    const estimated =
+      topBottomMargin + maxPerColumn * (nodeThickness + nodePad) + extraDragBuffer;
+
+    // clamp + ensure at least the provided height
+    const MIN = Math.max(520, height);
+    const MAX = 1600;
+    return Math.max(MIN, Math.min(MAX, Math.round(estimated)));
+  }, [data, height]);
+
   if (!best) return null;
-  return <PlotlySankey data={data!.data} layout={{ ...data!.layout, height }} />;
+  return <PlotlySankey data={data!.data} layout={{ ...data!.layout, height: dynamicHeight }} />;
 }
