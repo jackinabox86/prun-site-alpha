@@ -38,8 +38,8 @@ type ApiMakeOption = {
 
 export default function BestScenarioSankey({
   best,
-  height = 520,         // MIN height
-  priceMode,            // optional (only shown in hover)
+  height = 520, // MIN height
+  priceMode,    // optional (only shown in hover)
 }: {
   best: ApiMakeOption | null | undefined;
   height?: number;
@@ -50,10 +50,10 @@ export default function BestScenarioSankey({
 
     // ----- visual tuning -----
     const ALPHA = 0.5;                 // link width ∝ (cost/day)^ALPHA
-    const THICK_PX = 20;               // node rectangle thickness in pixels (fixed)
-    const GAP_PX = 10;                 // vertical gap between nodes in same column (px)
-    const TOP_PAD_PX = 24;             // top margin inside plotting area (px)
-    const BOT_PAD_PX = 24;             // bottom margin (px)
+    const THICK_PX = 20;               // node rectangle thickness (px)
+    const GAP_PX = 10;                 // vertical gap used for height calc (px)
+    const TOP_PAD_PX = 24;             // top margin in plot area (px)
+    const BOT_PAD_PX = 24;             // bottom margin in plot area (px)
     const X_PAD = 0.06;                // normalized left/right padding
     const EXTRA_DRAG_BUFFER_PX = 120;  // extra headroom (px)
 
@@ -71,7 +71,7 @@ export default function BestScenarioSankey({
     const nodeLabels: string[] = [];
     const nodeColors: string[] = [];
     const nodeHover: string[] = [];
-    const nodeDepth: number[] = [];  // depth per node index
+    const nodeDepth: number[] = []; // depth per node index
 
     const links = {
       source: [] as number[],
@@ -88,7 +88,6 @@ export default function BestScenarioSankey({
     const money = (n: number) =>
       Number.isFinite(n) ? `$${n.toLocaleString(undefined, { maximumFractionDigits: 2 })}` : "n/a";
 
-    // ensureNode now also records a depth
     const ensureNode = (
       id: string,
       label: string,
@@ -125,7 +124,7 @@ export default function BestScenarioSankey({
       links.label.push(label);
     };
 
-    // Root node (the parent stage) at depth 0
+    // Root node (depth 0)
     const rootId = `STAGE::${best.recipeId || best.ticker}::0`;
     const rootHover = [
       `<b>${best.ticker}</b>`,
@@ -143,7 +142,7 @@ export default function BestScenarioSankey({
 
     const rootIdx = ensureNode(rootId, best.ticker, palette.root, rootHover, 0);
 
-    // Recursive traversal (expands MAKE children; flow metric = Cost/day)
+    // Expand tree (flow metric = Cost/day)
     const visited = new Set<string>();
     const MAX_DEPTH = 8;
 
@@ -223,15 +222,15 @@ export default function BestScenarioSankey({
 
     traverse(best, rootIdx, best.runsPerDay || 0, 0);
 
-    // ---------- FIXED LAYOUT (center-based y, Plotly respects it) ----------
+    // ---------- LAYOUT: let Plotly place Y to avoid collisions ----------
     const N = nodeLabels.length;
 
-    // Group nodes by the depth we recorded (stable)
+    // Group by recorded depth to compute X only
     const maxDepth = Math.max(0, ...nodeDepth);
     const cols: number[][] = Array.from({ length: maxDepth + 1 }, () => []);
     for (let i = 0; i < N; i++) cols[nodeDepth[i]].push(i);
 
-    // --- Dynamic height (in px) based on densest column ---
+    // Dynamic height based on densest column
     const densest = Math.max(1, ...cols.map(c => c.length));
     const dynamicHeight = Math.max(
       height,
@@ -240,13 +239,6 @@ export default function BestScenarioSankey({
         Math.round(TOP_PAD_PX + BOT_PAD_PX + densest * (THICK_PX + GAP_PX) + EXTRA_DRAG_BUFFER_PX)
       )
     );
-
-    // Convert pixel sizes to normalized units for y (CENTER positions)
-    const tn   = THICK_PX / dynamicHeight; // normalized node thickness
-    const gapN = GAP_PX   / dynamicHeight; // normalized gap
-    const topN = TOP_PAD_PX / dynamicHeight;
-    const botN = BOT_PAD_PX / dynamicHeight;
-    const EPS_N = 1 / dynamicHeight;       // ~1px jitter to avoid collisions
 
     // Horizontal x per depth column (kept away from edges)
     const nodeX = new Array<number>(N).fill(0);
@@ -257,63 +249,22 @@ export default function BestScenarioSankey({
       for (const idx of cols[c]) nodeX[idx] = x;
     }
 
-    // Sort within each column:
-    //   1) Stage (MAKE) nodes first, BUY nodes after
-    //   2) Desc by total incoming cost/day
-    const inCost = new Array<number>(N).fill(0);
-    for (let i = 0; i < links.source.length; i++) {
-      const t = links.target[i];
-      const v = links.rawCostPerDay[i] ?? 0;
-      if (Number.isFinite(t)) inCost[t] += v;
-    }
-    const isBuyNode = (idx: number) => (nodeLabels[idx] || "").startsWith("Buy ");
-
-    for (const column of cols) {
-      column.sort((a, b) => {
-        const aBuy = isBuyNode(a), bBuy = isBuyNode(b);
-        if (aBuy !== bBuy) return aBuy ? 1 : -1;           // MAKE first
-        const delta = (inCost[b] || 0) - (inCost[a] || 0);  // then by incoming cost/day
-        if (delta !== 0) return delta;
-        return a - b; // stable
-      });
-    }
-
-    // Stack nodes by constant thickness + gap using **CENTER y**
-    const nodeY = new Array<number>(N).fill(0);
-    for (const column of cols) {
-      if (!column.length) continue;
-
-      const avail = 1 - topN - botN;
-      const totalNeeded = column.length * tn + (column.length - 1) * gapN;
-      const startTop = topN + Math.max(0, (avail - totalNeeded)) / 2;
-
-      column.forEach((idx, i) => {
-        // center y (not top)
-        let yCenter = startTop + tn / 2 + i * (tn + gapN) + i * EPS_N;
-        // clamp to keep full node visible
-        const half = tn / 2;
-        if (yCenter < half) yCenter = half;
-        if (yCenter > 1 - half) yCenter = 1 - half;
-        nodeY[idx] = yCenter;
-      });
-    }
-
     return {
       data: [
         {
           type: "sankey",
-          arrangement: "fixed",  // <-- respect our x/y
+          arrangement: "snap",  // Let Plotly compute vertical spacing (no overlaps)
           uirevision: "keep",
           node: {
-            pad: 0,              // vertical spacing handled by us
-            thickness: THICK_PX, // px; Plotly uses this with center y
+            pad: 12,             // small vertical padding between auto-placed nodes
+            thickness: THICK_PX, // node height in px
             line: { color: palette.border, width: 1 },
             label: nodeLabels,
             color: nodeColors,
             hovertemplate: "%{customdata}<extra></extra>",
             customdata: nodeHover,
-            x: nodeX,
-            y: nodeY,            // CENTER positions
+            x: nodeX,            // we control columns…
+            // y omitted on purpose → Plotly computes it to avoid collisions
           },
           link: {
             source: links.source,
