@@ -236,7 +236,7 @@ export default function BestScenarioSankey({
     const cols: number[][] = Array.from({ length: maxLevel + 1 }, () => []);
     for (let i = 0; i < N; i++) cols[level[i]].push(i);
 
-    // 2) Compute a "weight" per node = sum of incident width values (so column packing respects size)
+    // 2) Compute a "weight" per node = sum of incident width values
     const inSum = new Array<number>(N).fill(0);
     const outSum = new Array<number>(N).fill(0);
     for (let i = 0; i < links.source.length; i++) {
@@ -272,7 +272,7 @@ export default function BestScenarioSankey({
         yCursor += nodeWeight[idx] * scale + GAP_FRAC;
       }
 
-      // Optional: center the stack if there's slack
+      // Center the stack if there's slack
       const used = yCursor - Y_TOP_PAD;
       const slack = avail - used;
       if (slack > 0) {
@@ -321,6 +321,53 @@ export default function BestScenarioSankey({
     if (!data) return height;
     const sankey = (data.data && data.data[0]) || ({} as any);
     const nodeThickness = sankey?.node?.thickness ?? 20;
-    const nodePad = 8; // visual buffer (we control gaps ourselves)
+    const nodePad = 8; // visual buffer (we control vertical gaps ourselves)
 
-    // estimate densest colum
+    // estimate densest column
+    const estimateMaxPerColumn = () => {
+      const n = sankey?.node?.label?.length ?? 0;
+      if (!n) return 1;
+      const src: number[] = sankey.link?.source ?? [];
+      const tgt: number[] = sankey.link?.target ?? [];
+      const adj = Array.from({ length: n }, () => [] as number[]);
+      const indeg = Array(n).fill(0);
+      for (let i = 0; i < src.length; i++) {
+        const s = src[i] ?? 0;
+        const t = tgt[i] ?? 0;
+        adj[s]?.push(t);
+        indeg[t] = (indeg[t] ?? 0) + 1;
+      }
+      const level = Array(n).fill(0);
+      const q: number[] = [];
+      for (let i = 0; i < n; i++) if (indeg[i] === 0) q.push(i);
+      while (q.length) {
+        const u = q.shift()!;
+        for (const v of adj[u]) {
+          if (level[v] <= level[u]) level[v] = level[u] + 1;
+          q.push(v);
+        }
+      }
+      const counts: Record<number, number> = {};
+      for (const l of level) counts[l] = (counts[l] ?? 0) + 1;
+      return Math.max(1, ...Object.values(counts));
+    };
+
+    const densestCol = Math.max(1, estimateMaxPerColumn());
+    const topBottomMargin = 120;
+    const extraDragBuffer = 120;
+    const estimated =
+      topBottomMargin + densestCol * (nodeThickness + nodePad) + extraDragBuffer;
+
+    const MIN = Math.max(520, height);
+    const MAX = 1800;
+    return Math.max(MIN, Math.min(MAX, Math.round(estimated)));
+  }, [data, height]);
+
+  if (!best) return null;
+  return (
+    <PlotlySankey
+      data={data!.data}
+      layout={{ ...data!.layout, height: dynamicHeight }}
+    />
+  );
+}
