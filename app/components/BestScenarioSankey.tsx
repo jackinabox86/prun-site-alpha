@@ -227,18 +227,33 @@ export default function BestScenarioSankey({
       const v = links.rawCostPerDay[i] ?? 0;
       if (Number.isFinite(t)) {
         inCost[t] += v;
-        if (parentNode[t] === -1) parentNode[t] = s;
+        // Record parent only if not set, or if this is a stronger connection
+        if (parentNode[t] === -1 || (inCost[t] > 0 && v > inCost[t] * 0.5)) {
+          parentNode[t] = s;
+        }
       }
     }
 
     const isBuyNode = (idx: number) => (nodeLabels[idx] || "").startsWith("Buy ");
+    
+    // Calculate position of each node within its column for parent ordering
+    const nodePositionInColumn = new Array<number>(N).fill(0);
+    for (let d = 0; d <= maxDepth; d++) {
+      cols[d].forEach((idx, pos) => {
+        nodePositionInColumn[idx] = pos;
+      });
+    }
 
     for (const column of cols) {
       column.sort((a, b) => {
-        // Priority 1: Group by parent (highest priority)
+        // Priority 1: Group by parent's position in previous column
         const aParent = parentNode[a];
         const bParent = parentNode[b];
-        if (aParent !== bParent) return (aParent || 0) - (bParent || 0);
+        if (aParent !== bParent && aParent !== -1 && bParent !== -1) {
+          const aParentPos = nodePositionInColumn[aParent] ?? 0;
+          const bParentPos = nodePositionInColumn[bParent] ?? 0;
+          if (aParentPos !== bParentPos) return aParentPos - bParentPos;
+        }
         
         // Priority 2: Within same parent, MAKE before BUY
         const aBuy = isBuyNode(a),
@@ -251,6 +266,11 @@ export default function BestScenarioSankey({
         
         // Priority 4: Stable sort
         return a - b;
+      });
+      
+      // Update positions after sorting this column
+      column.forEach((idx, pos) => {
+        nodePositionInColumn[idx] = pos;
       });
     }
 
