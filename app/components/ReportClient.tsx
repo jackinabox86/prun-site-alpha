@@ -206,15 +206,10 @@ export default function ReportClient() {
                           <strong>Scenario:</strong> {report.best.scenario}
                         </div>
                       )}
-                      <div>
-                        <strong>Price mode:</strong> {report.priceMode}
-                      </div>
-                      <div>
+                                            <div>
                         <strong>Runs/day:</strong> {fmt(report.best.runsPerDay)}
                       </div>
-                      <div>
-                        <strong>Output1 amount:</strong> {fmt(report.best.output1Amount)}
-                      </div>
+                      
                       <div>
                         <strong>Base profit/day:</strong> {money(report.best.baseProfitPerDay)}
                       </div>
