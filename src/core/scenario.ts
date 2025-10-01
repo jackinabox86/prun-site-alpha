@@ -17,9 +17,9 @@ export function composeScenario(
     return base + `Buy ${branch.inputTicker}`;
   }
 
-  // MAKE: 'Make <recipeLabel> (for X)' + optional ' [childScenario]'
+  // MAKE: 'Make <recipeLabel>' + optional ' [childScenario]'
   const label = branch.recipeLabel ?? branch.inputTicker;
-  const core = `Make ${label} (for ${branch.inputTicker})`;
+  const core = `Make ${label}`;
   const suffix = branch.childScenario && branch.childScenario.trim().length
     ? ` [${branch.childScenario}]`
     : "";
