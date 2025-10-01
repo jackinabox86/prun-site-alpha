@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import type { PriceMode } from "@/types";
 import BestScenarioSankey from "./BestScenarioSankey";
+import Top5Table from "./Top5Table";
 
 type ApiReport = {
   schemaVersion: number;
@@ -18,7 +19,7 @@ type ApiReport = {
 
 export default function ReportClient() {
   const [tickers, setTickers] = useState<string[]>([]);
-  const [tickerInput, setTickerInput] = useState<string>("REP"); // default
+  const [tickerInput, setTickerInput] = useState<string>("REP");
   const [priceMode, setPriceMode] = useState<PriceMode>("bid");
   const [expand, setExpand] = useState(false);
   const [includeRows, setIncludeRows] = useState(false);
@@ -27,7 +28,6 @@ export default function ReportClient() {
   const [report, setReport] = useState<ApiReport | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  // Load tickers once
   useEffect(() => {
     fetch("/api/tickers", { cache: "no-store" })
       .then((r) => (r.ok ? r.json() : Promise.reject(new Error("Failed to load tickers"))))
@@ -66,11 +66,21 @@ export default function ReportClient() {
   };
 
   useEffect(() => {
-    // run once on mount with defaults
     // eslint-disable-next-line @typescript-eslint/no-floating-promises
     run();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // Helper formatting functions matching the Sankey component
+  const fmt = (n: number | null | undefined) =>
+    n != null && Number.isFinite(n) 
+      ? (Math.abs(n) >= 1000 ? n.toLocaleString() : n.toFixed(3))
+      : "n/a";
+  
+  const money = (n: number | null | undefined) =>
+    n != null && Number.isFinite(n) 
+      ? `$${n.toLocaleString(undefined, { maximumFractionDigits: 2 })}` 
+      : "n/a";
 
   return (
     <main style={{ padding: 24 }}>
@@ -175,11 +185,66 @@ export default function ReportClient() {
                     units consumed per day; hover nodes or links for profit, area, and sourcing
                     context.
                   </p>
-                  <BestScenarioSankey best={report.best} />
+
+                  {/* Summary Box - duplicates parent node hover info */}
+                  <div
+                    style={{
+                      backgroundColor: "#f8f9fa",
+                      border: "1px solid #dee2e6",
+                      borderRadius: 6,
+                      padding: 16,
+                      marginBottom: 16,
+                      maxWidth: 760,
+                    }}
+                  >
+                    <h3 style={{ margin: "0 0 12px 0", fontSize: 16, fontWeight: 600 }}>
+                      {report.best.ticker}
+                    </h3>
+                    <div style={{ display: "grid", gap: 6, fontSize: 14 }}>
+                      {report.best.scenario && (
+                        <div>
+                          <strong>Scenario:</strong> {report.best.scenario}
+                        </div>
+                      )}
+                                            <div>
+                        <strong>Runs/day:</strong> {fmt(report.best.runsPerDay)}
+                      </div>
+                      
+                      <div>
+                        <strong>Base profit/day:</strong> {money(report.best.baseProfitPerDay)}
+                      </div>
+                      <div>
+                        <strong>Adj. profit/day:</strong> {money(report.best.profitPerDay)}
+                      </div>
+                      <div>
+                        <strong>Area/day (full):</strong> {fmt(report.best.fullSelfAreaPerDay)}
+                      </div>
+                      {report.best.roiNarrowDays != null && (
+                        <div>
+                          <strong>ROI (narrow):</strong> {fmt(report.best.roiNarrowDays)} days
+                        </div>
+                      )}
+                      {report.best.inputBuffer7 != null && (
+                        <div>
+                          <strong>Input buffer (7d):</strong> {money(report.best.inputBuffer7)}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  <BestScenarioSankey best={report.best} priceMode={report.priceMode} />
                 </section>
               ) : (
                 <p style={{ marginTop: 32 }}>No best scenario available for this ticker.</p>
               )}
+
+              <section style={{ marginTop: 32 }}>
+                <h2>Top 5 Options</h2>
+                <p style={{ margin: "8px 0 16px", color: "#555", maxWidth: 760 }}>
+                  Comparison of the top 5 production scenarios ranked by profit per area.
+                </p>
+                <Top5Table options={report.top5} />
+              </section>
 
               <section style={{ marginTop: 32 }}>
                 <details>
