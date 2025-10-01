@@ -350,7 +350,10 @@ export default function BestScenarioSankey({
       ],
       layout: {
         margin: { l: 12, r: 12, t: 24, b: 12 },
-        font: { size: 12 },
+        font: { 
+          size: 12,
+          family: "-apple-system, BlinkMacSystemFont, Segoe UI, Roboto, Helvetica Neue, Arial, sans-serif"
+        },
         hovermode: "closest",
         height: dynamicHeight,
       },
