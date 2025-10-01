@@ -11,10 +11,10 @@ type ApiMadeInputDetail = {
   amountNeeded: number;
   recipeId?: string | null;
   scenarioName?: string;
-  details?: ApiMakeOption | null;     // present for MAKE
-  unitCost?: number | null;           // BUY price
-  totalCostPerBatch?: number | null;  // BUY: amount*unitCost; MAKE: cogm*amount
-  childScenario?: string;             // MAKE child scenario label
+  details?: ApiMakeOption | null;
+  unitCost?: number | null;
+  totalCostPerBatch?: number | null;
+  childScenario?: string;
 };
 
 type ApiMakeOption = {
@@ -37,8 +37,8 @@ type ApiMakeOption = {
 
 export default function BestScenarioSankey({
   best,
-  height = 520,         // MIN chart height
-  priceMode,            // optional (only shown in hover)
+  height = 520,
+  priceMode,
 }: {
   best: ApiMakeOption | null | undefined;
   height?: number;
@@ -47,37 +47,37 @@ export default function BestScenarioSankey({
   const result = useMemo(() => {
     if (!best) return null;
 
-    // ----- visual tuning -----
-    const ALPHA = 0.5;                 // link width ∝ (cost/day)^ALPHA
-    const THICK_PX = 20;               // node rectangle thickness (px)
-    const GAP_PX = 10;                 // vertical spacing hint (px) → node.pad
-    const TOP_PAD_PX = 24;             // for height estimate
-    const BOT_PAD_PX = 24;             // for height estimate
-    const X_PAD = 0.06;                // keep columns away from edges (0..1)
+
+    const ALPHA = 0.5;
+    const THICK_PX = 20;
+    const GAP_PX = 15;
+    const TOP_PAD_PX = 24;
+    const BOT_PAD_PX = 24;
+    const X_PAD = 0.06;
+    const EXTRA_DRAG_BUFFER_PX = 80;
 
     const palette = {
-      root:   "#2563eb",
-      make:   "#3b82f6",
-      buy:    "#f97316",
+      root: "#2563eb",
+      make: "#3b82f6",
+      buy: "#f97316",
       border: "#0f172a",
-      linkBuy:  "rgba(249,115,22,0.45)",
+      linkBuy: "rgba(249,115,22,0.45)",
       linkMake: "rgba(59,130,246,0.45)",
     };
 
-    // ---- node/link stores ----
     const nodeIndexById = new Map<string, number>();
     const nodeLabels: string[] = [];
     const nodeColors: string[] = [];
     const nodeHover: string[] = [];
-    const nodeDepth: number[] = [];      // recorded depth per node
+    const nodeDepth: number[] = [];
 
     const links = {
       source: [] as number[],
       target: [] as number[],
-      value:  [] as number[],
-      color:  [] as string[],
-      hover:  [] as string[],
-      label:  [] as string[],
+      value: [] as number[],
+      color: [] as string[],
+      hover: [] as string[],
+      label: [] as string[],
       rawCostPerDay: [] as number[],
     };
 
@@ -86,7 +86,6 @@ export default function BestScenarioSankey({
     const money = (n: number) =>
       Number.isFinite(n) ? `$${n.toLocaleString(undefined, { maximumFractionDigits: 2 })}` : "n/a";
 
-    // ensureNode: id includes depth to prevent merges across levels
     const ensureNode = (
       id: string,
       label: string,
@@ -100,7 +99,7 @@ export default function BestScenarioSankey({
       nodeLabels.push(label);
       nodeColors.push(color);
       nodeHover.push(hover);
-      nodeDepth.push(Math.max(0, depth|0));
+      nodeDepth.push(Math.max(0, depth | 0));
       return idx;
     };
 
@@ -123,7 +122,6 @@ export default function BestScenarioSankey({
       links.label.push(label);
     };
 
-    // Root node (depth 0)
     const rootId = `STAGE::${best.recipeId || best.ticker}::0`;
     const rootHover = [
       `<b>${best.ticker}</b>`,
@@ -137,10 +135,9 @@ export default function BestScenarioSankey({
       best.roiNarrowDays != null ? `ROI (narrow): ${fmt(best.roiNarrowDays)} days` : null,
       best.inputBuffer7 != null ? `Input buffer (7d): ${money(best.inputBuffer7)}` : null,
       `<i>Flow metric: Cost/day (width ∝ (cost/day)^${ALPHA})</i>`,
-    ].filter(Boolean).join("<br/>");
+    ].filter(Boolean).join("<br>");
     const rootIdx = ensureNode(rootId, best.ticker, palette.root, rootHover, 0);
 
-    // Expand tree (flow metric = Cost/day)
     const visited = new Set<string>();
     const MAX_DEPTH = 8;
 
@@ -156,7 +153,6 @@ export default function BestScenarioSankey({
         const amount = Number(inp.amountNeeded ?? 0);
 
         if (!inp.details) {
-          // BUY: cost/day = totalCostPerBatch * stageRunsPerDay
           const batchCost = Number(inp.totalCostPerBatch ?? 0);
           const costPerDay = Math.max(0, batchCost * stageRunsPerDay);
 
@@ -166,22 +162,21 @@ export default function BestScenarioSankey({
             inp.unitCost != null ? `Unit price: ${money(inp.unitCost)}` : null,
             `Total cost/day: ${money(costPerDay)}`,
             `<i>Flow metric: Cost/day</i>`,
-          ].filter(Boolean).join("<br/>");
+          ].filter(Boolean).join("<br>");
 
           const buyIdx = ensureNode(buyNodeId, `Buy ${inp.ticker}`, palette.buy, buyHover, depth + 1);
 
           const linkHover = [
             `<b>${stage.ticker} → Buy ${inp.ticker}</b>`,
             `Cost/day: ${money(costPerDay)}`,
-          ].join("<br/>");
+          ].join("<br>");
 
           addLink(stageIdx, buyIdx, `Buy ${inp.ticker}`, costPerDay, palette.linkBuy, linkHover);
           continue;
         }
 
-        // MAKE: cost/day = cogmPerOutput * amountNeeded * stageRunsPerDay
         const child = inp.details;
-        const cogm  = Number(child.cogmPerOutput ?? 0);
+        const cogm = Number(child.cogmPerOutput ?? 0);
         const costPerDay = Math.max(0, cogm * amount * stageRunsPerDay);
 
         const childId = `STAGE::${child.recipeId || child.ticker}::${depth + 1}`;
@@ -194,7 +189,7 @@ export default function BestScenarioSankey({
           child.roiNarrowDays != null ? `ROI (narrow): ${fmt(child.roiNarrowDays)} days` : null,
           child.inputBuffer7 != null ? `Input buffer (7d): ${money(child.inputBuffer7)}` : null,
           `<i>Flow metric: Cost/day</i>`,
-        ].filter(Boolean).join("<br/>");
+        ].filter(Boolean).join("<br>");
 
         const childIdx = ensureNode(
           childId,
@@ -207,11 +202,10 @@ export default function BestScenarioSankey({
         const linkHover = [
           `<b>${stage.ticker} → Make ${child.recipeId || child.ticker}</b>`,
           `COGM/day: ${money(costPerDay)}`,
-        ].join("<br/>");
+        ].join("<br>");
 
         addLink(stageIdx, childIdx, `Make ${child.recipeId || child.ticker}`, costPerDay, palette.linkMake, linkHover);
 
-        // Recurse: child runs/day needed to satisfy parent's demand
         const childOut = Number(child.output1Amount || 0);
         const childRunsPerDayNeeded = childOut > 0 ? (amount * stageRunsPerDay) / childOut : 0;
         traverse(child, childIdx, childRunsPerDayNeeded, depth + 1);
@@ -220,50 +214,105 @@ export default function BestScenarioSankey({
 
     traverse(best, rootIdx, best.runsPerDay || 0, 0);
 
-    // ---------- LAYOUT: columns by recorded depth (SNAP, x-only) ----------
+
     const N = nodeLabels.length;
 
-    // Group by depth
     const maxDepth = Math.max(0, ...nodeDepth);
     const cols: number[][] = Array.from({ length: maxDepth + 1 }, () => []);
     for (let i = 0; i < N; i++) cols[nodeDepth[i]].push(i);
 
-    // Height estimate
-    const densest = Math.max(1, ...cols.map(c => c.length || 0));
+    const inCost = new Array<number>(N).fill(0);
+    const parentNode = new Array<number>(N).fill(-1);
+    for (let i = 0; i < links.source.length; i++) {
+      const s = links.source[i];
+      const t = links.target[i];
+      const v = links.rawCostPerDay[i] ?? 0;
+      if (Number.isFinite(t)) {
+        inCost[t] += v;
+        // Record parent only if not set, or if this is a stronger connection
+        if (parentNode[t] === -1 || (inCost[t] > 0 && v > inCost[t] * 0.5)) {
+          parentNode[t] = s;
+        }
+      }
+    }
+
+
+    const isBuyNode = (idx: number) => (nodeLabels[idx] || "").startsWith("Buy ");
+    
+    // Calculate position of each node within its column for parent ordering
+    const nodePositionInColumn = new Array<number>(N).fill(0);
+    for (let d = 0; d <= maxDepth; d++) {
+      cols[d].forEach((idx, pos) => {
+        nodePositionInColumn[idx] = pos;
+      });
+    }
+
+    for (const column of cols) {
+      column.sort((a, b) => {
+        // Priority 1: Group by parent's position in previous column
+        const aParent = parentNode[a];
+        const bParent = parentNode[b];
+        if (aParent !== bParent && aParent !== -1 && bParent !== -1) {
+          const aParentPos = nodePositionInColumn[aParent] ?? 0;
+          const bParentPos = nodePositionInColumn[bParent] ?? 0;
+          if (aParentPos !== bParentPos) return aParentPos - bParentPos;
+        }
+        
+        // Priority 2: Within same parent, MAKE before BUY
+        const aBuy = isBuyNode(a),
+          bBuy = isBuyNode(b);
+        if (aBuy !== bBuy) return aBuy ? 1 : -1;
+        
+        // Priority 3: Within same parent and type, sort by cost
+        const delta = (inCost[b] || 0) - (inCost[a] || 0);
+        if (delta !== 0) return delta;
+        
+        // Priority 4: Stable sort
+        return a - b;
+      });
+      
+      // Update positions after sorting this column
+      column.forEach((idx, pos) => {
+        nodePositionInColumn[idx] = pos;
+      });
+    }
+
+
+    const densest = Math.max(1, ...cols.map((c) => c.length || 0));
+
+    const spaceNeededForDensest = densest * THICK_PX + (densest - 1) * GAP_PX + densest * GAP_PX;
+
     const dynamicHeight = Math.max(
       height,
-      Math.min(
-        2200,
-        Math.round(TOP_PAD_PX + BOT_PAD_PX + densest * (THICK_PX + GAP_PX) + 120)
-      )
+      Math.min(2200, Math.round(TOP_PAD_PX + BOT_PAD_PX + spaceNeededForDensest + EXTRA_DRAG_BUFFER_PX))
     );
 
-    // Depth → x position (monotonic, kept away from edges)
-    const left = X_PAD, right = 1 - X_PAD;
+    const tn = THICK_PX / dynamicHeight;
+    const gapN = GAP_PX / dynamicHeight;
+    const topN = TOP_PAD_PX / dynamicHeight;
+    const botN = BOT_PAD_PX / dynamicHeight;
+
+    const left = X_PAD,
+      right = 1 - X_PAD;
     const totalSpan = Math.max(0.05, right - left);
     const step = maxDepth > 0 ? totalSpan / maxDepth : 0;
 
     const nodeX = new Array<number>(N).fill(0);
-    for (let d = 0; d <= maxDepth; d++) {
-      const x = maxDepth > 0 ? left + d * step : 0.5;
-      for (const idx of cols[d]) nodeX[idx] = x;
-    }
+    const nodeY = new Array<number>(N).fill(0);
 
-    // (Optional) sort each column to hint a nicer vertical order; Plotly picks y.
-    const inCost = new Array<number>(N).fill(0);
-    for (let i = 0; i < links.source.length; i++) {
-      const t = links.target[i];
-      const v = links.rawCostPerDay[i] ?? 0;
-      if (Number.isFinite(t)) inCost[t] += v;
-    }
-    const isBuyNode = (idx: number) => (nodeLabels[idx] || "").startsWith("Buy ");
-    for (const column of cols) {
-      column.sort((a, b) => {
-        const aBuy = isBuyNode(a), bBuy = isBuyNode(b);
-        if (aBuy !== bBuy) return aBuy ? 1 : -1;          // MAKE first, then BUY
-        const delta = (inCost[b] || 0) - (inCost[a] || 0); // larger inbound first
-        if (delta !== 0) return delta;
-        return a - b;
+    for (let d = 0; d <= maxDepth; d++) {
+      const column = cols[d];
+      if (!column.length) continue;
+
+      const x = maxDepth > 0 ? left + d * step : 0.5;
+
+      let currentY = topN;
+
+      column.forEach((idx, i) => {
+        nodeX[idx] = x;
+        nodeY[idx] = currentY;
+
+        currentY += tn + gapN;
       });
     }
 
@@ -271,24 +320,30 @@ export default function BestScenarioSankey({
       data: [
         {
           type: "sankey",
-          arrangement: "snap",        // <— let Plotly compute y, keep our x columns
+
+          arrangement: "snap",
           uirevision: "keep",
           node: {
-            pad: GAP_PX,              // vertical spacing hint (px)
-            thickness: THICK_PX,      // px
+            pad: GAP_PX,
+            thickness: THICK_PX,
+
             line: { color: palette.border, width: 1 },
             label: nodeLabels,
             color: nodeColors,
             hovertemplate: "%{customdata}<extra></extra>",
             customdata: nodeHover,
-            x: nodeX,                 // depth-aligned columns (BUY stays with its stage)
-            // y: (omitted)
+
+            x: nodeX,
+            y: nodeY,
+
           },
           link: {
             source: links.source,
             target: links.target,
-            value:  links.value,
-            color:  links.color,
+
+            value: links.value,
+            color: links.color,
+
             hovertemplate: "%{customdata}<extra></extra>",
             customdata: links.hover,
             label: links.label,
