@@ -129,16 +129,11 @@ export default function BestScenarioSankey({
     const rootLabel = `<b>${best.ticker}</b><br>[${fmtPA(rootProfitPA)} P/A]`;
     const rootHover = [
       `<b>${best.ticker}</b>`,
-      best.scenario ? `Scenario: ${best.scenario}` : null,
-      priceMode ? `Price mode: ${priceMode}` : null,
-      `Runs/day: ${fmt(best.runsPerDay)}`,
-      `Output1 amount: ${fmt(best.output1Amount)}`,
-      `Base profit/day: ${money(best.baseProfitPerDay)}`,
-      `Adj. profit/day: ${money(best.profitPerDay)}`,
+      `Profit/d: ${money(best.baseProfitPerDay)}`,
+      `Adj. Profit/d: ${money(best.profitPerDay)}`,
       `Area/day (full): ${fmt(best.fullSelfAreaPerDay)}`,
       best.roiNarrowDays != null ? `ROI (narrow): ${fmt(best.roiNarrowDays)} days` : null,
-      best.inputBuffer7 != null ? `Input buffer (7d): ${money(best.inputBuffer7)}` : null,
-      `<i>Flow metric: Cost/day (width ∝ (cost/day)^${ALPHA})</i>`,
+      best.inputBuffer7 != null ? `Input buffer (7d): ${money(best.inputBuffer7)}` : null,      
     ].filter(Boolean).join("<br>");
     const rootIdx = ensureNode(rootId, rootLabel, palette.root, rootHover, 0);
 
@@ -164,16 +159,15 @@ export default function BestScenarioSankey({
           const buyLabel = `<b>Buy ${inp.ticker}</b>`;
           const buyHover = [
             `<b>Buy ${inp.ticker}</b>`,
-            inp.unitCost != null ? `Unit price: ${money(inp.unitCost)}` : null,
-            `Total cost/day: ${money(costPerDay)}`,
-            `<i>Flow metric: Cost/day</i>`,
+            inp.unitCost != null ? `Price: ${money(inp.unitCost)}` : null,
+            `Cost/d: ${money(costPerDay)}`,
           ].filter(Boolean).join("<br>");
 
           const buyIdx = ensureNode(buyNodeId, buyLabel, palette.buy, buyHover, depth + 1);
 
           const linkHover = [
-            `<b>${stage.ticker} → Buy ${inp.ticker}</b>`,
-            `Cost/day: ${money(costPerDay)}`,
+            `<b>${stage.ticker} ← Buy ${inp.ticker}</b>`,
+            `Cost/d: ${money(costPerDay)}`,
           ].join("<br>");
 
           addLink(stageIdx, buyIdx, `Buy ${inp.ticker}`, costPerDay, palette.linkBuy, linkHover);
@@ -189,13 +183,12 @@ export default function BestScenarioSankey({
         const childLabel = `<b>Make ${child.recipeId || child.ticker}</b><br>[${fmtPA(childProfitPA)} P/A]`;
         const childHover = [
           `<b>Make ${child.recipeId || child.ticker}</b>`,
-          inp.childScenario ? `Child scenario: ${inp.childScenario}` : null,
+          inp.childScenario ? `Scen: ${inp.childScenario}` : null,
           `COGM/day: ${money(costPerDay)}`,
           `Base profit/day: ${money(child.baseProfitPerDay)}`,
           `Area/day (full): ${fmt(child.fullSelfAreaPerDay)}`,
           child.roiNarrowDays != null ? `ROI (narrow): ${fmt(child.roiNarrowDays)} days` : null,
-          child.inputBuffer7 != null ? `Input buffer (7d): ${money(child.inputBuffer7)}` : null,
-          `<i>Flow metric: Cost/day</i>`,
+          child.inputBuffer7 != null ? `Input buffer (7d): ${money(child.inputBuffer7)}` : null,          
         ].filter(Boolean).join("<br>");
 
         const childIdx = ensureNode(
@@ -207,8 +200,8 @@ export default function BestScenarioSankey({
         );
 
         const linkHover = [
-          `<b>${stage.ticker} → Make ${child.recipeId || child.ticker}</b>`,
-          `COGM/day: ${money(costPerDay)}`,
+          `<b>${stage.ticker}  Make ${child.recipeId || child.ticker}</b>`,
+          `COGM/d: ${money(costPerDay)}`,
         ].join("<br>");
 
         addLink(stageIdx, childIdx, `Make ${child.recipeId || child.ticker}`, costPerDay, palette.linkMake, linkHover);
