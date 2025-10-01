@@ -84,7 +84,9 @@ export default function BestScenarioSankey({
     const fmt = (n: number) =>
       Number.isFinite(n) ? (Math.abs(n) >= 1000 ? n.toLocaleString() : n.toFixed(3)) : "n/a";
     const money = (n: number) =>
-      Number.isFinite(n) ? `$${n.toLocaleString(undefined, { maximumFractionDigits: 2 })}` : "n/a";
+      Number.isFinite(n) ? `${n.toLocaleString(undefined, { maximumFractionDigits: 2 })}` : "n/a";
+    const fmtPA = (n: number) =>
+      Number.isFinite(n) ? n.toFixed(1) : "n/a";
 
     const ensureNode = (
       id: string,
@@ -124,7 +126,7 @@ export default function BestScenarioSankey({
 
     const rootId = `STAGE::${best.recipeId || best.ticker}::0`;
     const rootProfitPA = best.totalProfitPA ?? 0;
-    const rootLabel = `<b>${best.ticker}</b><br>[${fmt(rootProfitPA)} P/A]`;
+    const rootLabel = `<b>${best.ticker}</b><br><b>[${fmtPA(rootProfitPA)} P/A]</b>`;
     const rootHover = [
       `<b>${best.ticker}</b>`,
       best.scenario ? `Scenario: ${best.scenario}` : null,
