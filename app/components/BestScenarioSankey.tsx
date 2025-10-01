@@ -220,10 +220,15 @@ export default function BestScenarioSankey({
     for (let i = 0; i < N; i++) cols[nodeDepth[i]].push(i);
 
     const inCost = new Array<number>(N).fill(0);
+    const parentNode = new Array<number>(N).fill(-1);
     for (let i = 0; i < links.source.length; i++) {
+      const s = links.source[i];
       const t = links.target[i];
       const v = links.rawCostPerDay[i] ?? 0;
-      if (Number.isFinite(t)) inCost[t] += v;
+      if (Number.isFinite(t)) {
+        inCost[t] += v;
+        if (parentNode[t] === -1) parentNode[t] = s;
+      }
     }
 
     const isBuyNode = (idx: number) => (nodeLabels[idx] || "").startsWith("Buy ");
@@ -233,6 +238,11 @@ export default function BestScenarioSankey({
         const aBuy = isBuyNode(a),
           bBuy = isBuyNode(b);
         if (aBuy !== bBuy) return aBuy ? 1 : -1;
+        
+        const aParent = parentNode[a];
+        const bParent = parentNode[b];
+        if (aParent !== bParent) return (aParent || 0) - (bParent || 0);
+        
         const delta = (inCost[b] || 0) - (inCost[a] || 0);
         if (delta !== 0) return delta;
         return a - b;
