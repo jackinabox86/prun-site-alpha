@@ -235,16 +235,21 @@ export default function BestScenarioSankey({
 
     for (const column of cols) {
       column.sort((a, b) => {
-        const aBuy = isBuyNode(a),
-          bBuy = isBuyNode(b);
-        if (aBuy !== bBuy) return aBuy ? 1 : -1;
-        
+        // Priority 1: Group by parent (highest priority)
         const aParent = parentNode[a];
         const bParent = parentNode[b];
         if (aParent !== bParent) return (aParent || 0) - (bParent || 0);
         
+        // Priority 2: Within same parent, MAKE before BUY
+        const aBuy = isBuyNode(a),
+          bBuy = isBuyNode(b);
+        if (aBuy !== bBuy) return aBuy ? 1 : -1;
+        
+        // Priority 3: Within same parent and type, sort by cost
         const delta = (inCost[b] || 0) - (inCost[a] || 0);
         if (delta !== 0) return delta;
+        
+        // Priority 4: Stable sort
         return a - b;
       });
     }
