@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import type { PriceMode } from "@/types";
 import BestScenarioSankey from "./BestScenarioSankey";
+import Top5Table from "./Top5Table";
 
 type ApiReport = {
   schemaVersion: number;
@@ -241,6 +242,14 @@ export default function ReportClient() {
               ) : (
                 <p style={{ marginTop: 32 }}>No best scenario available for this ticker.</p>
               )}
+
+              <section style={{ marginTop: 32 }}>
+                <h2>Top 5 Options</h2>
+                <p style={{ margin: "8px 0 16px", color: "#555", maxWidth: 760 }}>
+                  Comparison of the top 5 production scenarios ranked by profit per area.
+                </p>
+                <Top5Table options={report.top5} />
+              </section>
 
               <section style={{ marginTop: 32 }}>
                 <details>
