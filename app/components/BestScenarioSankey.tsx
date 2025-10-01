@@ -126,7 +126,7 @@ export default function BestScenarioSankey({
 
     const rootId = `STAGE::${best.recipeId || best.ticker}::0`;
     const rootProfitPA = best.totalProfitPA ?? 0;
-    const rootLabel = `<b>${best.ticker}</b><br><b>[${fmtPA(rootProfitPA)} P/A]</b>`;
+    const rootLabel = `<b>${best.ticker}</b><br>[${fmtPA(rootProfitPA)} P/A]`;
     const rootHover = [
       `<b>${best.ticker}</b>`,
       best.scenario ? `Scenario: ${best.scenario}` : null,
@@ -186,7 +186,7 @@ export default function BestScenarioSankey({
 
         const childId = `STAGE::${child.recipeId || child.ticker}::${depth + 1}`;
         const childProfitPA = child.totalProfitPA ?? 0;
-        const childLabel = `<b>Make ${child.recipeId || child.ticker}</b><br>[${fmt(childProfitPA)} P/A]`;
+        const childLabel = `<b>Make ${child.recipeId || child.ticker}</b><br>[${fmtPA(childProfitPA)} P/A]`;
         const childHover = [
           `<b>Make ${child.recipeId || child.ticker}</b>`,
           inp.childScenario ? `Child scenario: ${inp.childScenario}` : null,
