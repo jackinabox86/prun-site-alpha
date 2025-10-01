@@ -47,6 +47,7 @@ export default function BestScenarioSankey({
   const result = useMemo(() => {
     if (!best) return null;
 
+
     const ALPHA = 0.5;
     const THICK_PX = 20;
     const GAP_PX = 15;
@@ -213,6 +214,7 @@ export default function BestScenarioSankey({
 
     traverse(best, rootIdx, best.runsPerDay || 0, 0);
 
+
     const N = nodeLabels.length;
 
     const maxDepth = Math.max(0, ...nodeDepth);
@@ -233,6 +235,7 @@ export default function BestScenarioSankey({
         }
       }
     }
+
 
     const isBuyNode = (idx: number) => (nodeLabels[idx] || "").startsWith("Buy ");
     
@@ -273,6 +276,7 @@ export default function BestScenarioSankey({
         nodePositionInColumn[idx] = pos;
       });
     }
+
 
     const densest = Math.max(1, ...cols.map((c) => c.length || 0));
 
@@ -316,24 +320,30 @@ export default function BestScenarioSankey({
       data: [
         {
           type: "sankey",
+
           arrangement: "snap",
           uirevision: "keep",
           node: {
             pad: GAP_PX,
             thickness: THICK_PX,
+
             line: { color: palette.border, width: 1 },
             label: nodeLabels,
             color: nodeColors,
             hovertemplate: "%{customdata}<extra></extra>",
             customdata: nodeHover,
+
             x: nodeX,
             y: nodeY,
+
           },
           link: {
             source: links.source,
             target: links.target,
+
             value: links.value,
             color: links.color,
+
             hovertemplate: "%{customdata}<extra></extra>",
             customdata: links.hover,
             label: links.label,
