@@ -32,6 +32,7 @@ type ApiMakeOption = {
   buildCost: number;
   inputBuffer7?: number | null;
   roiNarrowDays?: number | null;
+  totalProfitPA?: number;
   madeInputDetails?: ApiMadeInputDetail[];
 };
 
@@ -46,7 +47,6 @@ export default function BestScenarioSankey({
 }) {
   const result = useMemo(() => {
     if (!best) return null;
-
 
     const ALPHA = 0.5;
     const THICK_PX = 20;
@@ -123,6 +123,8 @@ export default function BestScenarioSankey({
     };
 
     const rootId = `STAGE::${best.recipeId || best.ticker}::0`;
+    const rootProfitPA = best.totalProfitPA ?? 0;
+    const rootLabel = `<b>${best.ticker}</b><br>[${fmt(rootProfitPA)} P/A]`;
     const rootHover = [
       `<b>${best.ticker}</b>`,
       best.scenario ? `Scenario: ${best.scenario}` : null,
@@ -136,7 +138,7 @@ export default function BestScenarioSankey({
       best.inputBuffer7 != null ? `Input buffer (7d): ${money(best.inputBuffer7)}` : null,
       `<i>Flow metric: Cost/day (width ∝ (cost/day)^${ALPHA})</i>`,
     ].filter(Boolean).join("<br>");
-    const rootIdx = ensureNode(rootId, best.ticker, palette.root, rootHover, 0);
+    const rootIdx = ensureNode(rootId, rootLabel, palette.root, rootHover, 0);
 
     const visited = new Set<string>();
     const MAX_DEPTH = 8;
@@ -157,6 +159,7 @@ export default function BestScenarioSankey({
           const costPerDay = Math.max(0, batchCost * stageRunsPerDay);
 
           const buyNodeId = `BUY::${stage.recipeId || stage.ticker}::${inp.ticker}::${depth + 1}`;
+          const buyLabel = `<b>Buy ${inp.ticker}</b>`;
           const buyHover = [
             `<b>Buy ${inp.ticker}</b>`,
             inp.unitCost != null ? `Unit price: ${money(inp.unitCost)}` : null,
@@ -164,7 +167,7 @@ export default function BestScenarioSankey({
             `<i>Flow metric: Cost/day</i>`,
           ].filter(Boolean).join("<br>");
 
-          const buyIdx = ensureNode(buyNodeId, `Buy ${inp.ticker}`, palette.buy, buyHover, depth + 1);
+          const buyIdx = ensureNode(buyNodeId, buyLabel, palette.buy, buyHover, depth + 1);
 
           const linkHover = [
             `<b>${stage.ticker} → Buy ${inp.ticker}</b>`,
@@ -180,6 +183,8 @@ export default function BestScenarioSankey({
         const costPerDay = Math.max(0, cogm * amount * stageRunsPerDay);
 
         const childId = `STAGE::${child.recipeId || child.ticker}::${depth + 1}`;
+        const childProfitPA = child.totalProfitPA ?? 0;
+        const childLabel = `<b>Make ${child.recipeId || child.ticker}</b><br>[${fmt(childProfitPA)} P/A]`;
         const childHover = [
           `<b>Make ${child.recipeId || child.ticker}</b>`,
           inp.childScenario ? `Child scenario: ${inp.childScenario}` : null,
@@ -193,7 +198,7 @@ export default function BestScenarioSankey({
 
         const childIdx = ensureNode(
           childId,
-          `Make ${child.recipeId || child.ticker}`,
+          childLabel,
           palette.make,
           childHover,
           depth + 1
@@ -213,7 +218,6 @@ export default function BestScenarioSankey({
     }
 
     traverse(best, rootIdx, best.runsPerDay || 0, 0);
-
 
     const N = nodeLabels.length;
 
@@ -235,7 +239,6 @@ export default function BestScenarioSankey({
         }
       }
     }
-
 
     const isBuyNode = (idx: number) => (nodeLabels[idx] || "").startsWith("Buy ");
     
@@ -276,7 +279,6 @@ export default function BestScenarioSankey({
         nodePositionInColumn[idx] = pos;
       });
     }
-
 
     const densest = Math.max(1, ...cols.map((c) => c.length || 0));
 
@@ -320,30 +322,24 @@ export default function BestScenarioSankey({
       data: [
         {
           type: "sankey",
-
           arrangement: "snap",
           uirevision: "keep",
           node: {
             pad: GAP_PX,
             thickness: THICK_PX,
-
             line: { color: palette.border, width: 1 },
             label: nodeLabels,
             color: nodeColors,
             hovertemplate: "%{customdata}<extra></extra>",
             customdata: nodeHover,
-
             x: nodeX,
             y: nodeY,
-
           },
           link: {
             source: links.source,
             target: links.target,
-
             value: links.value,
             color: links.color,
-
             hovertemplate: "%{customdata}<extra></extra>",
             customdata: links.hover,
             label: links.label,
