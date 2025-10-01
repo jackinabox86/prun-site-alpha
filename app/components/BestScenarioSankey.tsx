@@ -5,17 +5,16 @@ import { useMemo } from "react";
 import PlotlySankey from "./PlotlySankey";
 import type { PriceMode } from "@/types";
 
-// ---- API shapes (compatible with your report output) ----
+// ---- API shapes (must match your report output) ----
 type ApiMadeInputDetail = {
   ticker: string;
   amountNeeded: number;
   recipeId?: string | null;
   scenarioName?: string;
-  details?: ApiMakeOption | null;     // present for MAKE
-  // optional helpers from engine:
-  unitCost?: number | null;           // BUY price
-  totalCostPerBatch?: number | null;  // BUY: amount*unitCost; MAKE: cogm*amount
-  childScenario?: string;             // MAKE child scenario label
+  details?: ApiMakeOption | null;
+  unitCost?: number | null;
+  totalCostPerBatch?: number | null;
+  childScenario?: string;
 };
 
 type ApiMakeOption = {
@@ -38,22 +37,31 @@ type ApiMakeOption = {
 
 export default function BestScenarioSankey({
   best,
-  height = 520,         // acts as a MIN height now
-  priceMode,            // optional, only shown in hover if passed
+  height = 520,
+  priceMode,
 }: {
   best: ApiMakeOption | null | undefined;
   height?: number;
   priceMode?: PriceMode;
 }) {
-  const data = useMemo(() => {
+  const result = useMemo(() => {
     if (!best) return null;
 
+
+    const ALPHA = 0.5;
+    const THICK_PX = 20;
+    const GAP_PX = 15;
+    const TOP_PAD_PX = 24;
+    const BOT_PAD_PX = 24;
+    const X_PAD = 0.06;
+    const EXTRA_DRAG_BUFFER_PX = 80;
+
     const palette = {
-      root:   "#2563eb",
-      make:   "#3b82f6",
-      buy:    "#f97316",
+      root: "#2563eb",
+      make: "#3b82f6",
+      buy: "#f97316",
       border: "#0f172a",
-      linkBuy:  "rgba(249,115,22,0.45)",
+      linkBuy: "rgba(249,115,22,0.45)",
       linkMake: "rgba(59,130,246,0.45)",
     };
 
@@ -61,14 +69,16 @@ export default function BestScenarioSankey({
     const nodeLabels: string[] = [];
     const nodeColors: string[] = [];
     const nodeHover: string[] = [];
+    const nodeDepth: number[] = [];
 
     const links = {
       source: [] as number[],
       target: [] as number[],
-      value:  [] as number[],
-      color:  [] as string[],
-      hover:  [] as string[],
-      label:  [] as string[],
+      value: [] as number[],
+      color: [] as string[],
+      hover: [] as string[],
+      label: [] as string[],
+      rawCostPerDay: [] as number[],
     };
 
     const fmt = (n: number) =>
@@ -76,13 +86,20 @@ export default function BestScenarioSankey({
     const money = (n: number) =>
       Number.isFinite(n) ? `$${n.toLocaleString(undefined, { maximumFractionDigits: 2 })}` : "n/a";
 
-    const ensureNode = (id: string, label: string, color: string, hover: string) => {
+    const ensureNode = (
+      id: string,
+      label: string,
+      color: string,
+      hover: string,
+      depth: number
+    ) => {
       if (nodeIndexById.has(id)) return nodeIndexById.get(id)!;
       const idx = nodeLabels.length;
       nodeIndexById.set(id, idx);
       nodeLabels.push(label);
       nodeColors.push(color);
       nodeHover.push(hover);
+      nodeDepth.push(Math.max(0, depth | 0));
       return idx;
     };
 
@@ -90,21 +107,22 @@ export default function BestScenarioSankey({
       fromIdx: number,
       toIdx: number,
       label: string,
-      v: number,
+      costPerDay: number,
       color: string,
       hover: string
     ) => {
-      if (!(Number.isFinite(v) && v > 0)) return;
+      const v = Number.isFinite(costPerDay) && costPerDay > 0 ? Math.pow(costPerDay, ALPHA) : 0;
+      if (!(v > 0)) return;
       links.source.push(fromIdx);
       links.target.push(toIdx);
       links.value.push(v);
+      links.rawCostPerDay.push(costPerDay);
       links.color.push(color);
       links.hover.push(hover);
       links.label.push(label);
     };
 
-    // Root node (the parent stage)
-    const rootId = `STAGE::${best.recipeId || best.ticker}`;
+    const rootId = `STAGE::${best.recipeId || best.ticker}::0`;
     const rootHover = [
       `<b>${best.ticker}</b>`,
       best.scenario ? `Scenario: ${best.scenario}` : null,
@@ -116,12 +134,10 @@ export default function BestScenarioSankey({
       `Area/day (full): ${fmt(best.fullSelfAreaPerDay)}`,
       best.roiNarrowDays != null ? `ROI (narrow): ${fmt(best.roiNarrowDays)} days` : null,
       best.inputBuffer7 != null ? `Input buffer (7d): ${money(best.inputBuffer7)}` : null,
-      `<i>Flow metric: Cost/day</i>`,
-    ].filter(Boolean).join("<br/>");
+      `<i>Flow metric: Cost/day (width ∝ (cost/day)^${ALPHA})</i>`,
+    ].filter(Boolean).join("<br>");
+    const rootIdx = ensureNode(rootId, best.ticker, palette.root, rootHover, 0);
 
-    const rootIdx = ensureNode(rootId, best.ticker, palette.root, rootHover);
-
-    // Recursive traversal (expands MAKE children, keeps flow = Cost/day)
     const visited = new Set<string>();
     const MAX_DEPTH = 8;
 
@@ -136,36 +152,34 @@ export default function BestScenarioSankey({
       for (const inp of inputs) {
         const amount = Number(inp.amountNeeded ?? 0);
 
-        // BUY edge: cost/day = totalCostPerBatch * stageRunsPerDay
         if (!inp.details) {
           const batchCost = Number(inp.totalCostPerBatch ?? 0);
-          const costPerDay = batchCost * stageRunsPerDay;
+          const costPerDay = Math.max(0, batchCost * stageRunsPerDay);
 
-          const buyNodeId = `BUY::${(stage.recipeId || stage.ticker)}::${inp.ticker}`;
+          const buyNodeId = `BUY::${stage.recipeId || stage.ticker}::${inp.ticker}::${depth + 1}`;
           const buyHover = [
             `<b>Buy ${inp.ticker}</b>`,
             inp.unitCost != null ? `Unit price: ${money(inp.unitCost)}` : null,
             `Total cost/day: ${money(costPerDay)}`,
             `<i>Flow metric: Cost/day</i>`,
-          ].filter(Boolean).join("<br/>");
+          ].filter(Boolean).join("<br>");
 
-          const buyIdx = ensureNode(buyNodeId, `Buy ${inp.ticker}`, palette.buy, buyHover);
+          const buyIdx = ensureNode(buyNodeId, `Buy ${inp.ticker}`, palette.buy, buyHover, depth + 1);
 
           const linkHover = [
             `<b>${stage.ticker} → Buy ${inp.ticker}</b>`,
             `Cost/day: ${money(costPerDay)}`,
-          ].join("<br/>");
+          ].join("<br>");
 
           addLink(stageIdx, buyIdx, `Buy ${inp.ticker}`, costPerDay, palette.linkBuy, linkHover);
           continue;
         }
 
-        // MAKE edge: cost/day = cogmPerOutput * amountNeeded * stageRunsPerDay
         const child = inp.details;
-        const cogm  = Number(child.cogmPerOutput ?? 0);
-        const costPerDay = cogm * amount * stageRunsPerDay;
+        const cogm = Number(child.cogmPerOutput ?? 0);
+        const costPerDay = Math.max(0, cogm * amount * stageRunsPerDay);
 
-        const childId = `STAGE::${child.recipeId || child.ticker}`;
+        const childId = `STAGE::${child.recipeId || child.ticker}::${depth + 1}`;
         const childHover = [
           `<b>Make ${child.recipeId || child.ticker}</b>`,
           inp.childScenario ? `Child scenario: ${inp.childScenario}` : null,
@@ -175,48 +189,161 @@ export default function BestScenarioSankey({
           child.roiNarrowDays != null ? `ROI (narrow): ${fmt(child.roiNarrowDays)} days` : null,
           child.inputBuffer7 != null ? `Input buffer (7d): ${money(child.inputBuffer7)}` : null,
           `<i>Flow metric: Cost/day</i>`,
-        ].filter(Boolean).join("<br/>");
+        ].filter(Boolean).join("<br>");
 
-        const childIdx = ensureNode(childId, `Make ${child.recipeId || child.ticker}`, palette.make, childHover);
+        const childIdx = ensureNode(
+          childId,
+          `Make ${child.recipeId || child.ticker}`,
+          palette.make,
+          childHover,
+          depth + 1
+        );
 
         const linkHover = [
           `<b>${stage.ticker} → Make ${child.recipeId || child.ticker}</b>`,
           `COGM/day: ${money(costPerDay)}`,
-        ].join("<br/>");
+        ].join("<br>");
 
         addLink(stageIdx, childIdx, `Make ${child.recipeId || child.ticker}`, costPerDay, palette.linkMake, linkHover);
 
-        // Recurse: how many runs/day does the child need to satisfy parent's demand?
         const childOut = Number(child.output1Amount || 0);
         const childRunsPerDayNeeded = childOut > 0 ? (amount * stageRunsPerDay) / childOut : 0;
-
-        // Continue expanding into the child's inputs
         traverse(child, childIdx, childRunsPerDayNeeded, depth + 1);
       }
     }
 
-    // Start from root at its own runs/day
     traverse(best, rootIdx, best.runsPerDay || 0, 0);
+
+
+    const N = nodeLabels.length;
+
+    const maxDepth = Math.max(0, ...nodeDepth);
+    const cols: number[][] = Array.from({ length: maxDepth + 1 }, () => []);
+    for (let i = 0; i < N; i++) cols[nodeDepth[i]].push(i);
+
+    const inCost = new Array<number>(N).fill(0);
+    const parentNode = new Array<number>(N).fill(-1);
+    for (let i = 0; i < links.source.length; i++) {
+      const s = links.source[i];
+      const t = links.target[i];
+      const v = links.rawCostPerDay[i] ?? 0;
+      if (Number.isFinite(t)) {
+        inCost[t] += v;
+        // Record parent only if not set, or if this is a stronger connection
+        if (parentNode[t] === -1 || (inCost[t] > 0 && v > inCost[t] * 0.5)) {
+          parentNode[t] = s;
+        }
+      }
+    }
+
+
+    const isBuyNode = (idx: number) => (nodeLabels[idx] || "").startsWith("Buy ");
+    
+    // Calculate position of each node within its column for parent ordering
+    const nodePositionInColumn = new Array<number>(N).fill(0);
+    for (let d = 0; d <= maxDepth; d++) {
+      cols[d].forEach((idx, pos) => {
+        nodePositionInColumn[idx] = pos;
+      });
+    }
+
+    for (const column of cols) {
+      column.sort((a, b) => {
+        // Priority 1: Group by parent's position in previous column
+        const aParent = parentNode[a];
+        const bParent = parentNode[b];
+        if (aParent !== bParent && aParent !== -1 && bParent !== -1) {
+          const aParentPos = nodePositionInColumn[aParent] ?? 0;
+          const bParentPos = nodePositionInColumn[bParent] ?? 0;
+          if (aParentPos !== bParentPos) return aParentPos - bParentPos;
+        }
+        
+        // Priority 2: Within same parent, MAKE before BUY
+        const aBuy = isBuyNode(a),
+          bBuy = isBuyNode(b);
+        if (aBuy !== bBuy) return aBuy ? 1 : -1;
+        
+        // Priority 3: Within same parent and type, sort by cost
+        const delta = (inCost[b] || 0) - (inCost[a] || 0);
+        if (delta !== 0) return delta;
+        
+        // Priority 4: Stable sort
+        return a - b;
+      });
+      
+      // Update positions after sorting this column
+      column.forEach((idx, pos) => {
+        nodePositionInColumn[idx] = pos;
+      });
+    }
+
+
+    const densest = Math.max(1, ...cols.map((c) => c.length || 0));
+
+    const spaceNeededForDensest = densest * THICK_PX + (densest - 1) * GAP_PX + densest * GAP_PX;
+
+    const dynamicHeight = Math.max(
+      height,
+      Math.min(2200, Math.round(TOP_PAD_PX + BOT_PAD_PX + spaceNeededForDensest + EXTRA_DRAG_BUFFER_PX))
+    );
+
+    const tn = THICK_PX / dynamicHeight;
+    const gapN = GAP_PX / dynamicHeight;
+    const topN = TOP_PAD_PX / dynamicHeight;
+    const botN = BOT_PAD_PX / dynamicHeight;
+
+    const left = X_PAD,
+      right = 1 - X_PAD;
+    const totalSpan = Math.max(0.05, right - left);
+    const step = maxDepth > 0 ? totalSpan / maxDepth : 0;
+
+    const nodeX = new Array<number>(N).fill(0);
+    const nodeY = new Array<number>(N).fill(0);
+
+    for (let d = 0; d <= maxDepth; d++) {
+      const column = cols[d];
+      if (!column.length) continue;
+
+      const x = maxDepth > 0 ? left + d * step : 0.5;
+
+      let currentY = topN;
+
+      column.forEach((idx, i) => {
+        nodeX[idx] = x;
+        nodeY[idx] = currentY;
+
+        currentY += tn + gapN;
+      });
+    }
 
     return {
       data: [
         {
           type: "sankey",
+
           arrangement: "snap",
+          uirevision: "keep",
           node: {
-            pad: 20,
-            thickness: 20,
+            pad: GAP_PX,
+            thickness: THICK_PX,
+
             line: { color: palette.border, width: 1 },
             label: nodeLabels,
             color: nodeColors,
             hovertemplate: "%{customdata}<extra></extra>",
             customdata: nodeHover,
+
+            x: nodeX,
+            y: nodeY,
+
           },
           link: {
             source: links.source,
             target: links.target,
+
             value: links.value,
             color: links.color,
+
             hovertemplate: "%{customdata}<extra></extra>",
             customdata: links.hover,
             label: links.label,
@@ -227,66 +354,11 @@ export default function BestScenarioSankey({
         margin: { l: 12, r: 12, t: 24, b: 12 },
         font: { size: 12 },
         hovermode: "closest",
+        height: dynamicHeight,
       },
     };
-  }, [best, priceMode]);
+  }, [best, priceMode, height]);
 
-  // ---------- Dynamic height calculation ----------
-  const dynamicHeight = useMemo(() => {
-    if (!data) return height;
-
-    const sankey = (data.data && data.data[0]) || ({} as any);
-    const nodeThickness = sankey?.node?.thickness ?? 20;
-    const nodePad = sankey?.node?.pad ?? 8;
-
-    // count the maximum nodes in any column (level)
-    const maxPerColumn = (() => {
-      const n = sankey?.node?.label?.length ?? 0;
-      if (!n) return 1;
-      const src: number[] = sankey.link?.source ?? [];
-      const tgt: number[] = sankey.link?.target ?? [];
-
-      // Build adjacency + indegree
-      const adj = Array.from({ length: n }, () => [] as number[]);
-      const indeg = Array(n).fill(0);
-      for (let i = 0; i < src.length; i++) {
-        const s = src[i] ?? 0;
-        const t = tgt[i] ?? 0;
-        adj[s]?.push(t);
-        indeg[t] = (indeg[t] ?? 0) + 1;
-      }
-
-      // BFS-ish levels from roots
-      const level = Array(n).fill(0);
-      const q: number[] = [];
-      for (let i = 0; i < n; i++) if (indeg[i] === 0) q.push(i);
-
-      while (q.length) {
-        const u = q.shift()!;
-        for (const v of adj[u]) {
-          if (level[v] <= level[u]) level[v] = level[u] + 1;
-          q.push(v);
-        }
-      }
-
-      // Count nodes per level
-      const counts: Record<number, number> = {};
-      for (const l of level) counts[l] = (counts[l] ?? 0) + 1;
-      return Math.max(...Object.values(counts));
-    })();
-
-    // height ≈ sum of all nodes in the densest column + pads + some buffer
-    const topBottomMargin = 200;
-    const extraDragBuffer = 200; // extra room to “move stuff around”
-    const estimated =
-      topBottomMargin + maxPerColumn * (nodeThickness + nodePad) + extraDragBuffer;
-
-    // clamp + ensure at least the provided height
-    const MIN = Math.max(520, height);
-    const MAX = 1600;
-    return Math.max(MIN, Math.min(MAX, Math.round(estimated)));
-  }, [data, height]);
-
-  if (!best) return null;
-  return <PlotlySankey data={data!.data} layout={{ ...data!.layout, height: dynamicHeight }} />;
+  if (!result || !best) return null;
+  return <PlotlySankey data={result.data} layout={result.layout} />;
 }
