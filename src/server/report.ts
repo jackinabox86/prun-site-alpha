@@ -33,7 +33,7 @@ export async function buildReport(opts: {
       bestPA: null,
       bestScenario: "",
       best: null,
-      top5: [],
+      top20: [],
     };
   }
 
@@ -70,8 +70,8 @@ export async function buildReport(opts: {
     bestRows.push(["Input Payback (7d buffer) [days]:", ip.days ?? "n/a"]);
   }
 
-  // Top 5 summary: include ROI only (no rows here)
-  const top5: Array<WithMetrics<typeof ranked[number]["o"]>> = ranked.slice(0, 5).map(({ o, r }) => {
+  // Top 20 summary: include ROI only (no rows here)
+  const top20: Array<WithMetrics<typeof ranked[number]["o"]>> = ranked.slice(0, 20).map(({ o, r }) => {
     const roi = computeRoiNarrow(o);
     return {
       ...o,
@@ -89,6 +89,6 @@ export async function buildReport(opts: {
     bestPA: best.r.subtreeProfitPerArea ?? null,
     bestScenario: best.o.scenario ?? "",
     best: includeRows ? { ...bestRaw, rows: bestRows } : bestRaw,
-    top5,
+    top20,
   };
 }
