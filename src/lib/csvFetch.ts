@@ -3,7 +3,7 @@ import { readFileSync } from "fs";
 import { join } from "path";
 
 export async function fetchCsv(pathOrUrl: string): Promise<Array<Record<string, any>>> {
-  let text: string;
+  let text: string | undefined;
 
   // If it's a local path, read from filesystem
   if (!pathOrUrl.startsWith("http")) {
@@ -14,11 +14,9 @@ export async function fetchCsv(pathOrUrl: string): Promise<Array<Record<string, 
       join("/var/task", pathOrUrl),             // Vercel: absolute from task root
     ];
 
-    let foundPath: string | null = null;
     for (const path of possiblePaths) {
       try {
         text = readFileSync(path, "utf-8");
-        foundPath = path;
         break;
       } catch (err) {
         // Try next path
@@ -26,7 +24,7 @@ export async function fetchCsv(pathOrUrl: string): Promise<Array<Record<string, 
       }
     }
 
-    if (!foundPath) {
+    if (!text) {
       throw new Error(`Could not find CSV file at any of these locations: ${possiblePaths.join(", ")}`);
     }
   } else {
