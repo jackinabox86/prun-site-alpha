@@ -2,7 +2,7 @@ import { parse } from "csv-parse/sync";
 
 export async function fetchCsv(url: string): Promise<Array<Record<string, any>>> {
   try {
-    const res = await fetch(url, { next: { revalidate: 300 } });
+    const res = await fetch(url, { cache: 'no-store' });
     if (!res.ok) throw new Error(`CSV fetch failed: ${res.status} ${res.statusText} for URL: ${url}`);
     const text = await res.text();
     const rows: string[][] = parse(text, { skip_empty_lines: true });
