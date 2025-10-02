@@ -84,21 +84,39 @@ export default function ReportClient() {
       : "n/a";
 
   return (
-    <main style={{ padding: 24 }}>
-      <h1>Report (live Sheets)</h1>
+    <main style={{ padding: "24px 0", maxWidth: "100%" }}>
+      <div style={{ padding: "0 24px" }}>
+        <h2>PrUn Ticker Analysis - Best Profit Per Area Production Scenario</h2>
+                    <p style={{ margin: "8px 0 16px", color: "#555", maxWidth: 900 }}>
+                      This tool determines and displays the highest profit per area production scenario for the selected ticker.
+                      A production scenario is the buy/make decision for each input in a ticker's production chain.
+                      This model uses FIO data (refreshed hourly) for its calculations on optimal buy/make decisions.
+                      Importantly, it also displays the same profit per area metric for each made input independently to avoid unintended opportunity costs.
+                    </p>
+                    <p style={{ margin: "8px 0 16px", color: "#555", maxWidth: 900 }}>
+                      Below the main analysis is a ranked table of other profitable production scenarios for the selected ticker, which can be expanded if desired for full analysis.
+                      Future versions of this tool may allow input-level buy make selections, but that is not yet implemented.
+                    </p><p style={{ margin: "8px 0 16px", color: "#555", maxWidth: 900 }}>
+                      Each ticker on the sankey chain has a node and tooltip with additional info on its profitability.
+                      The flows between nodes are sized according to the relative proportion of an inputs value to the parent's total cost;
+                      tickers with broader flows can be prioritized when optimizing for profitability.
+                      Full credit to Taiyi for the Sankey inspiration.
+                    </p>
+      </div>
 
       {/* Controls */}
-      <div
-        style={{
-          display: "grid",
-          gap: 12,
-          gridTemplateColumns: "1fr auto auto auto auto",
-          alignItems: "end",
-          maxWidth: 900,
-        }}
-      >
+      <div style={{ padding: "0 24px" }}>
+        <div
+          style={{
+            display: "grid",
+            gap: 12,
+            gridTemplateColumns: "1fr auto auto",
+            alignItems: "end",
+            maxWidth: 900,
+          }}
+        >
         <div>
-          <label style={{ display: "block", fontSize: 12, color: "#666", marginBottom: 4 }}>
+          <label style={{ display: "block", fontSize: 14, marginBottom: 4 }}>
             Ticker
           </label>
           <input
@@ -106,7 +124,7 @@ export default function ReportClient() {
             value={tickerInput}
             onChange={(e) => setTickerInput(e.target.value)}
             placeholder="Type a ticker (e.g., PCB)"
-            style={{ width: "100%", padding: "8px 10px" }}
+            style={{ width: "100%", padding: "8px 10px", fontWeight: 600 }}
           />
           <datalist id="ticker-list">
             {filteredTickers.map((t) => (
@@ -116,13 +134,13 @@ export default function ReportClient() {
         </div>
 
         <div>
-          <label style={{ display: "block", fontSize: 12, color: "#666", marginBottom: 4 }}>
+          <label style={{ display: "block", fontSize: 14,  marginBottom: 4 }}>
             Price Mode
           </label>
           <select
             value={priceMode}
             onChange={(e) => setPriceMode(e.target.value as PriceMode)}
-            style={{ padding: "8px 10px" }}
+            style={{ padding: "8px 10px", fontWeight: 600 }}
           >
             <option value="bid">bid</option>
             <option value="ask">ask</option>
@@ -131,24 +149,6 @@ export default function ReportClient() {
           </select>
         </div>
 
-        <label style={{ display: "flex", gap: 8, alignItems: "center" }}>
-          <input
-            type="checkbox"
-            checked={expand}
-            onChange={(e) => setExpand(e.target.checked)}
-          />
-          Expand children
-        </label>
-
-        <label style={{ display: "flex", gap: 8, alignItems: "center" }}>
-          <input
-            type="checkbox"
-            checked={includeRows}
-            onChange={(e) => setIncludeRows(e.target.checked)}
-          />
-          Include rows
-        </label>
-
         <button
           onClick={run}
           disabled={loading || !tickerInput.trim()}
@@ -156,75 +156,60 @@ export default function ReportClient() {
         >
           {loading ? "Running..." : "Run"}
         </button>
+        </div>
       </div>
 
       {/* Summary */}
-      {error && (
-        <p style={{ marginTop: 12, color: "#b00" }}>
-          Error: {error}
-        </p>
-      )}
-
-      {report && (
-        <>
-          <p style={{ marginTop: 12 }}>
-            <strong>Ticker:</strong> {report.ticker} &nbsp; | &nbsp;
-            <strong>Mode:</strong> {report.priceMode} &nbsp; | &nbsp;
-            <strong>Total Options:</strong> {report.totalOptions} &nbsp; | &nbsp;
-            <strong>Best P/A:</strong>{" "}
-            {report.bestPA != null ? Number(report.bestPA).toFixed(6) : "n/a"}
+      <div style={{ padding: "0 24px" }}>
+        {error && (
+          <p style={{ marginTop: 12, color: "#b00" }}>
+            Error: {error}
           </p>
+        )}
 
-          {/* Results */}
-          {report && !error && (
-            <>
-              {report.best ? (
-                <section style={{ marginTop: 32 }}>
-                  <h2>Best Scenario Sankey</h2>
-                  <p style={{ margin: "8px 0 16px", color: "#555", maxWidth: 760 }}>
-                    Visualizes the best-performing production chain. Each link width represents
-                    units consumed per day; hover nodes or links for profit, area, and sourcing
-                    context.
-                  </p>
+        {report && (
+          <>
+            {/* Results */}
+            {report && !error && (
+              <>
+                {report.best ? (
+                  <section style={{ marginTop: 10 }}>
 
-                  {/* Summary Box - duplicates parent node hover info */}
-                  <div
-                    style={{
-                      backgroundColor: "#f8f9fa",
-                      border: "1px solid #dee2e6",
-                      borderRadius: 6,
-                      padding: 16,
-                      marginBottom: 16,
-                      maxWidth: 760,
-                    }}
-                  >
-                    <h3 style={{ margin: "0 0 12px 0", fontSize: 20, fontWeight: 600 }}>
-                      {report.best.ticker}
-                      {report.best.totalProfitPA != null
-                        ? ` - ₳${report.best.totalProfitPA.toFixed(1).replace(/\.0$/, "")}`
-                        : ""}
-                    </h3>
+                    {/* Summary Box */}
+                    <div
+                      style={{
+                        backgroundColor: "#f8f9fa",
+                        border: "1px solid #dee2e6",
+                        borderRadius: 6,
+                        padding: 16,
+                        marginBottom: 10,
+                        maxWidth: 867,
+                      }}
+                    >
+                                        <p style={{ margin: "0 0 12px 0", fontSize: 18 }}>
+                      <strong>Best P/A:</strong>{" "}
+                      {report.bestPA != null ? Number(report.bestPA).toFixed(6) : "n/a"}  &nbsp; | &nbsp;
+                      <strong>Mode:</strong> {report.priceMode}                       
+                    </p>
                     <div style={{ display: "grid", gap: 6, fontSize: 14 }}>
                       {report.best.scenario && (
                         <div>
                           <strong>Scenario:</strong> {scenarioDisplayName(report.best.scenario)}
                         </div>
                       )}
-                                            <div>
-                        <strong>Runs/day:</strong> {report.best.runsPerDay != null && Number.isFinite(report.best.runsPerDay)
-                          ? report.best.runsPerDay.toFixed(1).replace(/\.0$/, "")
-                          : "n/a"}
-                      </div>
+                      
 
                       <div>
                         <strong>Base profit/day:</strong> {money(report.best.baseProfitPerDay)}
                       </div>
                       <div>
-                        <strong>Adj. profit/day:</strong> {money(report.best.profitPerDay)}
-                      </div>
-                      <div>
                         <strong>Total Area/Day:</strong> {report.best.totalAreaPerDay != null && Number.isFinite(report.best.totalAreaPerDay)
                           ? report.best.totalAreaPerDay.toFixed(1).replace(/\.0$/, "")
+                          : "n/a"}
+                      </div>
+                      <div>
+                        <strong>Runs/day:</strong> {report.best.runsPerDay != null && Number.isFinite(report.best.runsPerDay)
+                          ? report.best.runsPerDay.toFixed(1).replace(/\.0$/, "")
                           : "n/a"}
                       </div>
                       {report.best.roiNarrowDays != null && (
@@ -246,53 +231,46 @@ export default function ReportClient() {
                       )}
                     </div>
                   </div>
-
-                  <div style={{ position: "relative", marginBottom: 32 }}>
-                    <BestScenarioSankey best={report.best} priceMode={report.priceMode} />
-                  </div>
                 </section>
               ) : (
                 <p style={{ marginTop: 32 }}>No best scenario available for this ticker.</p>
               )}
-
-              <section style={{ marginTop: 32, position: "relative" }}>
-                <h2>Top 5 Options</h2>
-                <p style={{ margin: "8px 0 16px", color: "#555", maxWidth: 760 }}>
-                  Comparison of the top 5 production scenarios ranked by profit per area.
-                </p>
-                <Top5Table options={report.top5} priceMode={report.priceMode} />
-              </section>
-
-              <section style={{ marginTop: 32 }}>
-                <details>
-                  <summary style={{ cursor: "pointer", fontWeight: 600 }}>
-                    Inspect raw best scenario data
-                  </summary>
-                  <pre style={{ whiteSpace: "pre-wrap", marginTop: 12 }}>
-                    {JSON.stringify(report.best, null, 2)}
-                  </pre>
-                </details>
-              </section>
-
-              <section style={{ marginTop: 32 }}>
-                <details>
-                  <summary style={{ cursor: "pointer", fontWeight: 600 }}>
-                    View top 5 options (JSON)
-                  </summary>
-                  <pre style={{ whiteSpace: "pre-wrap", marginTop: 12 }}>
-                    {JSON.stringify(report.top5, null, 2)}
-                  </pre>
-                </details>
-              </section>
-
-              <p style={{ marginTop: 24, color: "#666" }}>
-                Tip: try <code>?ticker=XYZ&amp;mode=pp7</code> or toggle <strong>Expand children</strong> to
-                include child rows in the best option.
-              </p>
             </>
           )}
         </>
       )}
+      </div>
+
+      {/* Sankey Chart - Full Width */}
+      {report && !error && report.best && (
+        <div style={{
+          margin: "10px 0",
+          padding: "0 20px",
+          position: "relative",
+          isolation: "isolate",
+          zIndex: 1
+        }}>
+          <BestScenarioSankey best={report.best} priceMode={report.priceMode} />
+        </div>
+      )}
+
+      <div style={{ padding: "0 24px" }}>
+        {report && !error && (
+          <section style={{
+            marginTop: 10,
+            position: "relative",
+            isolation: "isolate",
+            zIndex: 2,
+            paddingTop: "0px"
+          }}>
+            <h2>Top 5 Options</h2>
+            <p style={{ margin: "8px 0 16px", color: "#555", maxWidth: 760 }}>
+              List of top other production scenarios ranked by profit per area.
+            </p>
+            <Top5Table options={report.top5} priceMode={report.priceMode} />
+          </section>
+        )}
+      </div>
     </main>
   );
 }

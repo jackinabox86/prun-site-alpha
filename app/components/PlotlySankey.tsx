@@ -24,13 +24,21 @@ export default function PlotlySankey({ data, layout, className, height }: Plotly
   }, [layout, height]);
 
   return (
-    <Plot
-      data={data}
-      layout={finalLayout}
-      className={className}
-      style={{ width: "100%", ...(height != null ? { height } : {}) }}
-      useResizeHandler
-      config={{ displayModeBar: false, responsive: true }}
-    />
+    <div style={{
+      width: "100%",
+      height: height ? `${height}px` : "auto",
+      overflow: "hidden",
+      position: "relative",
+      isolation: "isolate"
+    }}>
+      <Plot
+        data={data}
+        layout={finalLayout}
+        className={className}
+        style={{ width: "100%", ...(height != null ? { height } : {}) }}
+        useResizeHandler
+        config={{ displayModeBar: false, responsive: true, staticPlot: false }}
+      />
+    </div>
   );
 }

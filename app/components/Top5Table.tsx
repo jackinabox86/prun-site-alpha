@@ -1,8 +1,7 @@
 // app/components/Top5Table.tsx
 "use client";
 
-import React, { useMemo, useState } from "react";
-import PlotlyTable from "./PlotlyTable";
+import React, { useState } from "react";
 import { scenarioDisplayName } from "@/core/scenario";
 import BestScenarioSankey from "./BestScenarioSankey";
 
@@ -18,89 +17,6 @@ type Top5Option = {
 
 export default function Top5Table({ options, priceMode }: { options: Top5Option[]; priceMode?: string }) {
   const [expandedRows, setExpandedRows] = useState<Set<number>>(new Set());
-  const tableData = useMemo(() => {
-    // Helper formatting functions
-    const fmt = (n: number | null | undefined) =>
-      n != null && Number.isFinite(n)
-        ? Math.abs(n) >= 1000
-          ? n.toLocaleString(undefined, { maximumFractionDigits: 1 })
-          : n.toFixed(1)
-        : "n/a";
-
-    const money = (n: number | null | undefined) =>
-      n != null && Number.isFinite(n)
-        ? `₳${Math.round(n).toLocaleString()}`
-        : "n/a";
-
-    // Extract and format data for each column
-    const tickers = options.map((o) => o.ticker);
-    const recipeIds = options.map((o) => o.recipeId || "—");
-    const scenarios = options.map((o) => o.scenario ? scenarioDisplayName(o.scenario) : "—");
-    const baseProfits = options.map((o) => money(o.baseProfitPerDay));
-    const totalAreas = options.map((o) => fmt(o.totalAreaPerDay));
-    const rois = options.map((o) =>
-      o.roiNarrowDays != null ? `${fmt(o.roiNarrowDays)} days` : "n/a"
-    );
-    const profitPAs = options.map((o) => o.totalProfitPA != null && Number.isFinite(o.totalProfitPA) ? `₳${fmt(o.totalProfitPA)}` : "n/a");
-
-    return {
-      data: [
-        {
-          type: "table",
-          header: {
-            values: [
-              ["Ticker"],
-              ["Recipe ID"],
-              ["Scenario"],
-              ["Base Profit/Day"],
-              ["Total Area/Day"],
-              ["ROI (narrow)"],
-              ["Profit P/A"],
-            ],
-            align: "center",
-            line: { width: 1, color: "#dee2e6" },
-            fill: { color: "#2563eb" },
-            font: {
-              family:
-                "-apple-system, BlinkMacSystemFont, Segoe UI, Roboto, Helvetica Neue, Arial, sans-serif",
-              size: 13,
-              color: "white",
-            },
-            height: 32,
-          },
-          cells: {
-            values: [
-              tickers,
-              recipeIds,
-              scenarios,
-              baseProfits,
-              totalAreas,
-              rois,
-              profitPAs,
-            ],
-            align: "center",
-            line: { color: "#dee2e6", width: 1 },
-            fill: {
-              color: [
-                options.map((_, i) => (i % 2 === 0 ? "#ffffff" : "#f8f9fa")),
-              ],
-            },
-            font: {
-              family:
-                "-apple-system, BlinkMacSystemFont, Segoe UI, Roboto, Helvetica Neue, Arial, sans-serif",
-              size: 13,
-              color: "#212529",
-            },
-            height: 28,
-          },
-        } as any,
-      ],
-      layout: {
-        margin: { l: 0, r: 0, t: 0, b: 0 },
-        paper_bgcolor: "transparent",
-      },
-    };
-  }, [options]);
 
   if (!options || options.length === 0) return null;
 
@@ -131,12 +47,7 @@ export default function Top5Table({ options, priceMode }: { options: Top5Option[
 
   return (
     <>
-      <div style={{ position: "relative", zIndex: 1, marginBottom: 60, overflow: "hidden" }}>
-        <PlotlyTable data={tableData.data} layout={tableData.layout} />
-      </div>
-
-      <div style={{ marginTop: 60, position: "relative", zIndex: 2, clear: "both" }}>
-        <h3 style={{ marginBottom: 16 }}>Interactive HTML Table (Expandable)</h3>
+      <div style={{ position: "relative", zIndex: 2, clear: "both" }}>
         <table style={{
           width: "100%",
           borderCollapse: "collapse",
@@ -196,9 +107,19 @@ export default function Top5Table({ options, priceMode }: { options: Top5Option[
                 </tr>
                 {expandedRows.has(index) && (
                   <tr>
-                    <td colSpan={8} style={{ padding: "16px", border: "1px solid #dee2e6", backgroundColor: "#f8f9fa" }}>
+                    <td colSpan={8} style={{
+                      padding: "16px",
+                      border: "1px solid #dee2e6",
+                      backgroundColor: "#f8f9fa"
+                    }}>
                       <h4 style={{ marginTop: 0, marginBottom: 12 }}>Sankey Chart for {option.ticker}</h4>
-                      <div style={{ maxHeight: "600px", overflowY: "auto", position: "relative", zIndex: 3 }}>
+                      <div style={{
+                        maxHeight: "600px",
+                        overflowY: "auto",
+                        position: "relative",
+                        isolation: "isolate",
+                        marginBottom: "20px"
+                      }}>
                         <BestScenarioSankey best={option as any} priceMode={priceMode as any} height={400} />
                       </div>
                     </td>
