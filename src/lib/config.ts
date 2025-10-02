@@ -1,5 +1,5 @@
 export const CSV_URLS = {
-  recipes: "data/recipes.csv",
-  prices:  "data/prices.csv",
-  best:    "data/best.csv",
+  recipes: "public/data/recipes.csv",
+  prices:  "public/data/prices.csv",
+  best:    "public/data/best.csv",
 };
