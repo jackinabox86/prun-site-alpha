@@ -54,7 +54,7 @@ export default function BestScenarioSankey({
     const GAP_PX = 15;
     const TOP_PAD_PX = 24;
     const BOT_PAD_PX = 24;
-    const X_PAD = 0.06;
+    const X_PAD = 0.01;
     const EXTRA_DRAG_BUFFER_PX = 80;
 
     const palette = {
@@ -348,8 +348,8 @@ export default function BestScenarioSankey({
         } as any,
       ],
       layout: {
-        margin: { l: 12, r: 12, t: 24, b: 12 },
-        font: { 
+        margin: { l: 2, r: 2, t: 24, b: 12 },
+        font: {
           size: 12,
           family: "-apple-system, BlinkMacSystemFont, Segoe UI, Roboto, Helvetica Neue, Arial, sans-serif"
         },
