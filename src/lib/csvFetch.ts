@@ -1,23 +1,33 @@
 import { parse } from "csv-parse/sync";
-import { readFileSync } from "fs";
-import { join } from "path";
 
-export async function fetchCsv(pathOrUrl: string): Promise<Array<Record<string, any>>> {
-  let text: string;
+// In-memory cache for serverless functions (persists across invocations in same container)
+const csvCache = new Map<string, Array<Record<string, any>>>();
 
-  // If it's a local path, read from filesystem
-  if (!pathOrUrl.startsWith("http")) {
-    const fullPath = join(process.cwd(), pathOrUrl);
-    text = readFileSync(fullPath, "utf-8");
-  } else {
-    // Otherwise fetch from URL
-    const res = await fetch(pathOrUrl, { next: { revalidate: 300 } });
-    if (!res.ok) throw new Error(`CSV fetch failed ${res.status}`);
-    text = await res.text();
+export async function fetchCsv(url: string): Promise<Array<Record<string, any>>> {
+  if (!url) {
+    throw new Error("CSV URL is empty. Please set BLOB_*_URL environment variables.");
   }
 
+  // Check cache first
+  if (csvCache.has(url)) {
+    return csvCache.get(url)!;
+  }
+
+  // Fetch from Vercel Blob (or any URL)
+  const res = await fetch(url, { cache: "no-store" });
+  if (!res.ok) {
+    throw new Error(`CSV fetch failed: ${res.status} ${res.statusText} for URL: ${url}`);
+  }
+
+  const text = await res.text();
   const rows: string[][] = parse(text, { skip_empty_lines: true });
   if (!rows.length) return [];
+
   const [headers, ...data] = rows;
-  return data.map(r => Object.fromEntries(headers.map((h, i) => [h, r[i]])));
+  const result = data.map(r => Object.fromEntries(headers.map((h, i) => [h, r[i]])));
+
+  // Cache the result
+  csvCache.set(url, result);
+
+  return result;
 }

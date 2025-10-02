@@ -3,6 +3,7 @@ import { loadAllFromCsv } from "@/lib/loadFromCsv";
 import { findAllMakeOptions, buildScenarioRows } from "@/core/engine";
 import { computeRoiNarrow } from "@/core/roi";
 import { computeInputPayback } from "@/core/inputPayback";
+import { CSV_URLS } from "@/lib/config";
 import type { PriceMode } from "@/types";
 
 type WithMetrics<T> = T & {
@@ -20,27 +21,7 @@ export async function buildReport(opts: {
 }) {
   const { ticker, priceMode, expand, includeRows = false } = opts;
 
-  const REC = process.env.CSV_RECIPES_URL;
-  const PRI = process.env.CSV_PRICES_URL;
-  const BST = process.env.CSV_BEST_URL;
-  if (!REC || !PRI || !BST) {
-    return {
-      schemaVersion: 3,
-      ok: false,
-      error: "Missing CSV_* env vars",
-      missing: {
-        CSV_RECIPES_URL: !!REC,
-        CSV_PRICES_URL: !!PRI,
-        CSV_BEST_URL: !!BST,
-      },
-    };
-  }
-
-  const { recipeMap, pricesMap, bestMap } = await loadAllFromCsv({
-    recipes: REC,
-    prices:  PRI,
-    best:    BST,
-  });
+  const { recipeMap, pricesMap, bestMap } = await loadAllFromCsv(CSV_URLS);
 
   const options = findAllMakeOptions(ticker, recipeMap, pricesMap, priceMode, bestMap);
   if (!options.length) {
