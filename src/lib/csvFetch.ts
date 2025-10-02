@@ -7,8 +7,28 @@ export async function fetchCsv(pathOrUrl: string): Promise<Array<Record<string, 
 
   // If it's a local path, read from filesystem
   if (!pathOrUrl.startsWith("http")) {
-    const fullPath = join(process.cwd(), pathOrUrl);
-    text = readFileSync(fullPath, "utf-8");
+    // Try multiple possible locations for the file
+    const possiblePaths = [
+      join(process.cwd(), pathOrUrl),           // Local dev: /workspaces/project/data/file.csv
+      join(__dirname, "..", "..", pathOrUrl),   // Vercel: relative to this file
+      join("/var/task", pathOrUrl),             // Vercel: absolute from task root
+    ];
+
+    let foundPath: string | null = null;
+    for (const path of possiblePaths) {
+      try {
+        text = readFileSync(path, "utf-8");
+        foundPath = path;
+        break;
+      } catch (err) {
+        // Try next path
+        continue;
+      }
+    }
+
+    if (!foundPath) {
+      throw new Error(`Could not find CSV file at any of these locations: ${possiblePaths.join(", ")}`);
+    }
   } else {
     // Otherwise fetch from URL
     const res = await fetch(pathOrUrl, { next: { revalidate: 300 } });
