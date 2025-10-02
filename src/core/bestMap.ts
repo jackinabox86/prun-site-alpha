@@ -1,11 +1,12 @@
 import type { BestMap } from "@/types";
 
 function normalizeScenarioText(s: string): string {
-  // collapse whitespace, normalize ", " and "[ ... ]" spacing
+  // collapse whitespace, normalize separators and "[ ... ]" spacing
   // also strip legacy "(for X)" patterns to support old CSV format during transition
   return s
     .replace(/\s+/g, " ")
-    .replace(/\s*,\s*/g, ", ")
+    .replace(/\s*,\s*/g, " | ")    // normalize old comma separators to pipe
+    .replace(/\s*\|\s*/g, " | ")   // normalize pipe separators
     .replace(/\s*\[\s*/g, " [")
     .replace(/\s*\]\s*/g, "]")
     .replace(/\s*\(for\s+[A-Z0-9_]+\)/gi, "") // strip "(for TICKER)" patterns

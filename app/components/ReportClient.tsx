@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import type { PriceMode } from "@/types";
 import BestScenarioSankey from "./BestScenarioSankey";
 import Top5Table from "./Top5Table";
+import { scenarioDisplayName } from "@/core/scenario";
 
 type ApiReport = {
   schemaVersion: number;
@@ -78,8 +79,8 @@ export default function ReportClient() {
       : "n/a";
   
   const money = (n: number | null | undefined) =>
-    n != null && Number.isFinite(n) 
-      ? `$${n.toLocaleString(undefined, { maximumFractionDigits: 2 })}` 
+    n != null && Number.isFinite(n)
+      ? `₳${n.toLocaleString(undefined, { maximumFractionDigits: 2 })}`
       : "n/a";
 
   return (
@@ -197,19 +198,24 @@ export default function ReportClient() {
                       maxWidth: 760,
                     }}
                   >
-                    <h3 style={{ margin: "0 0 12px 0", fontSize: 16, fontWeight: 600 }}>
+                    <h3 style={{ margin: "0 0 12px 0", fontSize: 20, fontWeight: 600 }}>
                       {report.best.ticker}
+                      {report.best.totalProfitPA != null
+                        ? ` - ₳${report.best.totalProfitPA.toFixed(1).replace(/\.0$/, "")}`
+                        : ""}
                     </h3>
                     <div style={{ display: "grid", gap: 6, fontSize: 14 }}>
                       {report.best.scenario && (
                         <div>
-                          <strong>Scenario:</strong> {report.best.scenario}
+                          <strong>Scenario:</strong> {scenarioDisplayName(report.best.scenario)}
                         </div>
                       )}
                                             <div>
-                        <strong>Runs/day:</strong> {fmt(report.best.runsPerDay)}
+                        <strong>Runs/day:</strong> {report.best.runsPerDay != null && Number.isFinite(report.best.runsPerDay)
+                          ? report.best.runsPerDay.toFixed(1).replace(/\.0$/, "")
+                          : "n/a"}
                       </div>
-                      
+
                       <div>
                         <strong>Base profit/day:</strong> {money(report.best.baseProfitPerDay)}
                       </div>
@@ -217,11 +223,15 @@ export default function ReportClient() {
                         <strong>Adj. profit/day:</strong> {money(report.best.profitPerDay)}
                       </div>
                       <div>
-                        <strong>Area/day (full):</strong> {fmt(report.best.fullSelfAreaPerDay)}
+                        <strong>Total Area/Day:</strong> {report.best.totalAreaPerDay != null && Number.isFinite(report.best.totalAreaPerDay)
+                          ? report.best.totalAreaPerDay.toFixed(1).replace(/\.0$/, "")
+                          : "n/a"}
                       </div>
                       {report.best.roiNarrowDays != null && (
                         <div>
-                          <strong>ROI (narrow):</strong> {fmt(report.best.roiNarrowDays)} days
+                          <strong>ROI (narrow):</strong> {Number.isFinite(report.best.roiNarrowDays)
+                            ? report.best.roiNarrowDays.toFixed(1).replace(/\.0$/, "")
+                            : "n/a"} days
                         </div>
                       )}
                       {report.best.inputBuffer7 != null && (
@@ -229,21 +239,28 @@ export default function ReportClient() {
                           <strong>Input buffer (7d):</strong> {money(report.best.inputBuffer7)}
                         </div>
                       )}
+                      {report.best.scenario && (
+                        <div style={{ marginTop: 8, fontStyle: "italic", fontSize: 14, color: "#666" }}>
+                          Full Scenario Name: {report.best.scenario}
+                        </div>
+                      )}
                     </div>
                   </div>
 
-                  <BestScenarioSankey best={report.best} priceMode={report.priceMode} />
+                  <div style={{ position: "relative", marginBottom: 32 }}>
+                    <BestScenarioSankey best={report.best} priceMode={report.priceMode} />
+                  </div>
                 </section>
               ) : (
                 <p style={{ marginTop: 32 }}>No best scenario available for this ticker.</p>
               )}
 
-              <section style={{ marginTop: 32 }}>
+              <section style={{ marginTop: 32, position: "relative" }}>
                 <h2>Top 5 Options</h2>
                 <p style={{ margin: "8px 0 16px", color: "#555", maxWidth: 760 }}>
                   Comparison of the top 5 production scenarios ranked by profit per area.
                 </p>
-                <Top5Table options={report.top5} />
+                <Top5Table options={report.top5} priceMode={report.priceMode} />
               </section>
 
               <section style={{ marginTop: 32 }}>

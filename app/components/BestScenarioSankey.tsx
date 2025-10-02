@@ -4,6 +4,7 @@
 import { useMemo } from "react";
 import PlotlySankey from "./PlotlySankey";
 import type { PriceMode } from "@/types";
+import { scenarioDisplayName } from "@/core/scenario";
 
 // ---- API shapes (must match your report output) ----
 type ApiMadeInputDetail = {
@@ -84,9 +85,13 @@ export default function BestScenarioSankey({
     const fmt = (n: number) =>
       Number.isFinite(n) ? (Math.abs(n) >= 1000 ? n.toLocaleString() : n.toFixed(3)) : "n/a";
     const money = (n: number) =>
-      Number.isFinite(n) ? `${n.toLocaleString(undefined, { maximumFractionDigits: 2 })}` : "n/a";
+      Number.isFinite(n) ? `₳${n.toLocaleString(undefined, { maximumFractionDigits: 2 })}` : "n/a";
     const fmtPA = (n: number) =>
       Number.isFinite(n) ? n.toFixed(1) : "n/a";
+    const fmtWholeNumber = (n: number) =>
+      Number.isFinite(n) ? Math.round(n).toLocaleString() : "n/a";
+    const fmtROI = (n: number) =>
+      Number.isFinite(n) ? n.toFixed(1).replace(/\.0$/, "") : "n/a";
 
     const ensureNode = (
       id: string,
@@ -126,14 +131,14 @@ export default function BestScenarioSankey({
 
     const rootId = `STAGE::${best.recipeId || best.ticker}::0`;
     const rootProfitPA = best.totalProfitPA ?? 0;
-    const rootLabel = `<b>${best.ticker}</b><br>[${fmtPA(rootProfitPA)} P/A]`;
+    const rootLabel = `<b>${best.ticker}</b><br>[₳${fmtPA(rootProfitPA)} P/A]`;
     const rootHover = [
       `<b>${best.ticker}</b>`,
-      `Profit/d: ${money(best.baseProfitPerDay)}`,
-      `Adj. Profit/d: ${money(best.profitPerDay)}`,
-      `Area/day (full): ${fmt(best.fullSelfAreaPerDay)}`,
-      best.roiNarrowDays != null ? `ROI (narrow): ${fmt(best.roiNarrowDays)} days` : null,
-      best.inputBuffer7 != null ? `Input buffer (7d): ${money(best.inputBuffer7)}` : null,      
+      `Profit/d: ${fmtWholeNumber(best.baseProfitPerDay)}`,
+      `Adj. Profit/d: ${fmtWholeNumber(best.profitPerDay)}`,
+      `Area/day (full): ${fmtROI(best.fullSelfAreaPerDay)}`,
+      best.roiNarrowDays != null ? `ROI (narrow): ${fmtROI(best.roiNarrowDays)} days` : null,
+      best.inputBuffer7 != null ? `Input buffer (7d): ${money(best.inputBuffer7)}` : null,
     ].filter(Boolean).join("<br>");
     const rootIdx = ensureNode(rootId, rootLabel, palette.root, rootHover, 0);
 
@@ -180,15 +185,15 @@ export default function BestScenarioSankey({
 
         const childId = `STAGE::${child.recipeId || child.ticker}::${depth + 1}`;
         const childProfitPA = child.totalProfitPA ?? 0;
-        const childLabel = `<b>Make ${child.recipeId || child.ticker}</b><br>[${fmtPA(childProfitPA)} P/A]`;
+        const childLabel = `<b>Make ${child.recipeId || child.ticker}</b><br>[₳${fmtPA(childProfitPA)} P/A]`;
         const childHover = [
           `<b>Make ${child.recipeId || child.ticker}</b>`,
-          inp.childScenario ? `Scen: ${inp.childScenario}` : null,
+          inp.childScenario ? `Scen: ${scenarioDisplayName(inp.childScenario)}` : null,
           `COGM/day: ${money(costPerDay)}`,
           `Base profit/day: ${money(child.baseProfitPerDay)}`,
           `Area/day (full): ${fmt(child.fullSelfAreaPerDay)}`,
           child.roiNarrowDays != null ? `ROI (narrow): ${fmt(child.roiNarrowDays)} days` : null,
-          child.inputBuffer7 != null ? `Input buffer (7d): ${money(child.inputBuffer7)}` : null,          
+          child.inputBuffer7 != null ? `Input buffer (7d): ${money(child.inputBuffer7)}` : null,
         ].filter(Boolean).join("<br>");
 
         const childIdx = ensureNode(
@@ -339,6 +344,7 @@ export default function BestScenarioSankey({
             customdata: links.hover,
             label: links.label,
           },
+          textfont: { size: 13 },
         } as any,
       ],
       layout: {
