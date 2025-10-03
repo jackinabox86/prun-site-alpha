@@ -84,9 +84,13 @@ export default function ReportClient() {
       : "n/a";
 
   return (
-    <main style={{ padding: "24px 0", maxWidth: "100%" }}>
+    <main style={{
+      padding: "24px 0",
+      maxWidth: "100%",
+      fontFamily: "-apple-system, BlinkMacSystemFont, Segoe UI, Roboto, Helvetica Neue, Arial, sans-serif"
+    }}>
       <div style={{ padding: "0 24px" }}>
-        <h2>PrUn Ticker Analysis - Best Profit Per Area Production Scenario</h2>
+        <h2 style={{ maxWidth: 900, margin: "0 0 16px", textAlign: "center" }}>PrUn Ticker Analysis - Best Profit Per Area Production Scenario</h2>
                     <p style={{ margin: "8px 0 16px", color: "#555", maxWidth: 900 }}>
                       This tool determines and displays the highest profit per area production scenario for the selected ticker.
                       A production scenario is the buy/make decision for each input in a ticker's production chain.
@@ -124,7 +128,7 @@ export default function ReportClient() {
             value={tickerInput}
             onChange={(e) => setTickerInput(e.target.value)}
             placeholder="Type a ticker (e.g., PCB)"
-            style={{ width: "100%", padding: "8px 10px", fontWeight: 600 }}
+            style={{ width: "100%", padding: "8px 10px", fontWeight: 600, fontFamily: "inherit" }}
           />
           <datalist id="ticker-list">
             {filteredTickers.map((t) => (
@@ -140,7 +144,7 @@ export default function ReportClient() {
           <select
             value={priceMode}
             onChange={(e) => setPriceMode(e.target.value as PriceMode)}
-            style={{ padding: "8px 10px", fontWeight: 600 }}
+            style={{ padding: "8px 10px", fontWeight: 600, fontFamily: "inherit" }}
           >
             <option value="bid">bid</option>
             <option value="ask">ask</option>
@@ -152,7 +156,7 @@ export default function ReportClient() {
         <button
           onClick={run}
           disabled={loading || !tickerInput.trim()}
-          style={{ padding: "10px 14px", fontWeight: 600 }}
+          style={{ padding: "10px 14px", fontWeight: 600, fontFamily: "inherit" }}
         >
           {loading ? "Running..." : "Run"}
         </button>

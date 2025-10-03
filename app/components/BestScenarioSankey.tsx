@@ -136,7 +136,7 @@ export default function BestScenarioSankey({
       `<b>${best.ticker}</b>`,
       `Profit/d: ${fmtWholeNumber(best.baseProfitPerDay)}`,
       `Adj. Profit/d: ${fmtWholeNumber(best.profitPerDay)}`,
-      `Area/day (full): ${fmtROI(best.fullSelfAreaPerDay)}`,
+      `Area/day: ${fmtROI(best.totalAreaPerDay ?? best.fullSelfAreaPerDay)}`,
       best.roiNarrowDays != null ? `ROI (narrow): ${fmtROI(best.roiNarrowDays)} days` : null,
       best.inputBuffer7 != null ? `Input buffer (7d): ${money(best.inputBuffer7)}` : null,
     ].filter(Boolean).join("<br>");
@@ -191,8 +191,8 @@ export default function BestScenarioSankey({
           inp.childScenario ? `Scen: ${scenarioDisplayName(inp.childScenario)}` : null,
           `COGM/day: ${money(costPerDay)}`,
           `Base profit/day: ${money(child.baseProfitPerDay)}`,
-          `Area/day (full): ${fmt(child.fullSelfAreaPerDay)}`,
-          child.roiNarrowDays != null ? `ROI (narrow): ${fmt(child.roiNarrowDays)} days` : null,
+          `Area/day: ${fmtROI((child as any).totalAreaPerDay ?? child.fullSelfAreaPerDay)}`,
+          child.roiNarrowDays != null ? `ROI (narrow): ${fmtROI(child.roiNarrowDays)} days` : null,
           child.inputBuffer7 != null ? `Input buffer (7d): ${money(child.inputBuffer7)}` : null,
         ].filter(Boolean).join("<br>");
 
