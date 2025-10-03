@@ -34,6 +34,7 @@ type ApiMakeOption = {
   inputBuffer7?: number | null;
   roiNarrowDays?: number | null;
   totalProfitPA?: number;
+  totalAreaPerDay?: number;
   madeInputDetails?: ApiMadeInputDetail[];
 };
 
@@ -191,7 +192,7 @@ export default function BestScenarioSankey({
           inp.childScenario ? `Scen: ${scenarioDisplayName(inp.childScenario)}` : null,
           `COGM/day: ${money(costPerDay)}`,
           `Base profit/day: ${money(child.baseProfitPerDay)}`,
-          `Area/day: ${fmtROI((child as any).totalAreaPerDay ?? child.fullSelfAreaPerDay)}`,
+          `Area/day: ${fmtROI(child.totalAreaPerDay ?? child.fullSelfAreaPerDay)}`,
           child.roiNarrowDays != null ? `ROI (narrow): ${fmtROI(child.roiNarrowDays)} days` : null,
           child.inputBuffer7 != null ? `Input buffer (7d): ${money(child.inputBuffer7)}` : null,
         ].filter(Boolean).join("<br>");
