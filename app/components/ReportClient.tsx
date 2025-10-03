@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import type { PriceMode } from "@/types";
 import BestScenarioSankey from "./BestScenarioSankey";
-import Top5Table from "./Top5Table";
+import Top20Table from "./Top20Table";
 import { scenarioDisplayName } from "@/core/scenario";
 
 type ApiReport = {
@@ -15,7 +15,7 @@ type ApiReport = {
   totalOptions: number;
   bestPA: number | null;
   best: any;
-  top5: any[];
+  top20: any[];
 };
 
 export default function ReportClient() {
@@ -263,11 +263,11 @@ export default function ReportClient() {
             zIndex: 2,
             paddingTop: "0px"
           }}>
-            <h2>Top 5 Options</h2>
+            <h2>Top Options</h2>
             <p style={{ margin: "8px 0 16px", color: "#555", maxWidth: 760 }}>
-              List of top other production scenarios ranked by profit per area.
+              List of up to 20 other production scenarios ranked by profit per area.
             </p>
-            <Top5Table options={report.top5} priceMode={report.priceMode} />
+            <Top20Table options={report.top20} priceMode={report.priceMode} />
           </section>
         )}
       </div>

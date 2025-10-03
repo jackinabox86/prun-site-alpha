@@ -1,11 +1,11 @@
-// app/components/Top5Table.tsx
+// app/components/Top20Table.tsx
 "use client";
 
 import React, { useState } from "react";
 import { scenarioDisplayName } from "@/core/scenario";
 import BestScenarioSankey from "./BestScenarioSankey";
 
-type Top5Option = {
+type Top20Option = {
   ticker: string;
   recipeId: string | null;
   scenario: string;
@@ -15,7 +15,7 @@ type Top5Option = {
   totalProfitPA?: number;
 };
 
-export default function Top5Table({ options, priceMode }: { options: Top5Option[]; priceMode?: string }) {
+export default function Top20Table({ options, priceMode }: { options: Top20Option[]; priceMode?: string }) {
   const [expandedRows, setExpandedRows] = useState<Set<number>>(new Set());
 
   if (!options || options.length === 0) return null;
@@ -75,21 +75,25 @@ export default function Top5Table({ options, priceMode }: { options: Top5Option[
                   }}
                 >
                   <td style={{ padding: "8px", border: "1px solid #dee2e6", textAlign: "center" }}>
-                    <button
-                      onClick={() => toggleRow(index)}
-                      style={{
-                        padding: "4px 12px",
-                        cursor: "pointer",
-                        backgroundColor: "#2563eb",
-                        color: "white",
-                        border: "none",
-                        borderRadius: "4px",
-                        fontSize: "12px",
-                        fontWeight: 600
-                      }}
-                    >
-                      {expandedRows.has(index) ? "−" : "+"}
-                    </button>
+                    {index === 0 ? (
+                      <span style={{ color: "#6b7280", fontSize: "12px" }}>See Above</span>
+                    ) : (
+                      <button
+                        onClick={() => toggleRow(index)}
+                        style={{
+                          padding: "4px 12px",
+                          cursor: "pointer",
+                          backgroundColor: "#2563eb",
+                          color: "white",
+                          border: "none",
+                          borderRadius: "4px",
+                          fontSize: "12px",
+                          fontWeight: 600
+                        }}
+                      >
+                        {expandedRows.has(index) ? "−" : "+"}
+                      </button>
+                    )}
                   </td>
                   <td style={{ padding: "8px", border: "1px solid #dee2e6", textAlign: "center" }}>{option.ticker}</td>
                   <td style={{ padding: "8px", border: "1px solid #dee2e6", textAlign: "center" }}>{option.recipeId || "—"}</td>
