@@ -1,7 +1,7 @@
 // app/components/BestScenarioSankey.tsx
 "use client";
 
-import { useMemo } from "react";
+import { useMemo, memo } from "react";
 import PlotlySankey from "./PlotlySankey";
 import type { PriceMode } from "@/types";
 import { scenarioDisplayName } from "@/core/scenario";
@@ -34,12 +34,13 @@ type ApiMakeOption = {
   inputBuffer7?: number | null;
   roiNarrowDays?: number | null;
   totalProfitPA?: number;
+  totalAreaPerDay?: number;
   madeInputDetails?: ApiMadeInputDetail[];
 };
 
-export default function BestScenarioSankey({
+const BestScenarioSankey = memo(function BestScenarioSankey({
   best,
-  height = 520,
+  height = 400,
   priceMode,
 }: {
   best: ApiMakeOption | null | undefined;
@@ -136,7 +137,7 @@ export default function BestScenarioSankey({
       `<b>${best.ticker}</b>`,
       `Profit/d: ${fmtWholeNumber(best.baseProfitPerDay)}`,
       `Adj. Profit/d: ${fmtWholeNumber(best.profitPerDay)}`,
-      `Area/day (full): ${fmtROI(best.fullSelfAreaPerDay)}`,
+      `Area/day: ${fmtROI(best.totalAreaPerDay ?? best.fullSelfAreaPerDay)}`,
       best.roiNarrowDays != null ? `ROI (narrow): ${fmtROI(best.roiNarrowDays)} days` : null,
       best.inputBuffer7 != null ? `Input buffer (7d): ${money(best.inputBuffer7)}` : null,
     ].filter(Boolean).join("<br>");
@@ -191,8 +192,8 @@ export default function BestScenarioSankey({
           inp.childScenario ? `Scen: ${scenarioDisplayName(inp.childScenario)}` : null,
           `COGM/day: ${money(costPerDay)}`,
           `Base profit/day: ${money(child.baseProfitPerDay)}`,
-          `Area/day (full): ${fmt(child.fullSelfAreaPerDay)}`,
-          child.roiNarrowDays != null ? `ROI (narrow): ${fmt(child.roiNarrowDays)} days` : null,
+          `Area/day: ${fmtROI(child.totalAreaPerDay ?? child.fullSelfAreaPerDay)}`,
+          child.roiNarrowDays != null ? `ROI (narrow): ${fmtROI(child.roiNarrowDays)} days` : null,
           child.inputBuffer7 != null ? `Input buffer (7d): ${money(child.inputBuffer7)}` : null,
         ].filter(Boolean).join("<br>");
 
@@ -361,4 +362,6 @@ export default function BestScenarioSankey({
 
   if (!result || !best) return null;
   return <PlotlySankey data={result.data} layout={result.layout} />;
-}
+});
+
+export default BestScenarioSankey;
