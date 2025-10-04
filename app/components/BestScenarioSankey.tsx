@@ -1,7 +1,7 @@
 // app/components/BestScenarioSankey.tsx
 "use client";
 
-import { useMemo } from "react";
+import { useMemo, memo } from "react";
 import PlotlySankey from "./PlotlySankey";
 import type { PriceMode } from "@/types";
 import { scenarioDisplayName } from "@/core/scenario";
@@ -38,9 +38,9 @@ type ApiMakeOption = {
   madeInputDetails?: ApiMadeInputDetail[];
 };
 
-export default function BestScenarioSankey({
+const BestScenarioSankey = memo(function BestScenarioSankey({
   best,
-  height = 520,
+  height = 400,
   priceMode,
 }: {
   best: ApiMakeOption | null | undefined;
@@ -362,4 +362,6 @@ export default function BestScenarioSankey({
 
   if (!result || !best) return null;
   return <PlotlySankey data={result.data} layout={result.layout} />;
-}
+});
+
+export default BestScenarioSankey;

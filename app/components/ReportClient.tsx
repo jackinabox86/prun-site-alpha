@@ -28,6 +28,7 @@ export default function ReportClient() {
   const [loading, setLoading] = useState(false);
   const [report, setReport] = useState<ApiReport | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [readmeHidden, setReadmeHidden] = useState(false);
 
   useEffect(() => {
     fetch("/api/tickers", { cache: "no-store" })
@@ -90,22 +91,40 @@ export default function ReportClient() {
       fontFamily: "-apple-system, BlinkMacSystemFont, Segoe UI, Roboto, Helvetica Neue, Arial, sans-serif"
     }}>
       <div style={{ padding: "0 24px" }}>
-        <h2 style={{ maxWidth: 900, margin: "0 0 16px", textAlign: "center" }}>PrUn Ticker Analysis - Best Profit Per Area Production Scenario</h2>
-                    <p style={{ margin: "8px 0 16px", color: "#555", maxWidth: 900 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: "8px", maxWidth: 900, margin: "0 0 16px", paddingRight: "24px" }}>
+          <h2 style={{ margin: 0, textAlign: "center", flex: 1 }}>PrUn Ticker Analysis - Best Profit Per Area Production Scenario</h2>
+          <button
+            onClick={() => setReadmeHidden(!readmeHidden)}
+            style={{
+              padding: "6px 12px",
+              fontWeight: 600,
+              fontFamily: "inherit",
+              backgroundColor: readmeHidden ? "#a8d5a8" : "#e8a4a4",
+              border: "1px solid " + (readmeHidden ? "#7cb17c" : "#c87878"),
+              borderRadius: 4,
+              cursor: "pointer",
+              whiteSpace: "nowrap"
+            }}
+          >
+            {readmeHidden ? "Expand Readme" : "Hide Readme"}
+          </button>
+        </div>
+                    {!readmeHidden && <p style={{ margin: "8px 0 16px", color: "#555", maxWidth: 900 }}>
                       This tool determines and displays the highest profit per area production scenario for the selected ticker.
                       A production scenario is the buy/make decision for each input in a ticker's production chain.
                       This model uses FIO data (refreshed hourly) for its calculations on optimal buy/make decisions.
                       Importantly, it also displays the same profit per area metric for each made input independently to avoid unintended opportunity costs.
-                    </p>
-                    <p style={{ margin: "8px 0 16px", color: "#555", maxWidth: 900 }}>
+                    </p>}
+                    {!readmeHidden && <p style={{ margin: "8px 0 16px", color: "#555", maxWidth: 900 }}>
                       Below the main analysis is a ranked table of other profitable production scenarios for the selected ticker, which can be expanded if desired for full analysis.
                       Future versions of this tool may allow input-level buy make selections, but that is not yet implemented.
-                    </p><p style={{ margin: "8px 0 16px", color: "#555", maxWidth: 900 }}>
+                    </p>}
+                    {!readmeHidden && <p style={{ margin: "8px 0 16px", color: "#555", maxWidth: 900 }}>
                       Each ticker on the sankey chain has a node and tooltip with additional info on its profitability.
                       The flows between nodes are sized according to the relative proportion of an inputs value to the parent's total cost;
                       tickers with broader flows can be prioritized when optimizing for profitability.
                       Full credit to Taiyi for the Sankey inspiration.
-                    </p>
+                    </p>}
       </div>
 
       {/* Controls */}
@@ -247,13 +266,16 @@ export default function ReportClient() {
 
       {/* Sankey Chart - Full Width */}
       {report && !error && report.best && (
-        <div style={{
-          margin: "10px 0",
-          padding: "0 20px",
-          position: "relative",
-          isolation: "isolate",
-          zIndex: 1
-        }}>
+        <div
+          key={`sankey-${report.ticker}-${report.best.scenario}`}
+          style={{
+            margin: "10px 0",
+            padding: "0 20px",
+            position: "relative",
+            isolation: "isolate",
+            zIndex: 1
+          }}
+        >
           <BestScenarioSankey best={report.best} priceMode={report.priceMode} />
         </div>
       )}
