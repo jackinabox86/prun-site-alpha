@@ -85,11 +85,38 @@ export default function ReportClient() {
       : "n/a";
 
   return (
-    <main style={{
-      padding: "24px 0",
-      maxWidth: "100%",
-      fontFamily: "-apple-system, BlinkMacSystemFont, Segoe UI, Roboto, Helvetica Neue, Arial, sans-serif"
-    }}>
+    <>
+      <style>{`
+        [data-tooltip] {
+          position: relative;
+        }
+        [data-tooltip]::after {
+          content: attr(data-tooltip);
+          position: absolute;
+          bottom: 100%;
+          left: 50%;
+          transform: translateX(-50%);
+          padding: 6px 10px;
+          background-color: #333;
+          color: #fff;
+          font-size: 13px;
+          white-space: nowrap;
+          border-radius: 4px;
+          opacity: 0;
+          pointer-events: none;
+          transition: opacity 0.2s;
+          margin-bottom: 5px;
+          z-index: 1000;
+        }
+        [data-tooltip]:hover::after {
+          opacity: 1;
+        }
+      `}</style>
+      <main style={{
+        padding: "24px 0",
+        maxWidth: "100%",
+        fontFamily: "-apple-system, BlinkMacSystemFont, Segoe UI, Roboto, Helvetica Neue, Arial, sans-serif"
+      }}>
       <div style={{ padding: "0 24px" }}>
         <div style={{ display: "flex", alignItems: "center", gap: "8px", maxWidth: 900, margin: "0 0 16px", paddingRight: "24px" }}>
           <h2 style={{ margin: 0, textAlign: "center", flex: 1 }}>PrUn Ticker Analysis - Best Profit Per Area Production Scenario</h2>
@@ -252,8 +279,10 @@ export default function ReportClient() {
                           Full Scenario Name: {report.best.scenario}
                         </div>
                       )}
+                      
                     </div>
                   </div>
+                  
                 </section>
               ) : (
                 <p style={{ marginTop: 32 }}>No best scenario available for this ticker.</p>
@@ -269,7 +298,7 @@ export default function ReportClient() {
         <div
           key={`sankey-${report.ticker}-${report.best.scenario}`}
           style={{
-            margin: "10px 0",
+            margin: "2px 0",
             padding: "0 20px",
             position: "relative",
             isolation: "isolate",
@@ -289,6 +318,43 @@ export default function ReportClient() {
             zIndex: 2,
             paddingTop: "0px"
           }}>
+            {report.best && (
+              <div style={{ marginTop: 8, fontSize: 14, color: "#666", textAlign: "center" }}>
+                <strong>Sankey Key:</strong>{" "}
+                <span
+                  data-tooltip="Placeholder text for Parent Node"
+                  style={{
+                    position: "relative",
+                    cursor: "help",
+                    borderBottom: "1px dotted #999"
+                  }}
+                >
+                  Parent Node
+                </span>
+                {" | "}
+                <span
+                  data-tooltip="Placeholder text for Input Node"
+                  style={{
+                    position: "relative",
+                    cursor: "help",
+                    borderBottom: "1px dotted #999"
+                  }}
+                >
+                  Input Node
+                </span>
+                {" | "}
+                <span
+                  data-tooltip="Placeholder text for Flows"
+                  style={{
+                    position: "relative",
+                    cursor: "help",
+                    borderBottom: "1px dotted #999"
+                  }}
+                >
+                  Flows
+                </span>
+              </div>
+            )}
             <h2>Top Options</h2>
             <p style={{ margin: "8px 0 16px", color: "#555", maxWidth: 760 }}>
               List of up to 20 other production scenarios ranked by profit per area.
@@ -298,5 +364,6 @@ export default function ReportClient() {
         )}
       </div>
     </main>
+    </>
   );
 }
