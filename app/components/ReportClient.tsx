@@ -239,14 +239,14 @@ export default function ReportClient() {
                                         <p style={{ margin: "0 0 12px 0", fontSize: 18 }}>
                       <strong>Best P/A:</strong>{" "}
                       {report.bestPA != null ? Number(report.bestPA).toFixed(6) : "n/a"}  &nbsp; | &nbsp;
-                      <strong>Mode:</strong> {report.priceMode}                       
+                      {report.best.scenario && (
+                        <>
+                          <strong>Scenario:</strong> {scenarioDisplayName(report.best.scenario)}  &nbsp; | &nbsp;
+                        </>
+                      )}
+                      <strong>Mode:</strong> {report.priceMode}
                     </p>
                     <div style={{ display: "grid", gap: 6, fontSize: 14 }}>
-                      {report.best.scenario && (
-                        <div>
-                          <strong>Scenario:</strong> {scenarioDisplayName(report.best.scenario)}
-                        </div>
-                      )}
                       
 
                       <div>
