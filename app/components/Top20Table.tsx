@@ -14,6 +14,8 @@ type Top20Option = {
   roiNarrowDays?: number | null;
   roiBroadDays?: number | null;
   totalProfitPA?: number;
+  buildCost?: number;
+  totalBuildCost?: number;
 };
 
 export default function Top20Table({ options, priceMode }: { options: Top20Option[]; priceMode?: string }) {
@@ -130,6 +132,33 @@ export default function Top20Table({ options, priceMode }: { options: Top20Optio
                         marginBottom: "20px"
                       }}>
                         <BestScenarioSankey best={option as any} priceMode={priceMode as any} height={400} />
+                      </div>
+
+                      {/* Info Section */}
+                      <div
+                        style={{
+                          backgroundColor: "#ffffff",
+                          border: "1px solid #dee2e6",
+                          borderRadius: 6,
+                          padding: 16,
+                          marginTop: 16,
+                        }}
+                      >
+                        <div style={{ display: "grid", gap: 6, fontSize: 14 }}>
+                                                    
+                          {(option as any).buildCost != null && (
+                            <div>
+                              <strong>Build cost:</strong> {money((option as any).buildCost)}
+                            </div>
+                          )}
+                          
+                          {(option as any).totalBuildCost != null && (
+                            <div>
+                              <strong>Total build cost:</strong> {money((option as any).totalBuildCost)}
+                            </div>
+                          )}
+                        
+                        </div>
                       </div>
                     </td>
                   </tr>
