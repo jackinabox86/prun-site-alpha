@@ -631,7 +631,7 @@ export function buildScenarioRows(
 
   // Build cost calculations (parallel to area)
   const selfBuildCost = option.buildCost || 0;
-  const scaledSelfBuildCostNeeded = selfBuildCost * runsPerDayRequiredHere;
+  const scaledSelfBuildCostNeeded = selfBuildCost * (runsPerDayRequiredHere / (option.runsPerDay || 1));
 
   const childrenBuildCostAtCapacity =
     runsPerDayRequiredHere > 0
@@ -643,7 +643,7 @@ export function buildScenarioRows(
 
   // Input buffer calculations (parallel to area and build cost)
   const selfInputBuffer7 = option.inputBuffer7 || 0;
-  const scaledSelfInputBuffer7Needed = selfInputBuffer7 * runsPerDayRequiredHere;
+  const scaledSelfInputBuffer7Needed = selfInputBuffer7 * (runsPerDayRequiredHere / (option.runsPerDay || 1));
 
   const childrenInputBuffer7AtCapacity =
     runsPerDayRequiredHere > 0
