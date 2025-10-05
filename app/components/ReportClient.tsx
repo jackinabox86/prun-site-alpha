@@ -269,6 +269,23 @@ export default function ReportClient() {
                             : "n/a"} days
                         </div>
                       )}
+                      {report.best.buildCost != null && (
+                        <div>
+                          <strong>Build cost:</strong> {money(report.best.buildCost)}
+                        </div>
+                      )}
+                      {report.best.roiBroadDays != null && (
+                        <div>
+                          <strong>ROI (broad):</strong> {Number.isFinite(report.best.roiBroadDays)
+                            ? report.best.roiBroadDays.toFixed(1).replace(/\.0$/, "")
+                            : "n/a"} days
+                        </div>
+                      )}
+                      {report.best.totalBuildCost != null && (
+                        <div>
+                          <strong>Total build cost:</strong> {money(report.best.totalBuildCost)}
+                        </div>
+                      )}
                       {report.best.inputBuffer7 != null && (
                         <div>
                           <strong>Input buffer (7d):</strong> {money(report.best.inputBuffer7)}

@@ -613,6 +613,7 @@ export function buildScenarioRows(
   const allChildren = (option.madeInputDetails || []).filter((x) => x && x.details);
   const childCalcs: ScenarioRowsResult[] = [];
   let childrenAreaNeededSum = 0;
+  let childrenBuildCostNeededSum = 0;
 
   for (const item of allChildren) {
     const childDemandPerDay = (item.amountNeeded || 0) * runsPerDayRequiredHere;
@@ -624,6 +625,7 @@ export function buildScenarioRows(
     );
     childCalcs.push(child);
     childrenAreaNeededSum += child.subtreeAreaNeededPerDay || 0;
+    childrenBuildCostNeededSum += child.subtreeBuildCostNeeded || 0;
   }
 
   if (showChildren) {
@@ -647,6 +649,18 @@ export function buildScenarioRows(
 
   const totalAreaForOwnDenominator = fullSelfAreaPerDay + childrenAreaAtCapacity;
   const totalAreaNeededForParent = scaledSelfAreaNeeded + childrenAreaNeededSum;
+
+  // Build cost calculations (parallel to area)
+  const selfBuildCost = option.buildCost || 0;
+  const scaledSelfBuildCostNeeded = selfBuildCost * runsPerDayRequiredHere;
+
+  const childrenBuildCostAtCapacity =
+    runsPerDayRequiredHere > 0
+      ? (childrenBuildCostNeededSum / runsPerDayRequiredHere) * (option.runsPerDay || 0)
+      : 0;
+
+  const totalBuildCostForOwn = selfBuildCost + childrenBuildCostAtCapacity;
+  const totalBuildCostNeededForParent = scaledSelfBuildCostNeeded + childrenBuildCostNeededSum;
 
   const totalProfitPA =
     totalAreaForOwnDenominator > 0
@@ -678,5 +692,7 @@ export function buildScenarioRows(
     subtreeAreaPerDay: totalAreaForOwnDenominator,
     subtreeAreaNeededPerDay: totalAreaNeededForParent,
     subtreeProfitPerArea: totalProfitPA,
+    subtreeBuildCost: totalBuildCostForOwn,
+    subtreeBuildCostNeeded: totalBuildCostNeededForParent,
   };
 }

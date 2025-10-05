@@ -86,6 +86,8 @@ export interface ScenarioRowsResult {
   subtreeAreaPerDay: number;
   subtreeAreaNeededPerDay: number;
   subtreeProfitPerArea: number;
+  subtreeBuildCost: number;
+  subtreeBuildCostNeeded: number;
 }
 
 /** ===== Best recipe mapping ===== */

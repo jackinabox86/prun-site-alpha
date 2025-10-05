@@ -1,16 +1,18 @@
 // src/server/report.ts
 import { loadAllFromCsv } from "@/lib/loadFromCsv";
 import { findAllMakeOptions, buildScenarioRows } from "@/core/engine";
-import { computeRoiNarrow } from "@/core/roi";
+import { computeRoiNarrow, computeRoiBroad } from "@/core/roi";
 import { computeInputPayback } from "@/core/inputPayback";
 import { CSV_URLS } from "@/lib/config";
 import type { PriceMode } from "@/types";
 
 type WithMetrics<T> = T & {
   roiNarrowDays?: number | null;
+  roiBroadDays?: number | null;
   inputPaybackDays7?: number | null;
   totalProfitPA?: number;
   totalAreaPerDay?: number;
+  totalBuildCost?: number;
 };
 
 export async function buildReport(opts: {
@@ -51,13 +53,18 @@ export async function buildReport(opts: {
 
   // Numeric metrics for BEST (go on the raw object)
   const roi = computeRoiNarrow(best.o);       // { narrowDays, capex, basis }
+  const baseProfitPerDay = best.o.baseProfitPerDay ?? 0;
+  const totalBuildCost = best.r.subtreeBuildCost ?? 0;
+  const roiBroad = computeRoiBroad(totalBuildCost, baseProfitPerDay);
   const ip  = computeInputPayback(best.o, 7); // { days, windowDays }
 
   const bestRaw: WithMetrics<typeof best.o> = {
     ...best.o,
     totalProfitPA: best.r.subtreeProfitPerArea ?? 0,
     totalAreaPerDay: best.r.subtreeAreaPerDay ?? 0,
+    totalBuildCost: totalBuildCost,
     roiNarrowDays: roi.narrowDays ?? null,
+    roiBroadDays: roiBroad.broadDays ?? null,
     inputPaybackDays7: ip.days ?? null,
   };
 
@@ -73,11 +80,16 @@ export async function buildReport(opts: {
   // Top 20 summary: include ROI only (no rows here)
   const top20: Array<WithMetrics<typeof ranked[number]["o"]>> = ranked.slice(0, 20).map(({ o, r }) => {
     const roi = computeRoiNarrow(o);
+    const baseProfitPerDay = o.baseProfitPerDay ?? 0;
+    const totalBuildCost = r.subtreeBuildCost ?? 0;
+    const roiBroad = computeRoiBroad(totalBuildCost, baseProfitPerDay);
     return {
       ...o,
       totalProfitPA: r.subtreeProfitPerArea ?? 0,
       totalAreaPerDay: r.subtreeAreaPerDay ?? 0,
+      totalBuildCost: totalBuildCost,
       roiNarrowDays: roi.narrowDays ?? null,
+      roiBroadDays: roiBroad.broadDays ?? null,
     };
   });
 

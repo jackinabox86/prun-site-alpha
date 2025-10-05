@@ -12,6 +12,7 @@ type Top20Option = {
   baseProfitPerDay: number;
   totalAreaPerDay?: number;
   roiNarrowDays?: number | null;
+  roiBroadDays?: number | null;
   totalProfitPA?: number;
 };
 
@@ -63,6 +64,7 @@ export default function Top20Table({ options, priceMode }: { options: Top20Optio
               <th style={{ padding: "10px", border: "1px solid #dee2e6", textAlign: "center" }}>Base Profit/Day</th>
               <th style={{ padding: "10px", border: "1px solid #dee2e6", textAlign: "center" }}>Total Area/Day</th>
               <th style={{ padding: "10px", border: "1px solid #dee2e6", textAlign: "center" }}>ROI (narrow)</th>
+              <th style={{ padding: "10px", border: "1px solid #dee2e6", textAlign: "center" }}>ROI (broad)</th>
               <th style={{ padding: "10px", border: "1px solid #dee2e6", textAlign: "center" }}>Profit P/A</th>
             </tr>
           </thead>
@@ -106,12 +108,15 @@ export default function Top20Table({ options, priceMode }: { options: Top20Optio
                     {option.roiNarrowDays != null ? `${fmt(option.roiNarrowDays)} days` : "n/a"}
                   </td>
                   <td style={{ padding: "8px", border: "1px solid #dee2e6", textAlign: "center" }}>
+                    {option.roiBroadDays != null ? `${fmt(option.roiBroadDays)} days` : "n/a"}
+                  </td>
+                  <td style={{ padding: "8px", border: "1px solid #dee2e6", textAlign: "center" }}>
                     {option.totalProfitPA != null && Number.isFinite(option.totalProfitPA) ? `₳${fmt(option.totalProfitPA)}` : "n/a"}
                   </td>
                 </tr>
                 {expandedRows.has(index) && (
                   <tr>
-                    <td colSpan={8} style={{
+                    <td colSpan={9} style={{
                       padding: "16px",
                       border: "1px solid #dee2e6",
                       backgroundColor: "#f8f9fa"
