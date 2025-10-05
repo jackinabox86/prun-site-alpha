@@ -22,8 +22,6 @@ export default function ReportClient() {
   const [tickers, setTickers] = useState<string[]>([]);
   const [tickerInput, setTickerInput] = useState<string>("REP");
   const [priceMode, setPriceMode] = useState<PriceMode>("bid");
-  const [expand, setExpand] = useState(false);
-  const [includeRows, setIncludeRows] = useState(false);
 
   const [loading, setLoading] = useState(false);
   const [report, setReport] = useState<ApiReport | null>(null);
@@ -50,8 +48,6 @@ export default function ReportClient() {
       const qs = new URLSearchParams({
         ticker: tickerInput.trim().toUpperCase(),
         priceMode,
-        ...(expand ? { expand: "1" } : {}),
-        ...(includeRows ? { rows: "1" } : {}),
       });
       const res = await fetch(`/api/report?${qs.toString()}`, { cache: "no-store" });
       const json = await res.json();

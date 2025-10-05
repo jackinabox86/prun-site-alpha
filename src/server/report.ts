@@ -13,15 +13,14 @@ type WithMetrics<T> = T & {
   totalProfitPA?: number;
   totalAreaPerDay?: number;
   totalBuildCost?: number;
+  totalInputBuffer7?: number;
 };
 
 export async function buildReport(opts: {
   ticker: string;
   priceMode: PriceMode;
-  expand: boolean;      // controls child expansion in rows (if rows are requested)
-  includeRows?: boolean; // <-- NEW: return human-readable rows only if true
 }) {
-  const { ticker, priceMode, expand, includeRows = false } = opts;
+  const { ticker, priceMode } = opts;
 
   const { recipeMap, pricesMap, bestMap } = await loadAllFromCsv(CSV_URLS);
 
@@ -63,19 +62,12 @@ export async function buildReport(opts: {
     totalProfitPA: best.r.subtreeProfitPerArea ?? 0,
     totalAreaPerDay: best.r.subtreeAreaPerDay ?? 0,
     totalBuildCost: totalBuildCost,
+    totalInputBuffer7: best.r.subtreeInputBuffer7 ?? 0,
     roiNarrowDays: roi.narrowDays ?? null,
     roiBroadDays: roiBroad.broadDays ?? null,
     inputPaybackDays7: ip.days ?? null,
   };
 
-  // Only build/return human-readable rows if requested
-  let bestRows: [string, number | string][] | undefined = undefined;
-  if (includeRows) {
-    const bestRowsRes = buildScenarioRows(best.o, 0, best.capacity, expand);
-    bestRows = bestRowsRes.rows.slice();
-    // The engine already adds ROI (narrow). We add Input Payback label here:
-    bestRows.push(["Input Payback (7d buffer) [days]:", ip.days ?? "n/a"]);
-  }
 
   // Top 20 summary: include ROI only (no rows here)
   const top20: Array<WithMetrics<typeof ranked[number]["o"]>> = ranked.slice(0, 20).map(({ o, r }) => {
@@ -88,6 +80,7 @@ export async function buildReport(opts: {
       totalProfitPA: r.subtreeProfitPerArea ?? 0,
       totalAreaPerDay: r.subtreeAreaPerDay ?? 0,
       totalBuildCost: totalBuildCost,
+      totalInputBuffer7: r.subtreeInputBuffer7 ?? 0,
       roiNarrowDays: roi.narrowDays ?? null,
       roiBroadDays: roiBroad.broadDays ?? null,
     };
@@ -100,7 +93,7 @@ export async function buildReport(opts: {
     totalOptions: ranked.length,
     bestPA: best.r.subtreeProfitPerArea ?? null,
     bestScenario: best.o.scenario ?? "",
-    best: includeRows ? { ...bestRaw, rows: bestRows } : bestRaw,
+    best: bestRaw,
     top20,
   };
 }

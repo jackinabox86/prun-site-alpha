@@ -16,6 +16,8 @@ type ApiMadeInputDetail = {
   unitCost?: number | null;
   totalCostPerBatch?: number | null;
   childScenario?: string;
+  childRunsPerDayRequired?: number;
+  childDemandUnitsPerDay?: number;
 };
 
 type ApiMakeOption = {
@@ -184,6 +186,11 @@ const BestScenarioSankey = memo(function BestScenarioSankey({
         const cogm = Number(child.cogmPerOutput ?? 0);
         const costPerDay = Math.max(0, cogm * amount * stageRunsPerDay);
 
+        // Use pre-calculated values from engine if available, otherwise calculate
+        const childRunsPerDayNeeded = inp.childRunsPerDayRequired ??
+          (child.output1Amount > 0 ? (amount * stageRunsPerDay) / child.output1Amount : 0);
+        const childDemandUnitsPerDay = inp.childDemandUnitsPerDay ?? (amount * stageRunsPerDay);
+
         const childId = `STAGE::${child.recipeId || child.ticker}::${depth + 1}`;
         const childProfitPA = child.totalProfitPA ?? 0;
         const childLabel = `<b>Make ${child.recipeId || child.ticker}</b><br>[₳${fmtPA(childProfitPA)} P/A]`;
@@ -195,6 +202,8 @@ const BestScenarioSankey = memo(function BestScenarioSankey({
           `Area/day: ${fmtROI(child.totalAreaPerDay ?? child.fullSelfAreaPerDay)}`,
           child.roiNarrowDays != null ? `ROI (narrow): ${fmtROI(child.roiNarrowDays)} days` : null,
           child.inputBuffer7 != null ? `Input buffer (7d): ${money(child.inputBuffer7)}` : null,
+          `Runs/day required: ${fmtROI(childRunsPerDayNeeded)}`,
+          `Demand units/day: ${fmtROI(childDemandUnitsPerDay)}`,
         ].filter(Boolean).join("<br>");
 
         const childIdx = ensureNode(
@@ -212,8 +221,6 @@ const BestScenarioSankey = memo(function BestScenarioSankey({
 
         addLink(stageIdx, childIdx, `Make ${child.recipeId || child.ticker}`, costPerDay, palette.linkMake, linkHover);
 
-        const childOut = Number(child.output1Amount || 0);
-        const childRunsPerDayNeeded = childOut > 0 ? (amount * stageRunsPerDay) / childOut : 0;
         traverse(child, childIdx, childRunsPerDayNeeded, depth + 1);
       }
     }

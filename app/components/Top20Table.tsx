@@ -14,6 +14,8 @@ type Top20Option = {
   roiNarrowDays?: number | null;
   roiBroadDays?: number | null;
   totalProfitPA?: number;
+  buildCost?: number;
+  totalBuildCost?: number;
 };
 
 export default function Top20Table({ options, priceMode }: { options: Top20Option[]; priceMode?: string }) {
@@ -130,6 +132,59 @@ export default function Top20Table({ options, priceMode }: { options: Top20Optio
                         marginBottom: "20px"
                       }}>
                         <BestScenarioSankey best={option as any} priceMode={priceMode as any} height={400} />
+                      </div>
+
+                      {/* Info Section */}
+                      <div
+                        style={{
+                          backgroundColor: "#ffffff",
+                          border: "1px solid #dee2e6",
+                          borderRadius: 6,
+                          padding: 16,
+                          marginTop: 16,
+                        }}
+                      >
+                        <div style={{ display: "grid", gap: 6, fontSize: 14 }}>
+                          {option.scenario && (
+                            <div>
+                              <strong>Scenario:</strong> {scenarioDisplayName(option.scenario)}
+                            </div>
+                          )}
+
+                          <div>
+                            <strong>Base profit/day:</strong> {money(option.baseProfitPerDay)}
+                          </div>
+                          <div>
+                            <strong>Total Area/Day:</strong> {fmt(option.totalAreaPerDay)}
+                          </div>
+                          {option.roiNarrowDays != null && (
+                            <div>
+                              <strong>ROI (narrow):</strong> {Number.isFinite(option.roiNarrowDays)
+                                ? option.roiNarrowDays.toFixed(1).replace(/\.0$/, "")
+                                : "n/a"} days
+                            </div>
+                          )}
+                          {(option as any).buildCost != null && (
+                            <div>
+                              <strong>Build cost:</strong> {money((option as any).buildCost)}
+                            </div>
+                          )}
+                          {option.roiBroadDays != null && (
+                            <div>
+                              <strong>ROI (broad):</strong> {Number.isFinite(option.roiBroadDays)
+                                ? option.roiBroadDays.toFixed(1).replace(/\.0$/, "")
+                                : "n/a"} days
+                            </div>
+                          )}
+                          {(option as any).totalBuildCost != null && (
+                            <div>
+                              <strong>Total build cost:</strong> {money((option as any).totalBuildCost)}
+                            </div>
+                          )}
+                          <div>
+                            <strong>Profit P/A:</strong> {option.totalProfitPA != null && Number.isFinite(option.totalProfitPA) ? `₳${fmt(option.totalProfitPA)}` : "n/a"}
+                          </div>
+                        </div>
                       </div>
                     </td>
                   </tr>

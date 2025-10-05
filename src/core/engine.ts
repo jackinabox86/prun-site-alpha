@@ -9,8 +9,6 @@ import {
 } from "../types";
 import { findPrice } from "./price";
 import { composeScenario } from "./scenario";
-import { computeRoiNarrow } from "./roi"; // <-- ADD THIS IMPORT
-import { computeInputPayback } from "./inputPayback"; // <-- ADD THIS
 
 /**──────────────────────────────────────────────────────────────────────────────
  * Child “best option” memo (keyed by priceMode+ticker) to avoid recomputation
@@ -569,9 +567,6 @@ export function buildScenarioRows(
   amountNeeded: number,
   showChildren: boolean
 ): ScenarioRowsResult {
-  const rows: [string, number | string][] = [];
-  const indentStr = "  ".repeat(indentLevel);
-
   const demandUnitsPerDay =
     amountNeeded && amountNeeded > 0
       ? amountNeeded
@@ -579,15 +574,6 @@ export function buildScenarioRows(
 
   const runsPerDayRequiredHere =
     option.output1Amount > 0 ? demandUnitsPerDay / option.output1Amount : 0;
-
-  if (indentLevel > 0) {
-    rows.push([
-      `${indentStr}(Scaled to ${runsPerDayRequiredHere.toFixed(
-        2
-      )} run(s)/day for demand of ${demandUnitsPerDay.toFixed(2)})`,
-      "",
-    ]);
-  }
 
   const stageProfitPerDay =
     option.baseProfitPerDay != null
@@ -614,6 +600,7 @@ export function buildScenarioRows(
   const childCalcs: ScenarioRowsResult[] = [];
   let childrenAreaNeededSum = 0;
   let childrenBuildCostNeededSum = 0;
+  let childrenInputBuffer7NeededSum = 0;
 
   for (const item of allChildren) {
     const childDemandPerDay = (item.amountNeeded || 0) * runsPerDayRequiredHere;
@@ -626,21 +613,13 @@ export function buildScenarioRows(
     childCalcs.push(child);
     childrenAreaNeededSum += child.subtreeAreaNeededPerDay || 0;
     childrenBuildCostNeededSum += child.subtreeBuildCostNeeded || 0;
+    childrenInputBuffer7NeededSum += child.subtreeInputBuffer7Needed || 0;
+
+    // Store the calculated scaling values on the input detail
+    item.childRunsPerDayRequired = child.runsPerDayRequired;
+    item.childDemandUnitsPerDay = child.demandUnitsPerDay;
   }
 
-  if (showChildren) {
-    childCalcs.forEach((child) => rows.push(...child.rows));
-  } else if (childCalcs.length > 0) {
-    const bestChild = childCalcs.reduce(
-      (best, cur) =>
-        (cur.subtreeProfitPerArea || -Infinity) >
-        ((best?.subtreeProfitPerArea as number) ?? -Infinity)
-          ? cur
-          : best,
-      null as any
-    );
-    if (bestChild) rows.push(...bestChild.rows);
-  }
 
   const childrenAreaAtCapacity =
     runsPerDayRequiredHere > 0
@@ -662,6 +641,18 @@ export function buildScenarioRows(
   const totalBuildCostForOwn = selfBuildCost + childrenBuildCostAtCapacity;
   const totalBuildCostNeededForParent = scaledSelfBuildCostNeeded + childrenBuildCostNeededSum;
 
+  // Input buffer calculations (parallel to area and build cost)
+  const selfInputBuffer7 = option.inputBuffer7 || 0;
+  const scaledSelfInputBuffer7Needed = selfInputBuffer7 * runsPerDayRequiredHere;
+
+  const childrenInputBuffer7AtCapacity =
+    runsPerDayRequiredHere > 0
+      ? (childrenInputBuffer7NeededSum / runsPerDayRequiredHere) * (option.runsPerDay || 0)
+      : 0;
+
+  const totalInputBuffer7ForOwn = selfInputBuffer7 + childrenInputBuffer7AtCapacity;
+  const totalInputBuffer7NeededForParent = scaledSelfInputBuffer7Needed + childrenInputBuffer7NeededSum;
+
   const totalProfitPA =
     totalAreaForOwnDenominator > 0
       ? stageProfitPerDay / totalAreaForOwnDenominator
@@ -669,30 +660,15 @@ export function buildScenarioRows(
 
   (option as any).totalProfitPA = totalProfitPA;
 
-  rows.unshift([`${indentStr}Total Profit P/A:`, totalProfitPA || 0]);
-  rows.push([`${indentStr}RecipeID:`, option.recipeId || ""]);
-  rows.push([`${indentStr}Sourcing Scenario:`, option.scenario || ""]);
-  rows.push([`${indentStr}Stage Profit / Day:`, stageProfitPerDay || 0]);
-  rows.push([`${indentStr}Adj. Stage Profit / Day:`, adjStageProfitPerDay || 0]);
-  rows.push([`${indentStr}Adjusted Area (per day):`, selfAreaDisplay || 0]);
-  rows.push([`${indentStr}Total Area (per day):`, totalAreaForOwnDenominator || 0]);
-  
-  // Root-only annotations:
-  if (indentLevel === 0) {
-    const roi = computeRoiNarrow(option);
-    rows.push([`${indentStr}ROI (narrow) [days]:`, roi.narrowDays ?? "n/a"]);
-
-    // ✅ Input Payback (7-day buffer of inputs + workforce) on the root
-    const ip = computeInputPayback(option, 7);
-    rows.push([`${indentStr}Input Payback (7d buffer) [days]:`, ip.days ?? "n/a"]);
-  }
-
   return {
-    rows,
     subtreeAreaPerDay: totalAreaForOwnDenominator,
     subtreeAreaNeededPerDay: totalAreaNeededForParent,
     subtreeProfitPerArea: totalProfitPA,
     subtreeBuildCost: totalBuildCostForOwn,
     subtreeBuildCostNeeded: totalBuildCostNeededForParent,
+    subtreeInputBuffer7: totalInputBuffer7ForOwn,
+    subtreeInputBuffer7Needed: totalInputBuffer7NeededForParent,
+    runsPerDayRequired: runsPerDayRequiredHere,
+    demandUnitsPerDay: demandUnitsPerDay,
   };
 }
