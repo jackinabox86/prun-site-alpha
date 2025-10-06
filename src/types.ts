@@ -42,6 +42,8 @@ export interface MadeInputDetail {
   unitCost?: number | null;          // cost per unit when BUYing
   totalCostPerBatch?: number | null; // total input cost for one parent batch
   childScenario?: string | null;     // scenario string chosen for the child (MAKE)
+  childRunsPerDayRequired?: number;  // runs/day needed from child to meet parent demand
+  childDemandUnitsPerDay?: number;   // units/day needed from child
 }
 
 export interface MakeOption {
@@ -82,10 +84,15 @@ export interface MakeOption {
 }
 
 export interface ScenarioRowsResult {
-  rows: [string, number | string][];
   subtreeAreaPerDay: number;
   subtreeAreaNeededPerDay: number;
   subtreeProfitPerArea: number;
+  subtreeBuildCost: number;
+  subtreeBuildCostNeeded: number;
+  subtreeInputBuffer7: number;
+  subtreeInputBuffer7Needed: number;
+  runsPerDayRequired: number;
+  demandUnitsPerDay: number;
 }
 
 /** ===== Best recipe mapping ===== */

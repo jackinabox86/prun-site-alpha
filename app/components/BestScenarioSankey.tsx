@@ -16,6 +16,8 @@ type ApiMadeInputDetail = {
   unitCost?: number | null;
   totalCostPerBatch?: number | null;
   childScenario?: string;
+  childRunsPerDayRequired?: number;
+  childDemandUnitsPerDay?: number;
 };
 
 type ApiMakeOption = {
@@ -35,6 +37,9 @@ type ApiMakeOption = {
   roiNarrowDays?: number | null;
   totalProfitPA?: number;
   totalAreaPerDay?: number;
+  totalInputBuffer7?: number | null;
+  inputPaybackDays7Narrow?: number | null;
+  inputPaybackDays7Broad?: number | null;
   madeInputDetails?: ApiMadeInputDetail[];
 };
 
@@ -139,7 +144,10 @@ const BestScenarioSankey = memo(function BestScenarioSankey({
       `Adj. Profit/d: ${fmtWholeNumber(best.profitPerDay)}`,
       `Area/day: ${fmtROI(best.totalAreaPerDay ?? best.fullSelfAreaPerDay)}`,
       best.roiNarrowDays != null ? `ROI (narrow): ${fmtROI(best.roiNarrowDays)} days` : null,
-      best.inputBuffer7 != null ? `Input buffer (7d): ${money(best.inputBuffer7)}` : null,
+      best.inputBuffer7 != null ? `Input buffer 7d (narrow): ${money(best.inputBuffer7)}` : null,
+      best.inputPaybackDays7Narrow != null ? `Input payback (narrow): ${fmtROI(best.inputPaybackDays7Narrow)} days` : null,
+      best.totalInputBuffer7 != null ? `Input buffer 7d (broad): ${money(best.totalInputBuffer7)}` : null,
+      best.inputPaybackDays7Broad != null ? `Input payback (broad): ${fmtROI(best.inputPaybackDays7Broad)} days` : null,
     ].filter(Boolean).join("<br>");
     const rootIdx = ensureNode(rootId, rootLabel, palette.root, rootHover, 0);
 
@@ -184,6 +192,11 @@ const BestScenarioSankey = memo(function BestScenarioSankey({
         const cogm = Number(child.cogmPerOutput ?? 0);
         const costPerDay = Math.max(0, cogm * amount * stageRunsPerDay);
 
+        // Use pre-calculated values from engine if available, otherwise calculate
+        const childRunsPerDayNeeded = inp.childRunsPerDayRequired ??
+          (child.output1Amount > 0 ? (amount * stageRunsPerDay) / child.output1Amount : 0);
+        const childDemandUnitsPerDay = inp.childDemandUnitsPerDay ?? (amount * stageRunsPerDay);
+
         const childId = `STAGE::${child.recipeId || child.ticker}::${depth + 1}`;
         const childProfitPA = child.totalProfitPA ?? 0;
         const childLabel = `<b>Make ${child.recipeId || child.ticker}</b><br>[₳${fmtPA(childProfitPA)} P/A]`;
@@ -194,7 +207,12 @@ const BestScenarioSankey = memo(function BestScenarioSankey({
           `Base profit/day: ${money(child.baseProfitPerDay)}`,
           `Area/day: ${fmtROI(child.totalAreaPerDay ?? child.fullSelfAreaPerDay)}`,
           child.roiNarrowDays != null ? `ROI (narrow): ${fmtROI(child.roiNarrowDays)} days` : null,
-          child.inputBuffer7 != null ? `Input buffer (7d): ${money(child.inputBuffer7)}` : null,
+          child.inputBuffer7 != null ? `Input buffer 7d (narrow): ${money(child.inputBuffer7)}` : null,
+          child.inputPaybackDays7Narrow != null ? `Input payback (narrow): ${fmtROI(child.inputPaybackDays7Narrow)} days` : null,
+          child.totalInputBuffer7 != null ? `Input buffer 7d (broad): ${money(child.totalInputBuffer7)}` : null,
+          child.inputPaybackDays7Broad != null ? `Input payback (broad): ${fmtROI(child.inputPaybackDays7Broad)} days` : null,
+          `Runs/day required: ${fmtROI(childRunsPerDayNeeded)} (of ${fmtROI(child.runsPerDay)})`,
+          `Demand units/day: ${fmtROI(childDemandUnitsPerDay)}`,
         ].filter(Boolean).join("<br>");
 
         const childIdx = ensureNode(
@@ -206,14 +224,12 @@ const BestScenarioSankey = memo(function BestScenarioSankey({
         );
 
         const linkHover = [
-          `<b>${stage.ticker}  Make ${child.recipeId || child.ticker}</b>`,
+          `<b>${stage.ticker} ← Make ${child.recipeId || child.ticker}</b>`,
           `COGM/d: ${money(costPerDay)}`,
         ].join("<br>");
 
         addLink(stageIdx, childIdx, `Make ${child.recipeId || child.ticker}`, costPerDay, palette.linkMake, linkHover);
 
-        const childOut = Number(child.output1Amount || 0);
-        const childRunsPerDayNeeded = childOut > 0 ? (amount * stageRunsPerDay) / childOut : 0;
         traverse(child, childIdx, childRunsPerDayNeeded, depth + 1);
       }
     }

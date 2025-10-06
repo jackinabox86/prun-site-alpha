@@ -12,7 +12,14 @@ type Top20Option = {
   baseProfitPerDay: number;
   totalAreaPerDay?: number;
   roiNarrowDays?: number | null;
+  roiBroadDays?: number | null;
   totalProfitPA?: number;
+  buildCost?: number;
+  totalBuildCost?: number;
+  inputBuffer7?: number | null;
+  totalInputBuffer7?: number | null;
+  inputPaybackDays7Narrow?: number | null;
+  inputPaybackDays7Broad?: number | null;
 };
 
 export default function Top20Table({ options, priceMode }: { options: Top20Option[]; priceMode?: string }) {
@@ -63,6 +70,7 @@ export default function Top20Table({ options, priceMode }: { options: Top20Optio
               <th style={{ padding: "10px", border: "1px solid #dee2e6", textAlign: "center" }}>Base Profit/Day</th>
               <th style={{ padding: "10px", border: "1px solid #dee2e6", textAlign: "center" }}>Total Area/Day</th>
               <th style={{ padding: "10px", border: "1px solid #dee2e6", textAlign: "center" }}>ROI (narrow)</th>
+              <th style={{ padding: "10px", border: "1px solid #dee2e6", textAlign: "center" }}>ROI (broad)</th>
               <th style={{ padding: "10px", border: "1px solid #dee2e6", textAlign: "center" }}>Profit P/A</th>
             </tr>
           </thead>
@@ -106,12 +114,15 @@ export default function Top20Table({ options, priceMode }: { options: Top20Optio
                     {option.roiNarrowDays != null ? `${fmt(option.roiNarrowDays)} days` : "n/a"}
                   </td>
                   <td style={{ padding: "8px", border: "1px solid #dee2e6", textAlign: "center" }}>
+                    {option.roiBroadDays != null ? `${fmt(option.roiBroadDays)} days` : "n/a"}
+                  </td>
+                  <td style={{ padding: "8px", border: "1px solid #dee2e6", textAlign: "center" }}>
                     {option.totalProfitPA != null && Number.isFinite(option.totalProfitPA) ? `₳${fmt(option.totalProfitPA)}` : "n/a"}
                   </td>
                 </tr>
                 {expandedRows.has(index) && (
                   <tr>
-                    <td colSpan={8} style={{
+                    <td colSpan={9} style={{
                       padding: "16px",
                       border: "1px solid #dee2e6",
                       backgroundColor: "#f8f9fa"
@@ -125,6 +136,63 @@ export default function Top20Table({ options, priceMode }: { options: Top20Optio
                         marginBottom: "20px"
                       }}>
                         <BestScenarioSankey best={option as any} priceMode={priceMode as any} height={400} />
+                      </div>
+
+                      {/* Info Section */}
+                      <div
+                        style={{
+                          backgroundColor: "#ffffff",
+                          border: "1px solid #dee2e6",
+                          borderRadius: 6,
+                          padding: 16,
+                          marginTop: 16,
+                        }}
+                      >
+                        <div style={{ display: "grid", gap: 6, fontSize: 14 }}>
+                          {option.scenario && (
+                            <div>
+                              <strong>Scenario:</strong> {scenarioDisplayName(option.scenario)}
+                            </div>
+                          )}
+
+                          <div>
+                            <strong>Base profit/day:</strong> {money(option.baseProfitPerDay)}
+                          </div>
+                          <div>
+                            <strong>Total Area/Day:</strong> {fmt(option.totalAreaPerDay)}
+                          </div>
+                          {((option as any).buildCost != null || option.roiNarrowDays != null) && (
+                            <div>
+                              <strong>Build Cost - Narrow (ROI):</strong> {money((option as any).buildCost)} ({option.roiNarrowDays != null && Number.isFinite(option.roiNarrowDays)
+                                ? option.roiNarrowDays.toFixed(1).replace(/\.0$/, "")
+                                : "n/a"} days)
+                            </div>
+                          )}
+                          {((option as any).totalBuildCost != null || option.roiBroadDays != null) && (
+                            <div>
+                              <strong>Build Cost - Broad (ROI):</strong> {money((option as any).totalBuildCost)} ({option.roiBroadDays != null && Number.isFinite(option.roiBroadDays)
+                                ? option.roiBroadDays.toFixed(1).replace(/\.0$/, "")
+                                : "n/a"} days)
+                            </div>
+                          )}
+                          {(option.inputBuffer7 != null || option.inputPaybackDays7Narrow != null) && (
+                            <div>
+                              <strong>Input Buffer 7d - Narrow (Payback):</strong> {money(option.inputBuffer7)} ({option.inputPaybackDays7Narrow != null && Number.isFinite(option.inputPaybackDays7Narrow)
+                                ? option.inputPaybackDays7Narrow.toFixed(1).replace(/\.0$/, "")
+                                : "n/a"} days)
+                            </div>
+                          )}
+                          {(option.totalInputBuffer7 != null || option.inputPaybackDays7Broad != null) && (
+                            <div>
+                              <strong>Input Buffer 7d - Broad (Payback):</strong> {money(option.totalInputBuffer7)} ({option.inputPaybackDays7Broad != null && Number.isFinite(option.inputPaybackDays7Broad)
+                                ? option.inputPaybackDays7Broad.toFixed(1).replace(/\.0$/, "")
+                                : "n/a"} days)
+                            </div>
+                          )}
+                          <div>
+                            <strong>Profit P/A:</strong> {option.totalProfitPA != null && Number.isFinite(option.totalProfitPA) ? `₳${fmt(option.totalProfitPA)}` : "n/a"}
+                          </div>
+                        </div>
                       </div>
                     </td>
                   </tr>

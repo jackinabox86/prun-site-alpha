@@ -33,10 +33,26 @@ export function computeRoiNarrow(option: MakeOption): {
 }
 
 /**
- * Placeholder for future “ROI (broad)”
- * Intentionally not implemented yet.
+ * ROI (broad) in DAYS:
+ *   paybackDays = totalBuildCost / baseProfitPerDay
+ *
+ * This includes the cumulative build cost from all stages in the production chain.
+ * Returns null if total build cost is 0 or profit <= 0 (no meaningful payback).
  */
-export interface RoiBroadInputs {
-  // e.g. sum children/grandchildren capex when MAKE branches are taken
-  // Keep for future expansion; unused for now.
+export function computeRoiBroad(
+  totalBuildCost: number,
+  baseProfitPerDay: number
+): {
+  broadDays: number | null;
+  totalBuildCost: number;
+  basis: "baseProfitPerDay";
+} {
+  if (!totalBuildCost || !Number.isFinite(baseProfitPerDay) || baseProfitPerDay <= 0) {
+    return { broadDays: null, totalBuildCost, basis: "baseProfitPerDay" };
+  }
+  return {
+    broadDays: totalBuildCost / baseProfitPerDay,
+    totalBuildCost,
+    basis: "baseProfitPerDay",
+  };
 }
