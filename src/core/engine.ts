@@ -11,7 +11,7 @@ import { findPrice } from "./price";
 import { composeScenario } from "./scenario";
 
 /**──────────────────────────────────────────────────────────────────────────────
- * Child “best option” memo (keyed by priceMode+ticker) to avoid recomputation
+ * Child "best option" memo (keyed by priceMode+ticker) to avoid recomputation
  *─────────────────────────────────────────────────────────────────────────────*/
 const BEST_MEMO = new Map<string, MakeOption>();
 const memoKey = (mode: PriceMode, ticker: string) => `${mode}::${ticker}`;
@@ -29,7 +29,7 @@ const norm = (s: string) => s.replace(/\s+/g, " ").trim();
  *   2) If bestMap has a Scenario string for this ticker, select the option whose
  *      `scenario` matches that string exactly (after normalization).
  *   3) Otherwise (no Scenario in bestMap or no exact match), fall back to the
- *      option with the highest Profit/Area at this ticker’s capacity.
+ *      option with the highest Profit/Area at this ticker's capacity.
  * Also honors bestMap.recipeId by filtering candidate recipes to that ID.
  */
 function bestOptionForTicker(
@@ -303,8 +303,9 @@ function bestOptionForTicker(
 
 /**──────────────────────────────────────────────────────────────────────────────
  * Public API: findAllMakeOptions
- * - depth === 0 (root): explore BUY vs MAKE(childBest) for each direct input.
- * - depth  >  0       : return exactly ONE option = child's best scenario.
+ * - depth === 0 (root): explore BUY vs MAKE for each direct input
+ * - depth  >  0 with exploreAllChildScenarios = false: return ONE best option
+ * - depth  >  0 with exploreAllChildScenarios = true: explore all scenarios (Apps Script mode)
  *─────────────────────────────────────────────────────────────────────────────*/
 export function findAllMakeOptions(
   materialTicker: string,
@@ -312,9 +313,11 @@ export function findAllMakeOptions(
   priceMap: PricesMap,
   priceMode: PriceMode,
   bestMap: BestMap,
-  depth = 0
+  depth = 0,
+  exploreAllChildScenarios = false
 ): MakeOption[] {
-  if (depth > 0) {
+  if (depth > 0 && !exploreAllChildScenarios) {
+    // Current behavior: return single best option for children
     const best = bestOptionForTicker(
       materialTicker,
       recipeMap,
@@ -325,7 +328,8 @@ export function findAllMakeOptions(
     return best ? [best] : [];
   }
 
-  // Root exploration (BUY vs MAKE(childBest) per input)
+  // Either root (depth === 0) OR exploreAllChildScenarios mode:
+  // explore all recipes and all scenarios
   const results: MakeOption[] = [];
   const headers = recipeMap.headers;
   const rows = recipeMap.map[materialTicker] || [];
@@ -338,7 +342,18 @@ export function findAllMakeOptions(
   const runsPerDayIndex = headers.indexOf("Runs P/D");
   const areaPerOutputIndex = headers.indexOf("AreaPerOutput");
 
-  for (const row of rows) {
+  // If depth > 0 and exploreAllChildScenarios, respect bestMap recipeId filter
+  let rowsToProcess = rows;
+  if (depth > 0 && exploreAllChildScenarios) {
+    const bestEntry = bestMap?.[materialTicker];
+    const bestId = bestEntry?.recipeId;
+    if (bestId) {
+      const filtered = rows.filter((r) => String(r[recipeIdIndex] ?? "") === bestId);
+      if (filtered.length > 0) rowsToProcess = filtered;
+    }
+  }
+
+  for (const row of rowsToProcess) {
     const recipeId =
       recipeIdIndex !== -1 ? String(row[recipeIdIndex] ?? "") : null;
 
@@ -365,12 +380,12 @@ export function findAllMakeOptions(
     const buildCost =
       buildCostIndex !== -1 ? Number(row[buildCostIndex] ?? 0) : 0;
 
-    // Inputs at root: BUY(ask) vs MAKE(childBest) only
+    // Inputs: collect multiple child options
     const inputs: Array<{
       ticker: string;
       amount: number;
       buyCost: number | null;
-      childBest: MakeOption | null;
+      childOptions: MakeOption[];
     }> = [];
 
     for (let j = 0; j < 10; j++) {
@@ -381,14 +396,19 @@ export function findAllMakeOptions(
         const inputAmount = Number(row[cntIndex] ?? 0);
         const ask = findPrice(inputTicker, priceMap, "ask");
         const buyCost = ask != null ? inputAmount * ask : null;
-        const childBest = bestOptionForTicker(
+        
+        // Recursively get child options (propagate exploreAllChildScenarios)
+        const childOptions = findAllMakeOptions(
           inputTicker,
           recipeMap,
           priceMap,
           priceMode,
-          bestMap
+          bestMap,
+          depth + 1,
+          exploreAllChildScenarios
         );
-        inputs.push({ ticker: inputTicker, amount: inputAmount, buyCost, childBest });
+        
+        inputs.push({ ticker: inputTicker, amount: inputAmount, buyCost, childOptions });
       }
     }
 
@@ -414,7 +434,7 @@ export function findAllMakeOptions(
       }
     }
 
-    // Root scenarios: each input → BUY or MAKE(childBest)
+    // Build scenarios: each input → BUY or MAKE(all child options)
     type Scn = {
       scenarioName: string;
       totalInputCost: number;
@@ -433,7 +453,7 @@ export function findAllMakeOptions(
     for (const input of inputs) {
       const branched: Scn[] = [];
 
-      // BUY
+      // BUY branch
       if (input.buyCost != null) {
         for (const scn of scenarios) {
           const fullName = composeScenario(scn.scenarioName, {
@@ -463,36 +483,37 @@ export function findAllMakeOptions(
         }
       }
 
-      // MAKE(childBest)
-      if (input.childBest) {
-        for (const scn of scenarios) {
-          const mo = input.childBest;
-          const fullName = composeScenario(scn.scenarioName, {
-            type: "MAKE",
-            inputTicker: input.ticker,
-            recipeLabel: mo.recipeId ? mo.recipeId : mo.ticker,
-            childScenario: mo.scenario || "",
-          });
-          branched.push({
-            scenarioName: fullName,
-            totalInputCost: scn.totalInputCost + mo.cogmPerOutput * input.amount,
-            totalOpportunityCost:
-              scn.totalOpportunityCost + mo.baseProfitPerOutput * input.amount,
-            madeInputDetails: [
-              ...scn.madeInputDetails,
-              {
-                recipeId: mo.recipeId,
-                ticker: input.ticker,
-                details: mo,
-                amountNeeded: input.amount,
-                scenarioName: fullName,
-                source: "MAKE" as const,
-                unitCost: null,
-                totalCostPerBatch: mo.cogmPerOutput * input.amount,
-                childScenario: mo.scenario || null,
-              },
-            ],
-          });
+      // MAKE branch - iterate over ALL child options
+      if (input.childOptions && input.childOptions.length > 0) {
+        for (const childOpt of input.childOptions) {
+          for (const scn of scenarios) {
+            const fullName = composeScenario(scn.scenarioName, {
+              type: "MAKE",
+              inputTicker: input.ticker,
+              recipeLabel: childOpt.recipeId ? childOpt.recipeId : childOpt.ticker,
+              childScenario: childOpt.scenario || "",
+            });
+            branched.push({
+              scenarioName: fullName,
+              totalInputCost: scn.totalInputCost + childOpt.cogmPerOutput * input.amount,
+              totalOpportunityCost:
+                scn.totalOpportunityCost + childOpt.baseProfitPerOutput * input.amount,
+              madeInputDetails: [
+                ...scn.madeInputDetails,
+                {
+                  recipeId: childOpt.recipeId,
+                  ticker: input.ticker,
+                  details: childOpt,
+                  amountNeeded: input.amount,
+                  scenarioName: fullName,
+                  source: "MAKE" as const,
+                  unitCost: null,
+                  totalCostPerBatch: childOpt.cogmPerOutput * input.amount,
+                  childScenario: childOpt.scenario || null,
+                },
+              ],
+            });
+          }
         }
       }
 
