@@ -37,6 +37,9 @@ type ApiMakeOption = {
   roiNarrowDays?: number | null;
   totalProfitPA?: number;
   totalAreaPerDay?: number;
+  totalInputBuffer7?: number | null;
+  inputPaybackDays7Narrow?: number | null;
+  inputPaybackDays7Broad?: number | null;
   madeInputDetails?: ApiMadeInputDetail[];
 };
 
@@ -141,7 +144,10 @@ const BestScenarioSankey = memo(function BestScenarioSankey({
       `Adj. Profit/d: ${fmtWholeNumber(best.profitPerDay)}`,
       `Area/day: ${fmtROI(best.totalAreaPerDay ?? best.fullSelfAreaPerDay)}`,
       best.roiNarrowDays != null ? `ROI (narrow): ${fmtROI(best.roiNarrowDays)} days` : null,
-      best.inputBuffer7 != null ? `Input buffer (7d): ${money(best.inputBuffer7)}` : null,
+      best.inputBuffer7 != null ? `Input buffer 7d (narrow): ${money(best.inputBuffer7)}` : null,
+      best.inputPaybackDays7Narrow != null ? `Input payback (narrow): ${fmtROI(best.inputPaybackDays7Narrow)} days` : null,
+      best.totalInputBuffer7 != null ? `Input buffer 7d (broad): ${money(best.totalInputBuffer7)}` : null,
+      best.inputPaybackDays7Broad != null ? `Input payback (broad): ${fmtROI(best.inputPaybackDays7Broad)} days` : null,
     ].filter(Boolean).join("<br>");
     const rootIdx = ensureNode(rootId, rootLabel, palette.root, rootHover, 0);
 
@@ -201,7 +207,10 @@ const BestScenarioSankey = memo(function BestScenarioSankey({
           `Base profit/day: ${money(child.baseProfitPerDay)}`,
           `Area/day: ${fmtROI(child.totalAreaPerDay ?? child.fullSelfAreaPerDay)}`,
           child.roiNarrowDays != null ? `ROI (narrow): ${fmtROI(child.roiNarrowDays)} days` : null,
-          child.inputBuffer7 != null ? `Input buffer (7d): ${money(child.inputBuffer7)}` : null,
+          child.inputBuffer7 != null ? `Input buffer 7d (narrow): ${money(child.inputBuffer7)}` : null,
+          child.inputPaybackDays7Narrow != null ? `Input payback (narrow): ${fmtROI(child.inputPaybackDays7Narrow)} days` : null,
+          child.totalInputBuffer7 != null ? `Input buffer 7d (broad): ${money(child.totalInputBuffer7)}` : null,
+          child.inputPaybackDays7Broad != null ? `Input payback (broad): ${fmtROI(child.inputPaybackDays7Broad)} days` : null,
           `Runs/day required: ${fmtROI(childRunsPerDayNeeded)}`,
           `Demand units/day: ${fmtROI(childDemandUnitsPerDay)}`,
         ].filter(Boolean).join("<br>");
@@ -215,7 +224,7 @@ const BestScenarioSankey = memo(function BestScenarioSankey({
         );
 
         const linkHover = [
-          `<b>${stage.ticker}  Make ${child.recipeId || child.ticker}</b>`,
+          `<b>${stage.ticker} ← Make ${child.recipeId || child.ticker}</b>`,
           `COGM/d: ${money(costPerDay)}`,
         ].join("<br>");
 

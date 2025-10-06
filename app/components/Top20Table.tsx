@@ -16,6 +16,10 @@ type Top20Option = {
   totalProfitPA?: number;
   buildCost?: number;
   totalBuildCost?: number;
+  inputBuffer7?: number | null;
+  totalInputBuffer7?: number | null;
+  inputPaybackDays7Narrow?: number | null;
+  inputPaybackDays7Broad?: number | null;
 };
 
 export default function Top20Table({ options, priceMode }: { options: Top20Option[]; priceMode?: string }) {
@@ -179,6 +183,30 @@ export default function Top20Table({ options, priceMode }: { options: Top20Optio
                           {(option as any).totalBuildCost != null && (
                             <div>
                               <strong>Total build cost:</strong> {money((option as any).totalBuildCost)}
+                            </div>
+                          )}
+                          {option.inputBuffer7 != null && (
+                            <div>
+                              <strong>Input buffer 7d (narrow):</strong> {money(option.inputBuffer7)}
+                            </div>
+                          )}
+                          {option.inputPaybackDays7Narrow != null && (
+                            <div>
+                              <strong>Input buffer payback (narrow):</strong> {Number.isFinite(option.inputPaybackDays7Narrow)
+                                ? option.inputPaybackDays7Narrow.toFixed(1).replace(/\.0$/, "")
+                                : "n/a"} days
+                            </div>
+                          )}
+                          {option.totalInputBuffer7 != null && (
+                            <div>
+                              <strong>Input buffer 7d (broad):</strong> {money(option.totalInputBuffer7)}
+                            </div>
+                          )}
+                          {option.inputPaybackDays7Broad != null && (
+                            <div>
+                              <strong>Input buffer payback (broad):</strong> {Number.isFinite(option.inputPaybackDays7Broad)
+                                ? option.inputPaybackDays7Broad.toFixed(1).replace(/\.0$/, "")
+                                : "n/a"} days
                             </div>
                           )}
                           <div>

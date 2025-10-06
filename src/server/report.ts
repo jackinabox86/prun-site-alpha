@@ -9,7 +9,8 @@ import type { PriceMode } from "@/types";
 type WithMetrics<T> = T & {
   roiNarrowDays?: number | null;
   roiBroadDays?: number | null;
-  inputPaybackDays7?: number | null;
+  inputPaybackDays7Narrow?: number | null;
+  inputPaybackDays7Broad?: number | null;
   totalProfitPA?: number;
   totalAreaPerDay?: number;
   totalBuildCost?: number;
@@ -57,6 +58,12 @@ export async function buildReport(opts: {
   const roiBroad = computeRoiBroad(totalBuildCost, baseProfitPerDay);
   const ip  = computeInputPayback(best.o, 7); // { days, windowDays }
 
+  // Input buffer payback: narrow = self only, broad = entire tree
+  const inputBuffer7Narrow = best.o.inputBuffer7 ?? 0;
+  const inputBuffer7Broad = best.r.subtreeInputBuffer7 ?? 0;
+  const inputPaybackNarrow = baseProfitPerDay > 0 ? inputBuffer7Narrow / baseProfitPerDay : null;
+  const inputPaybackBroad = baseProfitPerDay > 0 ? inputBuffer7Broad / baseProfitPerDay : null;
+
   const bestRaw: WithMetrics<typeof best.o> = {
     ...best.o,
     totalProfitPA: best.r.subtreeProfitPerArea ?? 0,
@@ -65,7 +72,8 @@ export async function buildReport(opts: {
     totalInputBuffer7: best.r.subtreeInputBuffer7 ?? 0,
     roiNarrowDays: roi.narrowDays ?? null,
     roiBroadDays: roiBroad.broadDays ?? null,
-    inputPaybackDays7: ip.days ?? null,
+    inputPaybackDays7Narrow: inputPaybackNarrow,
+    inputPaybackDays7Broad: inputPaybackBroad,
   };
 
 
@@ -75,6 +83,13 @@ export async function buildReport(opts: {
     const baseProfitPerDay = o.baseProfitPerDay ?? 0;
     const totalBuildCost = r.subtreeBuildCost ?? 0;
     const roiBroad = computeRoiBroad(totalBuildCost, baseProfitPerDay);
+
+    // Input buffer payback: narrow = self only, broad = entire tree
+    const inputBuffer7Narrow = o.inputBuffer7 ?? 0;
+    const inputBuffer7Broad = r.subtreeInputBuffer7 ?? 0;
+    const inputPaybackNarrow = baseProfitPerDay > 0 ? inputBuffer7Narrow / baseProfitPerDay : null;
+    const inputPaybackBroad = baseProfitPerDay > 0 ? inputBuffer7Broad / baseProfitPerDay : null;
+
     return {
       ...o,
       totalProfitPA: r.subtreeProfitPerArea ?? 0,
@@ -83,6 +98,8 @@ export async function buildReport(opts: {
       totalInputBuffer7: r.subtreeInputBuffer7 ?? 0,
       roiNarrowDays: roi.narrowDays ?? null,
       roiBroadDays: roiBroad.broadDays ?? null,
+      inputPaybackDays7Narrow: inputPaybackNarrow,
+      inputPaybackDays7Broad: inputPaybackBroad,
     };
   });
 

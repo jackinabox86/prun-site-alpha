@@ -284,7 +284,26 @@ export default function ReportClient() {
                       )}
                       {report.best.inputBuffer7 != null && (
                         <div>
-                          <strong>Input buffer (7d):</strong> {money(report.best.inputBuffer7)}
+                          <strong>Input buffer 7d (narrow):</strong> {money(report.best.inputBuffer7)}
+                        </div>
+                      )}
+                      {report.best.inputPaybackDays7Narrow != null && (
+                        <div>
+                          <strong>Input buffer payback (narrow):</strong> {Number.isFinite(report.best.inputPaybackDays7Narrow)
+                            ? report.best.inputPaybackDays7Narrow.toFixed(1).replace(/\.0$/, "")
+                            : "n/a"} days
+                        </div>
+                      )}
+                      {report.best.totalInputBuffer7 != null && (
+                        <div>
+                          <strong>Input buffer 7d (broad):</strong> {money(report.best.totalInputBuffer7)}
+                        </div>
+                      )}
+                      {report.best.inputPaybackDays7Broad != null && (
+                        <div>
+                          <strong>Input buffer payback (broad):</strong> {Number.isFinite(report.best.inputPaybackDays7Broad)
+                            ? report.best.inputPaybackDays7Broad.toFixed(1).replace(/\.0$/, "")
+                            : "n/a"} days
                         </div>
                       )}
                       {report.best.scenario && (
