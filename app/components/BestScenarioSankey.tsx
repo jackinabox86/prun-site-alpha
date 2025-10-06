@@ -211,7 +211,7 @@ const BestScenarioSankey = memo(function BestScenarioSankey({
           child.inputPaybackDays7Narrow != null ? `Input payback (narrow): ${fmtROI(child.inputPaybackDays7Narrow)} days` : null,
           child.totalInputBuffer7 != null ? `Input buffer 7d (broad): ${money(child.totalInputBuffer7)}` : null,
           child.inputPaybackDays7Broad != null ? `Input payback (broad): ${fmtROI(child.inputPaybackDays7Broad)} days` : null,
-          `Runs/day required: ${fmtROI(childRunsPerDayNeeded)}`,
+          `Runs/day required: ${fmtROI(childRunsPerDayNeeded)} (of ${fmtROI(child.runsPerDay)})`,
           `Demand units/day: ${fmtROI(childDemandUnitsPerDay)}`,
         ].filter(Boolean).join("<br>");
 
