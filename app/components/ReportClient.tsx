@@ -90,8 +90,7 @@ export default function ReportClient() {
           content: attr(data-tooltip);
           position: absolute;
           bottom: 100%;
-          left: 50%;
-          transform: translateX(-50%);
+          left: 0;
           padding: 6px 10px;
           background-color: #333;
           color: #fff;
@@ -232,7 +231,7 @@ export default function ReportClient() {
                         maxWidth: 867,
                       }}
                     >
-                                        <p style={{ margin: "0 0 12px 0", fontSize: 18 }}>
+                                        <p style={{ margin: "0 0 12px 0", fontSize: 18, paddingLeft: "21px" }}>
                       <strong>Best P/A:</strong>{" "}
                       {report.bestPA != null ? Number(report.bestPA).toFixed(6) : "n/a"}  &nbsp; | &nbsp;
                       {report.best.scenario && (
@@ -246,64 +245,114 @@ export default function ReportClient() {
                       
 
                       <div>
+                        <span
+                          data-tooltip="Placeholder text for Base profit/day"
+                          style={{
+                            position: "relative",
+                            cursor: "help",
+                            marginRight: "6px"
+                          }}
+                        >
+                          ⓘ
+                        </span>
                         <strong>Base profit/day:</strong> {money(report.best.baseProfitPerDay)}
                       </div>
                       <div>
+                        <span
+                          data-tooltip="Placeholder text for Total Area/Day"
+                          style={{
+                            position: "relative",
+                            cursor: "help",
+                            marginRight: "6px"
+                          }}
+                        >
+                          ⓘ
+                        </span>
                         <strong>Total Area/Day:</strong> {report.best.totalAreaPerDay != null && Number.isFinite(report.best.totalAreaPerDay)
                           ? report.best.totalAreaPerDay.toFixed(1).replace(/\.0$/, "")
                           : "n/a"}
                       </div>
                       <div>
+                        <span
+                          data-tooltip="Placeholder text for Runs/day"
+                          style={{
+                            position: "relative",
+                            cursor: "help",
+                            marginRight: "6px"
+                          }}
+                        >
+                          ⓘ
+                        </span>
                         <strong>Runs/day:</strong> {report.best.runsPerDay != null && Number.isFinite(report.best.runsPerDay)
                           ? report.best.runsPerDay.toFixed(1).replace(/\.0$/, "")
                           : "n/a"}
                       </div>
-                      {report.best.roiNarrowDays != null && (
+                      {(report.best.buildCost != null || report.best.roiNarrowDays != null) && (
                         <div>
-                          <strong>ROI (narrow):</strong> {Number.isFinite(report.best.roiNarrowDays)
+                          <span
+                            data-tooltip="Placeholder text for Build Cost - Narrow (ROI)"
+                            style={{
+                              position: "relative",
+                              cursor: "help",
+                              marginRight: "6px"
+                            }}
+                          >
+                            ⓘ
+                          </span>
+                          <strong>Build Cost - Narrow (ROI):</strong> {money(report.best.buildCost)} ({Number.isFinite(report.best.roiNarrowDays)
                             ? report.best.roiNarrowDays.toFixed(1).replace(/\.0$/, "")
-                            : "n/a"} days
+                            : "n/a"} days)
                         </div>
                       )}
-                      {report.best.buildCost != null && (
+                      {(report.best.totalBuildCost != null || report.best.roiBroadDays != null) && (
                         <div>
-                          <strong>Build cost:</strong> {money(report.best.buildCost)}
-                        </div>
-                      )}
-                      {report.best.roiBroadDays != null && (
-                        <div>
-                          <strong>ROI (broad):</strong> {Number.isFinite(report.best.roiBroadDays)
+                          <span
+                            data-tooltip="Placeholder text for Build Cost - Broad (ROI)"
+                            style={{
+                              position: "relative",
+                              cursor: "help",
+                              marginRight: "6px"
+                            }}
+                          >
+                            ⓘ
+                          </span>
+                          <strong>Build Cost - Broad (ROI):</strong> {money(report.best.totalBuildCost)} ({Number.isFinite(report.best.roiBroadDays)
                             ? report.best.roiBroadDays.toFixed(1).replace(/\.0$/, "")
-                            : "n/a"} days
+                            : "n/a"} days)
                         </div>
                       )}
-                      {report.best.totalBuildCost != null && (
+                      {(report.best.inputBuffer7 != null || report.best.inputPaybackDays7Narrow != null) && (
                         <div>
-                          <strong>Total build cost:</strong> {money(report.best.totalBuildCost)}
-                        </div>
-                      )}
-                      {report.best.inputBuffer7 != null && (
-                        <div>
-                          <strong>Input buffer 7d (narrow):</strong> {money(report.best.inputBuffer7)}
-                        </div>
-                      )}
-                      {report.best.inputPaybackDays7Narrow != null && (
-                        <div>
-                          <strong>Input buffer payback (narrow):</strong> {Number.isFinite(report.best.inputPaybackDays7Narrow)
+                          <span
+                            data-tooltip="Placeholder text for Input Buffer 7d - Narrow (Payback)"
+                            style={{
+                              position: "relative",
+                              cursor: "help",
+                              marginRight: "6px"
+                            }}
+                          >
+                            ⓘ
+                          </span>
+                          <strong>Input Buffer 7d - Narrow (Payback):</strong> {money(report.best.inputBuffer7)} ({Number.isFinite(report.best.inputPaybackDays7Narrow)
                             ? report.best.inputPaybackDays7Narrow.toFixed(1).replace(/\.0$/, "")
-                            : "n/a"} days
+                            : "n/a"} days)
                         </div>
                       )}
-                      {report.best.totalInputBuffer7 != null && (
+                      {(report.best.totalInputBuffer7 != null || report.best.inputPaybackDays7Broad != null) && (
                         <div>
-                          <strong>Input buffer 7d (broad):</strong> {money(report.best.totalInputBuffer7)}
-                        </div>
-                      )}
-                      {report.best.inputPaybackDays7Broad != null && (
-                        <div>
-                          <strong>Input buffer payback (broad):</strong> {Number.isFinite(report.best.inputPaybackDays7Broad)
+                          <span
+                            data-tooltip="Placeholder text for Input Buffer 7d - Broad (Payback)"
+                            style={{
+                              position: "relative",
+                              cursor: "help",
+                              marginRight: "6px"
+                            }}
+                          >
+                            ⓘ
+                          </span>
+                          <strong>Input Buffer 7d - Broad (Payback):</strong> {money(report.best.totalInputBuffer7)} ({Number.isFinite(report.best.inputPaybackDays7Broad)
                             ? report.best.inputPaybackDays7Broad.toFixed(1).replace(/\.0$/, "")
-                            : "n/a"} days
+                            : "n/a"} days)
                         </div>
                       )}
                       {report.best.scenario && (

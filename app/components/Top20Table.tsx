@@ -161,52 +161,32 @@ export default function Top20Table({ options, priceMode }: { options: Top20Optio
                           <div>
                             <strong>Total Area/Day:</strong> {fmt(option.totalAreaPerDay)}
                           </div>
-                          {option.roiNarrowDays != null && (
+                          {((option as any).buildCost != null || option.roiNarrowDays != null) && (
                             <div>
-                              <strong>ROI (narrow):</strong> {Number.isFinite(option.roiNarrowDays)
+                              <strong>Build Cost - Narrow (ROI):</strong> {money((option as any).buildCost)} ({option.roiNarrowDays != null && Number.isFinite(option.roiNarrowDays)
                                 ? option.roiNarrowDays.toFixed(1).replace(/\.0$/, "")
-                                : "n/a"} days
+                                : "n/a"} days)
                             </div>
                           )}
-                          {(option as any).buildCost != null && (
+                          {((option as any).totalBuildCost != null || option.roiBroadDays != null) && (
                             <div>
-                              <strong>Build cost:</strong> {money((option as any).buildCost)}
-                            </div>
-                          )}
-                          {option.roiBroadDays != null && (
-                            <div>
-                              <strong>ROI (broad):</strong> {Number.isFinite(option.roiBroadDays)
+                              <strong>Build Cost - Broad (ROI):</strong> {money((option as any).totalBuildCost)} ({option.roiBroadDays != null && Number.isFinite(option.roiBroadDays)
                                 ? option.roiBroadDays.toFixed(1).replace(/\.0$/, "")
-                                : "n/a"} days
+                                : "n/a"} days)
                             </div>
                           )}
-                          {(option as any).totalBuildCost != null && (
+                          {(option.inputBuffer7 != null || option.inputPaybackDays7Narrow != null) && (
                             <div>
-                              <strong>Total build cost:</strong> {money((option as any).totalBuildCost)}
-                            </div>
-                          )}
-                          {option.inputBuffer7 != null && (
-                            <div>
-                              <strong>Input buffer 7d (narrow):</strong> {money(option.inputBuffer7)}
-                            </div>
-                          )}
-                          {option.inputPaybackDays7Narrow != null && (
-                            <div>
-                              <strong>Input buffer payback (narrow):</strong> {Number.isFinite(option.inputPaybackDays7Narrow)
+                              <strong>Input Buffer 7d - Narrow (Payback):</strong> {money(option.inputBuffer7)} ({option.inputPaybackDays7Narrow != null && Number.isFinite(option.inputPaybackDays7Narrow)
                                 ? option.inputPaybackDays7Narrow.toFixed(1).replace(/\.0$/, "")
-                                : "n/a"} days
+                                : "n/a"} days)
                             </div>
                           )}
-                          {option.totalInputBuffer7 != null && (
+                          {(option.totalInputBuffer7 != null || option.inputPaybackDays7Broad != null) && (
                             <div>
-                              <strong>Input buffer 7d (broad):</strong> {money(option.totalInputBuffer7)}
-                            </div>
-                          )}
-                          {option.inputPaybackDays7Broad != null && (
-                            <div>
-                              <strong>Input buffer payback (broad):</strong> {Number.isFinite(option.inputPaybackDays7Broad)
+                              <strong>Input Buffer 7d - Broad (Payback):</strong> {money(option.totalInputBuffer7)} ({option.inputPaybackDays7Broad != null && Number.isFinite(option.inputPaybackDays7Broad)
                                 ? option.inputPaybackDays7Broad.toFixed(1).replace(/\.0$/, "")
-                                : "n/a"} days
+                                : "n/a"} days)
                             </div>
                           )}
                           <div>
