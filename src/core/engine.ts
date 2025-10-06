@@ -316,8 +316,9 @@ export function findAllMakeOptions(
   depth = 0,
   exploreAllChildScenarios = false
 ): MakeOption[] {
-  if (depth > 0 && !exploreAllChildScenarios) {
-    // Current behavior: return single best option for children
+  // For depth > 1 (grandchildren+), always return single best scenario
+  // For depth === 1, only explore if exploreAllChildScenarios is true
+  if (depth > 1 || (depth > 0 && !exploreAllChildScenarios)) {
     const best = bestOptionForTicker(
       materialTicker,
       recipeMap,
@@ -328,8 +329,8 @@ export function findAllMakeOptions(
     return best ? [best] : [];
   }
 
-  // Either root (depth === 0) OR exploreAllChildScenarios mode:
-  // explore all recipes and all scenarios
+  // Root (depth 0) OR first-level children with exploreAllChildScenarios:
+  // explore all recipes and scenarios
   const results: MakeOption[] = [];
   const headers = recipeMap.headers;
   const rows = recipeMap.map[materialTicker] || [];
@@ -399,14 +400,14 @@ export function findAllMakeOptions(
         
         // Recursively get child options (propagate exploreAllChildScenarios)
         const childOptions = findAllMakeOptions(
-          inputTicker,
-          recipeMap,
-          priceMap,
-          priceMode,
-          bestMap,
-          depth + 1,
-          exploreAllChildScenarios
-        );
+  inputTicker,
+  recipeMap,
+  priceMap,
+  priceMode,
+  bestMap,
+  depth + 1,
+  depth === 0 ? exploreAllChildScenarios : false  // ← Only explore at depth 1
+);
         
         inputs.push({ ticker: inputTicker, amount: inputAmount, buyCost, childOptions });
       }
