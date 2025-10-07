@@ -66,6 +66,55 @@ function pruneForDiversity(options: MakeOption[], topN: number): MakeOption[] {
 }
 
 /**
+ * Adaptive pruning based on input cost significance
+ * Prunes more aggressively for inputs that are small cost contributors
+ */
+function pruneByInputCostShare(
+  inputs: Array<{
+    ticker: string;
+    amount: number;
+    buyCost: number | null;
+    childOptions: MakeOption[];
+  }>,
+  depth: number,
+  exploreAllChildScenarios: boolean
+): void {
+  if (!exploreAllChildScenarios || inputs.length === 0) return;
+
+  // Estimate each input's cost contribution
+  const inputCosts = inputs.map(inp => {
+    // Use buy cost if available, otherwise estimate from best child option
+    let estimatedCost = inp.buyCost ?? 0;
+    if (estimatedCost === 0 && inp.childOptions.length > 0) {
+      // Use first option (likely best by P/A) as cost estimate
+      estimatedCost = (inp.childOptions[0].cogmPerOutput ?? 0) * inp.amount;
+    }
+    return { input: inp, cost: estimatedCost };
+  });
+
+  const totalEstimatedCost = inputCosts.reduce((sum, x) => sum + x.cost, 0);
+  if (totalEstimatedCost === 0) return;
+
+  // Apply cost-aware pruning
+  for (const item of inputCosts) {
+    const costShare = item.cost / totalEstimatedCost;
+    
+    if (costShare < 0.05) {
+      // Tiny cost contributor (<5%): single option only
+      item.input.childOptions = item.input.childOptions.slice(0, 1);
+    } else if (costShare < 0.15) {
+      // Minor cost contributor (5-15%): keep 2-3 scenarios
+      item.input.childOptions = pruneForDiversity(item.input.childOptions, 2);
+    } else if (costShare < 0.30) {
+      // Moderate contributor (15-30%): keep 4-5 scenarios
+      const target = depth === 0 ? 5 : 3;
+      item.input.childOptions = pruneForDiversity(item.input.childOptions, target);
+    }
+    // Major contributors (>30%): keep all pruned scenarios from upstream
+  }
+}
+
+/**
  * Build the single best option for a ticker (used for children/grandchildren).
  * Selection logic:
  *   1) Build scenarios for THIS ticker only (each input → BUY or MAKE(childBest)).
@@ -73,7 +122,7 @@ function pruneForDiversity(options: MakeOption[], topN: number): MakeOption[] {
  *      `scenario` matches that string exactly (after normalization).
  *   3) Otherwise (no Scenario in bestMap or no exact match), fall back to the
  *      option with the highest Profit/Area at this ticker's capacity.
- * Also honors bestMap.recipeId by filtering candidate recipes to that ID.
+ * Also honors bestMap.recipeId by filtering candidate recipes to that ID (if honorRecipeIdFilter is true).
  */
 function bestOptionForTicker(
   materialTicker: string,
@@ -81,6 +130,7 @@ function bestOptionForTicker(
   priceMap: PricesMap,
   priceMode: PriceMode,
   bestMap: BestMap,
+  honorRecipeIdFilter: boolean,
   seen: Set<string> = new Set()
 ): MakeOption | null {
   const mkey = memoKey(priceMode, materialTicker);
@@ -109,8 +159,8 @@ function bestOptionForTicker(
   const bestId = bestEntry?.recipeId ?? null;
   const expectedScenario = norm((bestEntry?.scenario ?? ""));
 
-  // If bestMap gives a recipeId, only consider that recipe; fallback to all if none match
-  const rowsToUse0 = bestId
+  // If bestMap gives a recipeId and we honor filtering, only consider that recipe
+  const rowsToUse0 = (bestId && honorRecipeIdFilter)
     ? rows.filter((r) => String(r[idx.recipeId] ?? "") === bestId)
     : rows;
   const rowsToUse = rowsToUse0.length ? rowsToUse0 : rows;
@@ -154,6 +204,7 @@ function bestOptionForTicker(
           priceMap,
           priceMode,
           bestMap,
+          honorRecipeIdFilter,
           nextSeen
         );
         inputs.push({ ticker: inputTicker, amount: inputAmount, buyCost, childBest });
@@ -357,7 +408,8 @@ export function findAllMakeOptions(
   priceMode: PriceMode,
   bestMap: BestMap,
   depth = 0,
-  exploreAllChildScenarios = false
+  exploreAllChildScenarios = false,
+  honorRecipeIdFilter = true
 ): MakeOption[] {
   // Optimized cache checking for children
   if (depth > 0) {
@@ -374,7 +426,8 @@ export function findAllMakeOptions(
         recipeMap,
         priceMap,
         priceMode,
-        bestMap
+        bestMap,
+        honorRecipeIdFilter
       );
       return best ? [best] : [];
     }
@@ -393,9 +446,9 @@ export function findAllMakeOptions(
   const runsPerDayIndex = headers.indexOf("Runs P/D");
   const areaPerOutputIndex = headers.indexOf("AreaPerOutput");
 
-  // If depth > 0 and exploreAllChildScenarios, respect bestMap recipeId filter
+  // If depth > 0 and exploreAllChildScenarios, respect bestMap recipeId filter (if enabled)
   let rowsToProcess = rows;
-  if (depth > 0 && exploreAllChildScenarios) {
+  if (depth > 0 && exploreAllChildScenarios && honorRecipeIdFilter) {
     const bestEntry = bestMap?.[materialTicker];
     const bestId = bestEntry?.recipeId;
     if (bestId) {
@@ -456,22 +509,25 @@ export function findAllMakeOptions(
           priceMode,
           bestMap,
           depth + 1,
-          depth <= 1 && exploreAllChildScenarios  // Explore depths 0-2 only
+          depth <= 1 && exploreAllChildScenarios,
+          honorRecipeIdFilter
         );
 
         // Apply intelligent pruning based on depth
         if (depth === 0 && exploreAllChildScenarios) {
-          // Root's direct children: keep diverse set (top 5 + one per simple scenario)
-          childOptions = pruneForDiversity(childOptions, 5);
+          // Root's direct children: keep diverse set (top 7 + one per simple scenario)
+          childOptions = pruneForDiversity(childOptions, 7);
         } else if (depth === 1 && exploreAllChildScenarios) {
           // Children's children (grandchildren): aggressive pruning
-          // Keep top 2 to allow some variation, but prevent explosion
-          childOptions = pruneForDiversity(childOptions, 2);
+          childOptions = pruneForDiversity(childOptions, 3);
         }
         
         inputs.push({ ticker: inputTicker, amount: inputAmount, buyCost, childOptions });
       }
     }
+
+    // Apply cost-adaptive pruning before branching
+    pruneByInputCostShare(inputs, depth, exploreAllChildScenarios);
 
     // Outputs (valuation on selected side for the root ticker)
     let totalOutputValue = 0;

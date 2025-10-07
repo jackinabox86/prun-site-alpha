@@ -6,6 +6,8 @@ import { computeInputPayback } from "@/core/inputPayback";
 import { CSV_URLS } from "@/lib/config";
 import type { PriceMode } from "@/types";
 
+const honorRecipeIdFilter = false;  // Set to false to explore all recipe variants
+
 type WithMetrics<T> = T & {
   roiNarrowDays?: number | null;
   roiBroadDays?: number | null;
