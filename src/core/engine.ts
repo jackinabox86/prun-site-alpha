@@ -409,7 +409,7 @@ export function findAllMakeOptions(
   bestMap: BestMap,
   depth = 0,
   exploreAllChildScenarios = false,
-  honorRecipeIdFilter = true
+  honorRecipeIdFilter = false
 ): MakeOption[] {
   // Optimized cache checking for children
   if (depth > 0) {
@@ -509,7 +509,7 @@ export function findAllMakeOptions(
           priceMode,
           bestMap,
           depth + 1,
-          depth <= 1 && exploreAllChildScenarios,
+          depth <= 2 && exploreAllChildScenarios,
           honorRecipeIdFilter
         );
 

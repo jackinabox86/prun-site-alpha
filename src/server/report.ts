@@ -27,7 +27,7 @@ export async function buildReport(opts: {
 
   const { recipeMap, pricesMap, bestMap } = await loadAllFromCsv(CSV_URLS);
 
-  const options = findAllMakeOptions(ticker, recipeMap, pricesMap, priceMode, bestMap, 0, true);
+  const options = findAllMakeOptions(ticker, recipeMap, pricesMap, priceMode, bestMap, 0, true, honorRecipeIdFilter);
   if (!options.length) {
     return {
       schemaVersion: 3,
