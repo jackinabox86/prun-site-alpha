@@ -359,15 +359,16 @@ export function findAllMakeOptions(
   depth = 0,
   exploreAllChildScenarios = false
 ): MakeOption[] {
-  // Check cache for children
+  // Optimized cache checking for children
   if (depth > 0) {
-    const cacheKey = memoKey(priceMode, materialTicker);
-    if (ALL_SCENARIOS_MEMO.has(cacheKey)) {
-      return ALL_SCENARIOS_MEMO.get(cacheKey)!.map(deepClone);
-    }
-    
-    // If no cache and not exploring all, use single best
-    if (!exploreAllChildScenarios) {
+    if (exploreAllChildScenarios) {
+      // Check full exploration cache
+      const cacheKey = memoKey(priceMode, materialTicker);
+      if (ALL_SCENARIOS_MEMO.has(cacheKey)) {
+        return ALL_SCENARIOS_MEMO.get(cacheKey)!.map(deepClone);
+      }
+    } else {
+      // Not exploring: use single best (has its own BEST_MEMO cache)
       const best = bestOptionForTicker(
         materialTicker,
         recipeMap,
@@ -379,7 +380,7 @@ export function findAllMakeOptions(
     }
   }
 
-  // Rest of your existing exploration logic...
+  // Rest of exploration logic...
   const results: MakeOption[] = [];
   const headers = recipeMap.headers;
   const rows = recipeMap.map[materialTicker] || [];
@@ -466,9 +467,6 @@ export function findAllMakeOptions(
           // Children's children (grandchildren): aggressive pruning
           // Keep top 2 to allow some variation, but prevent explosion
           childOptions = pruneForDiversity(childOptions, 2);
-        } else if (depth >= 2) {
-          // Great-grandchildren+: single best only
-          childOptions = childOptions.slice(0, 1);
         }
         
         inputs.push({ ticker: inputTicker, amount: inputAmount, buyCost, childOptions });
