@@ -460,12 +460,12 @@ export function findAllMakeOptions(
 
         // Apply intelligent pruning based on depth
         if (depth === 0 && exploreAllChildScenarios) {
-          // Root's direct children: keep diverse set (top 10 + one per simple scenario)
-          childOptions = pruneForDiversity(childOptions, 10);
+          // Root's direct children: keep diverse set (top 5 + one per simple scenario)
+          childOptions = pruneForDiversity(childOptions, 5);
         } else if (depth === 1 && exploreAllChildScenarios) {
           // Children's children (grandchildren): aggressive pruning
-          // Keep top 3 to allow some variation, but prevent explosion
-          childOptions = pruneForDiversity(childOptions, 3);
+          // Keep top 2 to allow some variation, but prevent explosion
+          childOptions = pruneForDiversity(childOptions, 2);
         } else if (depth >= 2) {
           // Great-grandchildren+: single best only
           childOptions = childOptions.slice(0, 1);
