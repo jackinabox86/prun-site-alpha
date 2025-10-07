@@ -8,19 +8,62 @@ import {
   ScenarioRowsResult,
 } from "../types";
 import { findPrice } from "./price";
-import { composeScenario } from "./scenario";
+import { composeScenario, scenarioDisplayName } from "./scenario";
 
 /**──────────────────────────────────────────────────────────────────────────────
- * Child "best option" memo (keyed by priceMode+ticker) to avoid recomputation
+ * Memoization for child scenarios
  *─────────────────────────────────────────────────────────────────────────────*/
 const BEST_MEMO = new Map<string, MakeOption>();
+const ALL_SCENARIOS_MEMO = new Map<string, MakeOption[]>();
+
 const memoKey = (mode: PriceMode, ticker: string) => `${mode}::${ticker}`;
+
+/** Clear all caches - call this between different analyses if needed */
+export function clearScenarioCache() {
+  BEST_MEMO.clear();
+  ALL_SCENARIOS_MEMO.clear();
+}
 
 function deepClone<T>(v: T): T {
   return JSON.parse(JSON.stringify(v));
 }
 
 const norm = (s: string) => s.replace(/\s+/g, " ").trim();
+
+/**
+ * Prune options to keep top N by P/A plus one representative of each simple scenario
+ */
+function pruneForDiversity(options: MakeOption[], topN: number): MakeOption[] {
+  if (options.length <= topN) return options;
+
+  // Rank by P/A
+  const ranked = options
+    .map(opt => {
+      const capacity = (opt.output1Amount || 0) * (opt.runsPerDay || 0);
+      const res = buildScenarioRows(opt, 0, capacity, false);
+      return { opt, pa: res.subtreeProfitPerArea ?? -Infinity };
+    })
+    .sort((a, b) => b.pa - a.pa);
+
+  // Keep top N
+  const keepSet = new Set(ranked.slice(0, topN).map(x => x.opt));
+
+  // Add best representative of each simple scenario
+  const bySimpleScenario = new Map<string, { opt: MakeOption; pa: number }>();
+  for (const item of ranked) {
+    const simple = scenarioDisplayName(item.opt.scenario || "");
+    if (!bySimpleScenario.has(simple) || item.pa > bySimpleScenario.get(simple)!.pa) {
+      bySimpleScenario.set(simple, item);
+    }
+  }
+
+  for (const item of bySimpleScenario.values()) {
+    keepSet.add(item.opt);
+  }
+
+  // Return in original order, filtered
+  return options.filter(o => keepSet.has(o));
+}
 
 /**
  * Build the single best option for a ticker (used for children/grandchildren).
@@ -305,7 +348,7 @@ function bestOptionForTicker(
  * Public API: findAllMakeOptions
  * - depth === 0 (root): explore BUY vs MAKE for each direct input
  * - depth  >  0 with exploreAllChildScenarios = false: return ONE best option
- * - depth  >  0 with exploreAllChildScenarios = true: explore all scenarios (Apps Script mode)
+ * - depth  >  0 with exploreAllChildScenarios = true: explore all scenarios with intelligent pruning
  *─────────────────────────────────────────────────────────────────────────────*/
 export function findAllMakeOptions(
   materialTicker: string,
@@ -316,21 +359,27 @@ export function findAllMakeOptions(
   depth = 0,
   exploreAllChildScenarios = false
 ): MakeOption[] {
-  // For depth > 1 (grandchildren+), always return single best scenario
-  // For depth === 1, only explore if exploreAllChildScenarios is true
-  if (depth > 1 || (depth > 0 && !exploreAllChildScenarios)) {
-    const best = bestOptionForTicker(
-      materialTicker,
-      recipeMap,
-      priceMap,
-      priceMode,
-      bestMap
-    );
-    return best ? [best] : [];
+  // Check cache for children
+  if (depth > 0) {
+    const cacheKey = memoKey(priceMode, materialTicker);
+    if (ALL_SCENARIOS_MEMO.has(cacheKey)) {
+      return ALL_SCENARIOS_MEMO.get(cacheKey)!.map(deepClone);
+    }
+    
+    // If no cache and not exploring all, use single best
+    if (!exploreAllChildScenarios) {
+      const best = bestOptionForTicker(
+        materialTicker,
+        recipeMap,
+        priceMap,
+        priceMode,
+        bestMap
+      );
+      return best ? [best] : [];
+    }
   }
 
-  // Root (depth 0) OR first-level children with exploreAllChildScenarios:
-  // explore all recipes and scenarios
+  // Rest of your existing exploration logic...
   const results: MakeOption[] = [];
   const headers = recipeMap.headers;
   const rows = recipeMap.map[materialTicker] || [];
@@ -381,7 +430,7 @@ export function findAllMakeOptions(
     const buildCost =
       buildCostIndex !== -1 ? Number(row[buildCostIndex] ?? 0) : 0;
 
-    // Inputs: collect multiple child options
+    // Inputs: collect and intelligently prune child options
     const inputs: Array<{
       ticker: string;
       amount: number;
@@ -398,16 +447,29 @@ export function findAllMakeOptions(
         const ask = findPrice(inputTicker, priceMap, "ask");
         const buyCost = ask != null ? inputAmount * ask : null;
         
-        // Recursively get child options (propagate exploreAllChildScenarios)
-        const childOptions = findAllMakeOptions(
-  inputTicker,
-  recipeMap,
-  priceMap,
-  priceMode,
-  bestMap,
-  depth + 1,
-  depth === 0 ? exploreAllChildScenarios : false  // ← Only explore at depth 1
-);
+        // Recursively get child options (explore depths 0-2)
+        let childOptions = findAllMakeOptions(
+          inputTicker,
+          recipeMap,
+          priceMap,
+          priceMode,
+          bestMap,
+          depth + 1,
+          depth <= 1 && exploreAllChildScenarios  // Explore depths 0-2 only
+        );
+
+        // Apply intelligent pruning based on depth
+        if (depth === 0 && exploreAllChildScenarios) {
+          // Root's direct children: keep diverse set (top 10 + one per simple scenario)
+          childOptions = pruneForDiversity(childOptions, 10);
+        } else if (depth === 1 && exploreAllChildScenarios) {
+          // Children's children (grandchildren): aggressive pruning
+          // Keep top 3 to allow some variation, but prevent explosion
+          childOptions = pruneForDiversity(childOptions, 3);
+        } else if (depth >= 2) {
+          // Great-grandchildren+: single best only
+          childOptions = childOptions.slice(0, 1);
+        }
         
         inputs.push({ ticker: inputTicker, amount: inputAmount, buyCost, childOptions });
       }
@@ -575,9 +637,14 @@ export function findAllMakeOptions(
         inputBuffer7,
         output1Amount,
         madeInputDetails: scn.madeInputDetails,
-        
       });
     }
+  } // ← This closes the "for (const row of rowsToProcess)" loop
+
+  // Cache AFTER all rows processed, OUTSIDE the loop
+  if (depth > 0 && results.length > 0 && exploreAllChildScenarios) {
+    const cacheKey = memoKey(priceMode, materialTicker);
+    ALL_SCENARIOS_MEMO.set(cacheKey, results.map(deepClone));
   }
 
   return results;
