@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { CSV_URLS } from "@/lib/config";
 import { loadAllFromCsv } from "@/lib/loadFromCsv";
+import { cachedBestRecipes } from "@/server/cachedBestRecipes";
 
 // Force Node runtime (not Edge) because we use Node-y libs/fetch patterns
 export const runtime = "nodejs";
@@ -10,7 +11,14 @@ export const dynamic = "force-dynamic";
 
 export async function GET() {
   try {
-    const { recipeMap, pricesMap, bestMap } = await loadAllFromCsv(CSV_URLS);
+    // Get cached best recipes (will be generated on first call)
+    const { bestMap } = await cachedBestRecipes.getBestRecipes();
+
+    // Load other data without best CSV
+    const { recipeMap, pricesMap } = await loadAllFromCsv(
+      { recipes: CSV_URLS.recipes, prices: CSV_URLS.prices },
+      { bestMap }
+    );
 
     // Build a compact summary so you can quickly see if it worked
     const recipeTickers = Object.keys(recipeMap.map);
