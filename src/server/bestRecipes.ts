@@ -2,13 +2,28 @@
 import { loadAllFromCsv } from "@/lib/loadFromCsv";
 import { findAllMakeOptions, buildScenarioRows, clearScenarioCache } from "@/core/engine";
 import { CSV_URLS } from "@/lib/config";
-import type { RecipeSheet } from "@/types";
+import type { RecipeSheet, BestMap } from "@/types";
 
 export interface BestRecipeResult {
   ticker: string;
   recipeId: string | null;
   scenario: string;
   profitPA: number;
+}
+
+/**
+ * Convert BestRecipeResult array to BestMap format
+ * This allows the generated results to be used in place of the CSV-loaded bestMap
+ */
+export function convertToBestMap(results: BestRecipeResult[]): BestMap {
+  const bestMap: BestMap = {};
+  for (const result of results) {
+    bestMap[result.ticker] = {
+      recipeId: result.recipeId,
+      scenario: result.scenario,
+    };
+  }
+  return bestMap;
 }
 
 /**
@@ -93,8 +108,11 @@ export async function refreshBestRecipeIDs(): Promise<BestRecipeResult[]> {
   // Clear caches
   clearScenarioCache();
 
-  // Load data
-  const { recipeMap, pricesMap } = await loadAllFromCsv(CSV_URLS);
+  // Load data (no bestMap needed since we're generating it)
+  const { recipeMap, pricesMap } = await loadAllFromCsv(
+    { recipes: CSV_URLS.recipes, prices: CSV_URLS.prices },
+    { bestMap: {} } // Pass empty bestMap since we're generating the best recipes
+  );
 
   // Build recipe sheet for dependency analysis
   const recipeSheet: RecipeSheet = [

@@ -1,26 +1,35 @@
 // app/api/best-recipes/route.ts
 import { NextResponse } from "next/server";
-import { refreshBestRecipeIDs } from "@/server/bestRecipes";
+import { cachedBestRecipes } from "@/server/cachedBestRecipes";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
 export const maxDuration = 300; // Allow up to 5 minutes for computation
 
-export async function GET() {
+export async function GET(request: Request) {
   try {
-    console.log("Starting best recipes calculation...");
+    const { searchParams } = new URL(request.url);
+    const clearCache = searchParams.get("clearCache") === "true";
+
+    if (clearCache) {
+      console.log("Clearing best recipes cache...");
+      cachedBestRecipes.clearCache();
+    }
+
+    console.log("Getting best recipes...");
     const startTime = Date.now();
 
-    const results = await refreshBestRecipeIDs();
+    const { results } = await cachedBestRecipes.getBestRecipes();
 
     const duration = ((Date.now() - startTime) / 1000).toFixed(2);
-    console.log(`Best recipes calculation completed in ${duration}s`);
+    console.log(`Best recipes retrieved in ${duration}s`);
 
     return NextResponse.json({
       success: true,
       data: results,
       count: results.length,
+      cached: cachedBestRecipes.isCached(),
       durationSeconds: parseFloat(duration)
     });
   } catch (err: any) {
