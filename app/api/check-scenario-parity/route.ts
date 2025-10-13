@@ -3,30 +3,32 @@ import { NextResponse } from "next/server";
 import { loadAllFromCsv } from "@/lib/loadFromCsv";
 import { findAllMakeOptions } from "@/core/engine";
 import { scenarioEquals, normalizeScenario } from "@/core/scenario";
+import { cachedBestRecipes } from "@/server/cachedBestRecipes";
 import type { PriceMode } from "@/types";
-import { CSV_URLS } from "@/lib/config"; // or swap for env-based object below
+import { CSV_URLS } from "@/lib/config";
 
 export const runtime = "nodejs";
 
 export async function GET() {
-  // If you prefer envs directly, replace CSV_URLS with:
-  // {
-  //   recipes: process.env.CSV_RECIPES_URL!,
-  //   prices:  process.env.CSV_PRICES_URL!,
-  //   best:    process.env.CSV_BEST_URL!,
-  // }
-  const { recipeMap, pricesMap, bestMap, __rawBestRows } = await loadAllFromCsv(CSV_URLS);
+  // Get cached best recipes (will be generated on first call)
+  const { bestMap, results: bestRecipeResults } = await cachedBestRecipes.getBestRecipes();
+
+  // Load other data without best CSV
+  const { recipeMap, pricesMap } = await loadAllFromCsv(
+    { recipes: CSV_URLS.recipes, prices: CSV_URLS.prices },
+    { bestMap }
+  );
 
   const priceMode: PriceMode = "bid";
   const mismatches: Array<{ ticker: string; sheet: string; computed: string }> = [];
 
-  // Walk the sheet's BestRecipeIDs rows and recompute each child's best scenario
-  for (const r of __rawBestRows as Array<Record<string, any>>) {
-    const t = String(r["Ticker"] ?? "").trim();
-    const sheetScenario = String(r["Scenario"] ?? "").trim();
+  // Walk the generated best recipes and recompute each child's best scenario
+  for (const result of bestRecipeResults) {
+    const t = result.ticker;
+    const sheetScenario = result.scenario;
     if (!t) continue;
 
-    // depth=1 → “child mode”: return exactly one best option for the ticker
+    // depth=1 → "child mode": return exactly one best option for the ticker
     const best = findAllMakeOptions(t, recipeMap, pricesMap, priceMode, bestMap, 1)[0];
     const computed = best?.scenario ?? "";
 
@@ -41,7 +43,7 @@ export async function GET() {
 
   return NextResponse.json({
     ok: true,
-    totalChecked: (__rawBestRows as any[]).length || 0,
+    totalChecked: bestRecipeResults.length || 0,
     mismatches,
   });
 }
