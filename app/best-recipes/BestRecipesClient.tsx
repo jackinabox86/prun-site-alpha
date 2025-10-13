@@ -217,7 +217,7 @@ export default function BestRecipesClient() {
                       }}
                     >
                       {col === "ticker" && "Ticker"}
-                      {col === "recipeId" && "Recipe ID"}
+                      {col === "recipeId" && "RecipeID"}
                       {col === "scenario" && "Scenario"}
                       {col === "profitPA" && "Profit P/A"}
                       {col === "buyAllProfitPA" && "Buy All P/A"}
@@ -252,7 +252,7 @@ export default function BestRecipesClient() {
                     <td style={{ padding: "12px 16px", fontWeight: 600 }}>
                       {row.ticker}
                     </td>
-                    <td style={{ padding: "12px 16px", fontFamily: "monospace" }}>
+                    <td style={{ padding: "12px 16px" }}>
                       {row.recipeId || "—"}
                     </td>
                     <td
@@ -261,19 +261,19 @@ export default function BestRecipesClient() {
                     >
                       {row.scenario ? scenarioDisplayName(row.scenario) : "—"}
                     </td>
-                    <td style={{ padding: "12px 16px", fontFamily: "monospace" }}>
+                    <td style={{ padding: "12px 16px", textAlign: "right" }}>
                       {typeof row.profitPA === "number" && Number.isFinite(row.profitPA)
-                        ? row.profitPA.toFixed(1).replace(/\.0$/, "")
+                        ? `₳${row.profitPA.toFixed(1).replace(/\.0$/, "")}`
                         : "—"}
                     </td>
-                    <td style={{ padding: "12px 16px", fontFamily: "monospace" }}>
+                    <td style={{ padding: "12px 16px", textAlign: "right" }}>
                       {row.buyAllProfitPA === null
                         ? "Input N/A"
                         : typeof row.buyAllProfitPA === "number" && Number.isFinite(row.buyAllProfitPA)
-                        ? row.buyAllProfitPA.toFixed(1).replace(/\.0$/, "")
+                        ? `₳${row.buyAllProfitPA.toFixed(1).replace(/\.0$/, "")}`
                         : "—"}
                     </td>
-                    <td style={{ padding: "12px 16px" }}>
+                    <td style={{ padding: "12px 16px", textAlign: "center" }}>
                       <a
                         href={`/?ticker=${encodeURIComponent(row.ticker)}`}
                         style={{
