@@ -10,7 +10,7 @@ export interface BestRecipeResult {
   recipeId: string | null;
   scenario: string;
   profitPA: number;
-  buyAllProfitPA: number; // Profit P/A if all inputs are bought instead of made
+  buyAllProfitPA: number | null; // Profit P/A if all inputs are bought instead of made, null if inputs missing
 }
 
 /**
@@ -37,7 +37,7 @@ function calculateBuyAllProfitPA(
   recipeMap: any,
   pricesMap: any,
   priceMode: PriceMode
-): number {
+): number | null {
   const headers = recipeMap.headers;
   const rows = recipeMap.map[ticker] || [];
   if (!rows.length) return 0;
@@ -110,7 +110,7 @@ function calculateBuyAllProfitPA(
     }
   }
 
-  return bestPA > -Infinity ? bestPA : 0;
+  return bestPA > -Infinity ? bestPA : null;
 }
 
 /**

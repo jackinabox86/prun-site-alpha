@@ -22,6 +22,7 @@ export default function ReportClient() {
   const [tickers, setTickers] = useState<string[]>([]);
   const [tickerInput, setTickerInput] = useState<string>("REP");
   const [priceMode, setPriceMode] = useState<PriceMode>("bid");
+  const [urlParamsChecked, setUrlParamsChecked] = useState(false);
 
   const [loading, setLoading] = useState(false);
   const [report, setReport] = useState<ApiReport | null>(null);
@@ -33,6 +34,16 @@ export default function ReportClient() {
       .then((r) => (r.ok ? r.json() : Promise.reject(new Error("Failed to load tickers"))))
       .then((data: { tickers: string[] }) => setTickers(data.tickers ?? []))
       .catch(() => setTickers([]));
+  }, []);
+
+  // Read ticker from URL params on mount
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const tickerParam = params.get("ticker");
+    if (tickerParam) {
+      setTickerInput(tickerParam.toUpperCase());
+    }
+    setUrlParamsChecked(true);
   }, []);
 
   const filteredTickers = useMemo(() => {
@@ -64,17 +75,14 @@ export default function ReportClient() {
   };
 
   useEffect(() => {
-    // eslint-disable-next-line @typescript-eslint/no-floating-promises
-    run();
+    if (urlParamsChecked) {
+      // eslint-disable-next-line @typescript-eslint/no-floating-promises
+      run();
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [urlParamsChecked]);
 
-  // Helper formatting functions matching the Sankey component
-  const fmt = (n: number | null | undefined) =>
-    n != null && Number.isFinite(n) 
-      ? (Math.abs(n) >= 1000 ? n.toLocaleString() : n.toFixed(3))
-      : "n/a";
-  
+  // Helper formatting function matching the Sankey component
   const money = (n: number | null | undefined) =>
     n != null && Number.isFinite(n)
       ? `₳${n.toLocaleString(undefined, { maximumFractionDigits: 2 })}`
@@ -232,6 +240,7 @@ export default function ReportClient() {
                       }}
                     >
                                         <p style={{ margin: "0 0 12px 0", fontSize: 18, paddingLeft: "21px" }}>
+                      <strong>Ticker:</strong> {report.ticker}  &nbsp; | &nbsp;
                       <strong>Best P/A:</strong>{" "}
                       {report.bestPA != null ? Number(report.bestPA).toFixed(6) : "n/a"}  &nbsp; | &nbsp;
                       {report.best.scenario && (
