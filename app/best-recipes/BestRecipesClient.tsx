@@ -7,6 +7,7 @@ interface BestRecipeResult {
   recipeId: string | null;
   scenario: string;
   profitPA: number;
+  buyAllProfitPA: number;
 }
 
 interface ApiResponse {
@@ -109,7 +110,7 @@ export default function BestRecipesClient() {
 
         <p style={{ margin: "8px 0 16px", color: "#555", maxWidth: 900 }}>
           This page displays the best production recipe for each ticker, calculated in dependency order.
-          Each ticker shows its optimal recipe ID, scenario, and profit per area (P/A).
+          Each ticker shows its optimal recipe ID, scenario, profit per area (P/A), and the P/A if all inputs are bought (Buy All P/A).
           This data is generated dynamically from the current recipes and prices data.
         </p>
 
@@ -200,7 +201,7 @@ export default function BestRecipesClient() {
             }}>
               <thead>
                 <tr style={{ backgroundColor: "#f8f9fa", borderBottom: "2px solid #dee2e6" }}>
-                  {["ticker", "recipeId", "scenario", "profitPA"].map((col) => (
+                  {["ticker", "recipeId", "scenario", "profitPA", "buyAllProfitPA"].map((col) => (
                     <th
                       key={col}
                       onClick={() => handleSort(col as keyof BestRecipeResult)}
@@ -217,6 +218,7 @@ export default function BestRecipesClient() {
                       {col === "recipeId" && "Recipe ID"}
                       {col === "scenario" && "Scenario"}
                       {col === "profitPA" && "Profit P/A"}
+                      {col === "buyAllProfitPA" && "Buy All P/A"}
                       {sortColumn === col && (
                         <span style={{ marginLeft: 6 }}>
                           {sortDirection === "asc" ? "↑" : "↓"}
@@ -247,6 +249,11 @@ export default function BestRecipesClient() {
                     <td style={{ padding: "12px 16px", fontFamily: "monospace" }}>
                       {typeof row.profitPA === "number" && Number.isFinite(row.profitPA)
                         ? row.profitPA.toFixed(6)
+                        : "—"}
+                    </td>
+                    <td style={{ padding: "12px 16px", fontFamily: "monospace" }}>
+                      {typeof row.buyAllProfitPA === "number" && Number.isFinite(row.buyAllProfitPA)
+                        ? row.buyAllProfitPA.toFixed(6)
                         : "—"}
                     </td>
                   </tr>

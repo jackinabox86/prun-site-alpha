@@ -1,6 +1,7 @@
 // src/server/bestRecipes.ts
 import { loadAllFromCsv } from "@/lib/loadFromCsv";
 import { findAllMakeOptions, buildScenarioRows, clearScenarioCache } from "@/core/engine";
+import { findPrice } from "@/core/price";
 import { CSV_URLS } from "@/lib/config";
 import type { RecipeSheet, BestMap } from "@/types";
 
@@ -9,6 +10,7 @@ export interface BestRecipeResult {
   recipeId: string | null;
   scenario: string;
   profitPA: number;
+  buyAllProfitPA: number; // Profit P/A if all inputs are bought instead of made
 }
 
 /**
@@ -24,6 +26,91 @@ export function convertToBestMap(results: BestRecipeResult[]): BestMap {
     };
   }
   return bestMap;
+}
+
+/**
+ * Calculate buy-all profit per area for a ticker
+ * This is a simple calculation where all inputs are bought (no MAKE scenarios)
+ */
+function calculateBuyAllProfitPA(
+  ticker: string,
+  recipeMap: any,
+  pricesMap: any,
+  priceMode: string
+): number {
+  const headers = recipeMap.headers;
+  const rows = recipeMap.map[ticker] || [];
+  if (!rows.length) return 0;
+
+  const idx = {
+    recipeId: headers.indexOf("RecipeID"),
+    wf: headers.indexOf("WfCst"),
+    dep: headers.indexOf("Deprec"),
+    area: headers.indexOf("Area"),
+    runs: headers.indexOf("Runs P/D"),
+  };
+
+  let bestPA = -Infinity;
+
+  // Try each recipe for this ticker
+  for (const row of rows) {
+    const runsPerDay = Number(row[idx.runs] ?? 0) || 1;
+    const area = Math.max(1, Number(row[idx.area] ?? 0) || 1);
+    const workforceCost = Number(row[idx.wf] ?? 0) || 0;
+    const depreciationCost = Number(row[idx.dep] ?? 0) || 0;
+
+    // Calculate total input cost (buying all inputs)
+    // If any input has no market price, skip this recipe entirely
+    let totalInputCost = 0;
+    let hasAllPrices = true;
+    for (let j = 0; j < 10; j++) {
+      const matIndex = headers.indexOf(`Input${j + 1}MAT`);
+      const cntIndex = headers.indexOf(`Input${j + 1}CNT`);
+      if (matIndex !== -1 && row[matIndex]) {
+        const inputTicker = String(row[matIndex]);
+        const inputAmount = Number(row[cntIndex] ?? 0);
+        const ask = findPrice(inputTicker, pricesMap, "ask");
+        if (ask == null) {
+          // No market price available for this input - can't buy it
+          hasAllPrices = false;
+          break;
+        }
+        totalInputCost += inputAmount * ask;
+      }
+    }
+
+    // Skip this recipe if we can't buy all inputs
+    if (!hasAllPrices) continue;
+
+    // Calculate total output value
+    let totalOutputValue = 0;
+    for (let j = 0; j < 10; j++) {
+      const matIndex = headers.indexOf(`Output${j + 1}MAT`);
+      const cntIndex = headers.indexOf(`Output${j + 1}CNT`);
+      if (matIndex !== -1 && row[matIndex]) {
+        const outTicker = String(row[matIndex]);
+        const outAmount = Number(row[cntIndex] ?? 0);
+        const outPrice = findPrice(outTicker, pricesMap, priceMode);
+        if (outPrice) {
+          totalOutputValue += outAmount * outPrice;
+        }
+      }
+    }
+
+    // Calculate profit per batch
+    const totalCostPerBatch = totalInputCost + workforceCost + depreciationCost;
+    const profitPerBatch = totalOutputValue - totalCostPerBatch;
+
+    // Calculate profit per day and profit per area
+    const profitPerDay = profitPerBatch * runsPerDay;
+    const profitPA = profitPerDay / area;
+
+    if (profitPA > bestPA) {
+      bestPA = profitPA;
+    }
+  }
+
+  return bestPA > -Infinity ? bestPA : 0;
 }
 
 /**
@@ -161,6 +248,9 @@ export async function refreshBestRecipeIDs(): Promise<BestRecipeResult[]> {
       options.sort((a, b) => (b.totalProfitPA || 0) - (a.totalProfitPA || 0));
       const best = options[0];
 
+      // Calculate "buy all inputs" P/A using simple helper function
+      const buyAllProfitPA = calculateBuyAllProfitPA(ticker, recipeMap, pricesMap, "bid");
+
       // Cache normalized best (mimics setScenarioCacheForTicker)
       bestMapBuilding[ticker] = {
         recipeId: null, // Normalized as in the original script
@@ -173,6 +263,7 @@ export async function refreshBestRecipeIDs(): Promise<BestRecipeResult[]> {
         recipeId: best.recipeId,
         scenario: best.scenario || "",
         profitPA: best.totalProfitPA || 0,
+        buyAllProfitPA,
       });
 
       processed++;
