@@ -1,13 +1,14 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { scenarioDisplayName } from "@/core/scenario";
 
 interface BestRecipeResult {
   ticker: string;
   recipeId: string | null;
   scenario: string;
   profitPA: number;
-  buyAllProfitPA: number;
+  buyAllProfitPA: number | null;
 }
 
 interface ApiResponse {
@@ -211,7 +212,8 @@ export default function BestRecipesClient() {
                         fontWeight: 600,
                         cursor: "pointer",
                         userSelect: "none",
-                        position: "relative"
+                        position: "relative",
+                        whiteSpace: "nowrap"
                       }}
                     >
                       {col === "ticker" && "Ticker"}
@@ -226,6 +228,16 @@ export default function BestRecipesClient() {
                       )}
                     </th>
                   ))}
+                  <th
+                    style={{
+                      padding: "12px 16px",
+                      textAlign: "left",
+                      fontWeight: 600,
+                      whiteSpace: "nowrap"
+                    }}
+                  >
+                    Analysis
+                  </th>
                 </tr>
               </thead>
               <tbody>
@@ -243,18 +255,37 @@ export default function BestRecipesClient() {
                     <td style={{ padding: "12px 16px", fontFamily: "monospace" }}>
                       {row.recipeId || "—"}
                     </td>
-                    <td style={{ padding: "12px 16px", fontSize: 14, maxWidth: 400, wordWrap: "break-word" }}>
-                      {row.scenario || "—"}
+                    <td
+                      style={{ padding: "12px 16px", fontSize: 14, maxWidth: 400, wordWrap: "break-word", cursor: "help" }}
+                      title={row.scenario || ""}
+                    >
+                      {row.scenario ? scenarioDisplayName(row.scenario) : "—"}
                     </td>
                     <td style={{ padding: "12px 16px", fontFamily: "monospace" }}>
                       {typeof row.profitPA === "number" && Number.isFinite(row.profitPA)
-                        ? row.profitPA.toFixed(6)
+                        ? row.profitPA.toFixed(1).replace(/\.0$/, "")
                         : "—"}
                     </td>
                     <td style={{ padding: "12px 16px", fontFamily: "monospace" }}>
-                      {typeof row.buyAllProfitPA === "number" && Number.isFinite(row.buyAllProfitPA)
-                        ? row.buyAllProfitPA.toFixed(6)
+                      {row.buyAllProfitPA === null
+                        ? "Input N/A"
+                        : typeof row.buyAllProfitPA === "number" && Number.isFinite(row.buyAllProfitPA)
+                        ? row.buyAllProfitPA.toFixed(1).replace(/\.0$/, "")
                         : "—"}
+                    </td>
+                    <td style={{ padding: "12px 16px" }}>
+                      <a
+                        href={`/?ticker=${encodeURIComponent(row.ticker)}`}
+                        style={{
+                          color: "#007bff",
+                          textDecoration: "none",
+                          fontWeight: 600
+                        }}
+                        onMouseEnter={(e) => e.currentTarget.style.textDecoration = "underline"}
+                        onMouseLeave={(e) => e.currentTarget.style.textDecoration = "none"}
+                      >
+                        View
+                      </a>
                     </td>
                   </tr>
                 ))}
