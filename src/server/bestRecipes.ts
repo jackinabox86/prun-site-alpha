@@ -3,7 +3,7 @@ import { loadAllFromCsv } from "@/lib/loadFromCsv";
 import { findAllMakeOptions, buildScenarioRows, clearScenarioCache } from "@/core/engine";
 import { findPrice } from "@/core/price";
 import { CSV_URLS } from "@/lib/config";
-import type { RecipeSheet, BestMap } from "@/types";
+import type { RecipeSheet, BestMap, PriceMode } from "@/types";
 
 export interface BestRecipeResult {
   ticker: string;
@@ -36,7 +36,7 @@ function calculateBuyAllProfitPA(
   ticker: string,
   recipeMap: any,
   pricesMap: any,
-  priceMode: string
+  priceMode: PriceMode
 ): number {
   const headers = recipeMap.headers;
   const rows = recipeMap.map[ticker] || [];
