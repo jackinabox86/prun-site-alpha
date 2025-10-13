@@ -24,8 +24,19 @@ export function clearScenarioCache() {
   ALL_SCENARIOS_MEMO.clear();
 }
 
-function deepClone<T>(v: T): T {
-  return JSON.parse(JSON.stringify(v));
+/**
+ * Shallow clone for cache returns
+ * NOTE: Cached objects should be treated as immutable. Do not modify returned objects.
+ * Deep structures (madeInputDetails) are shared references - mutations affect cache.
+ */
+function shallowClone<T>(v: T): T {
+  if (Array.isArray(v)) {
+    return [...v] as T;
+  }
+  if (v && typeof v === 'object') {
+    return { ...v };
+  }
+  return v;
 }
 
 const norm = (s: string) => s.replace(/\s+/g, " ").trim();
@@ -134,7 +145,7 @@ function bestOptionForTicker(
   seen: Set<string> = new Set()
 ): MakeOption | null {
   const mkey = memoKey(priceMode, materialTicker);
-  if (BEST_MEMO.has(mkey)) return deepClone(BEST_MEMO.get(mkey)!);
+  if (BEST_MEMO.has(mkey)) return BEST_MEMO.get(mkey)!;
 
   // guard against cycles
   if (seen.has(materialTicker)) return null;
@@ -390,7 +401,7 @@ function bestOptionForTicker(
   const chosen = chosenByScenario ?? chosenByPA?.opt ?? null;
   if (chosen) {
     BEST_MEMO.set(mkey, chosen);
-    return deepClone(chosen);
+    return chosen;
   }
   return null;
 }
@@ -417,7 +428,7 @@ export function findAllMakeOptions(
       // Check full exploration cache
       const cacheKey = memoKey(priceMode, materialTicker);
       if (ALL_SCENARIOS_MEMO.has(cacheKey)) {
-        return ALL_SCENARIOS_MEMO.get(cacheKey)!.map(deepClone);
+        return ALL_SCENARIOS_MEMO.get(cacheKey)!;
       }
     } else {
       // Not exploring: use single best (has its own BEST_MEMO cache)
@@ -698,7 +709,7 @@ export function findAllMakeOptions(
   // Cache AFTER all rows processed, OUTSIDE the loop
   if (depth > 0 && results.length > 0 && exploreAllChildScenarios) {
     const cacheKey = memoKey(priceMode, materialTicker);
-    ALL_SCENARIOS_MEMO.set(cacheKey, results.map(deepClone));
+    ALL_SCENARIOS_MEMO.set(cacheKey, results);
   }
 
   return results;
