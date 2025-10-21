@@ -1,10 +1,13 @@
 // src/server/cachedBestRecipes.ts
 import { refreshBestRecipeIDs, convertToBestMap, type BestRecipeResult } from "@/server/bestRecipes";
 import type { BestMap } from "@/types";
+import { readFileSync, existsSync } from "fs";
+import { join } from "path";
 
 /**
  * Cached best recipes singleton
  * Ensures best recipes are generated once and reused across all operations
+ * Prefers pre-generated static data from build/GitHub Actions when available
  */
 class CachedBestRecipes {
   private bestRecipeResults: BestRecipeResult[] | null = null;
@@ -48,7 +51,16 @@ class CachedBestRecipes {
   }
 
   private async initialize(): Promise<void> {
-    console.log("Generating best recipes (first run)...");
+    // Try to load from pre-generated static file first (fast path)
+    const staticDataLoaded = this.loadFromStaticFile();
+
+    if (staticDataLoaded) {
+      console.log("Loaded best recipes from pre-generated static file");
+      return;
+    }
+
+    // Fallback to runtime generation (slow path)
+    console.log("No static data found, generating best recipes at runtime...");
     const startTime = Date.now();
 
     this.bestRecipeResults = await refreshBestRecipeIDs();
@@ -56,6 +68,40 @@ class CachedBestRecipes {
 
     const duration = ((Date.now() - startTime) / 1000).toFixed(2);
     console.log(`Best recipes generated and cached: ${this.bestRecipeResults.length} entries in ${duration}s`);
+  }
+
+  /**
+   * Try to load best recipes from pre-generated static JSON file
+   * Returns true if successful, false otherwise
+   */
+  private loadFromStaticFile(): boolean {
+    try {
+      // Path to the static file generated at build time or by GitHub Actions
+      const staticFilePath = join(process.cwd(), 'public', 'data', 'best-recipes.json');
+
+      if (!existsSync(staticFilePath)) {
+        console.log("Static best-recipes.json not found");
+        return false;
+      }
+
+      const fileContent = readFileSync(staticFilePath, 'utf-8');
+      this.bestRecipeResults = JSON.parse(fileContent) as BestRecipeResult[];
+      this.bestMap = convertToBestMap(this.bestRecipeResults);
+
+      // Try to load metadata for logging
+      const metaFilePath = join(process.cwd(), 'public', 'data', 'best-recipes-meta.json');
+      if (existsSync(metaFilePath)) {
+        const meta = JSON.parse(readFileSync(metaFilePath, 'utf-8'));
+        console.log(`Loaded ${this.bestRecipeResults.length} best recipes from static file (generated: ${meta.generatedAt})`);
+      } else {
+        console.log(`Loaded ${this.bestRecipeResults.length} best recipes from static file`);
+      }
+
+      return true;
+    } catch (error) {
+      console.error("Error loading static best recipes file:", error);
+      return false;
+    }
   }
 
   /**

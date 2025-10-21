@@ -1,4 +1,6 @@
 import { parse } from "csv-parse/sync";
+import { readFileSync, existsSync } from "fs";
+import { join } from "path";
 
 // In-memory cache for serverless functions (persists across invocations in same container)
 const csvCache = new Map<string, Array<Record<string, any>>>();
@@ -13,13 +15,23 @@ export async function fetchCsv(url: string): Promise<Array<Record<string, any>>>
     return csvCache.get(url)!;
   }
 
-  // Fetch from Vercel Blob (or any URL)
-  const res = await fetch(url, { cache: "no-store" });
-  if (!res.ok) {
-    throw new Error(`CSV fetch failed: ${res.status} ${res.statusText} for URL: ${url}`);
-  }
+  let text: string;
 
-  const text = await res.text();
+  // Check if it's a local file path (doesn't start with http)
+  if (!url.startsWith('http://') && !url.startsWith('https://')) {
+    const filePath = join(process.cwd(), url);
+    if (!existsSync(filePath)) {
+      throw new Error(`Local CSV file not found: ${filePath}`);
+    }
+    text = readFileSync(filePath, 'utf-8');
+  } else {
+    // Fetch from Vercel Blob (or any URL)
+    const res = await fetch(url, { cache: "no-store" });
+    if (!res.ok) {
+      throw new Error(`CSV fetch failed: ${res.status} ${res.statusText} for URL: ${url}`);
+    }
+    text = await res.text();
+  }
   const rows: string[][] = parse(text, { skip_empty_lines: true });
   if (!rows.length) return [];
 
