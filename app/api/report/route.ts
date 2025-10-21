@@ -1,7 +1,7 @@
 // app/api/report/route.ts
 import { NextResponse } from "next/server";
 import { buildReport } from "@/server/report";
-import type { PriceMode } from "@/types";
+import type { PriceMode, Exchange, PriceType } from "@/types";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -11,9 +11,12 @@ export async function GET(req: Request) {
   try {
     const url = new URL(req.url);
     const ticker = (url.searchParams.get("ticker") ?? "PCB").toUpperCase();
-    const priceMode = (url.searchParams.get("priceMode") ?? "bid") as PriceMode;
 
-    const report = await buildReport({ ticker, priceMode });
+    // Support new exchange + priceType parameters
+    const exchange = (url.searchParams.get("exchange") ?? "ANT") as Exchange;
+    const priceType = (url.searchParams.get("priceType") ?? "bid") as PriceType;
+
+    const report = await buildReport({ ticker, exchange, priceType });
     const status = (report as any)?.ok === false ? 500 : 200;
     return NextResponse.json(report, { status });
   } catch (err: any) {

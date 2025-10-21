@@ -1,7 +1,19 @@
 /** ===== Price mode selector ===== */
+// Legacy type for backward compatibility
 export type PriceMode = "bid" | "ask" | "pp7" | "pp30";
 
+// New split price mode types
+export type Exchange = "ANT" | "CIS" | "ICA" | "NCC" | "UNV";
+export type PriceType = "ask" | "bid" | "pp7" | "pp30";
+
 /** ===== Prices ===== */
+export interface ExchangePrices {
+  ask: number | null;
+  bid: number | null;
+  pp7: number | null;
+  pp30: number | null;
+}
+
 export interface PriceEntry {
   ticker: string;
   ask: number | null;
@@ -12,10 +24,11 @@ export interface PriceEntry {
 
 export interface PricesMap {
   [ticker: string]: {
-    ask: number | null;
-    bid: number | null;
-    pp7: number | null;
-    pp30: number | null;
+    ANT: ExchangePrices;
+    CIS: ExchangePrices;
+    ICA: ExchangePrices;
+    NCC: ExchangePrices;
+    UNV: ExchangePrices;
   };
 }
 

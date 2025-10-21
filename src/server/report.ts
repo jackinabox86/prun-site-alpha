@@ -5,7 +5,7 @@ import { computeRoiNarrow, computeRoiBroad } from "@/core/roi";
 import { computeInputPayback } from "@/core/inputPayback";
 import { cachedBestRecipes } from "@/server/cachedBestRecipes";
 import { CSV_URLS } from "@/lib/config";
-import type { PriceMode } from "@/types";
+import type { PriceMode, Exchange, PriceType } from "@/types";
 
 const honorRecipeIdFilter = false;  // Set to false to explore all recipe variants
 
@@ -22,9 +22,10 @@ type WithMetrics<T> = T & {
 
 export async function buildReport(opts: {
   ticker: string;
-  priceMode: PriceMode;
+  exchange: Exchange;
+  priceType: PriceType;
 }) {
-  const { ticker, priceMode } = opts;
+  const { ticker, exchange, priceType } = opts;
 
   // Get cached best recipes (will be generated on first call)
   const { bestMap } = await cachedBestRecipes.getBestRecipes();
@@ -35,12 +36,13 @@ export async function buildReport(opts: {
     { bestMap }
   );
 
-  const options = findAllMakeOptions(ticker, recipeMap, pricesMap, priceMode, bestMap, 0, true, honorRecipeIdFilter);
+  const options = findAllMakeOptions(ticker, recipeMap, pricesMap, exchange, priceType, bestMap, 0, true, honorRecipeIdFilter);
   if (!options.length) {
     return {
       schemaVersion: 3,
       ticker,
-      priceMode,
+      exchange,
+      priceType,
       totalOptions: 0,
       bestPA: null,
       bestScenario: "",
@@ -116,7 +118,8 @@ export async function buildReport(opts: {
   return {
     schemaVersion: 3,
     ticker,
-    priceMode,
+    exchange,
+    priceType,
     totalOptions: ranked.length,
     bestPA: best.r.subtreeProfitPerArea ?? null,
     bestScenario: best.o.scenario ?? "",

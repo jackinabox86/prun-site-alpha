@@ -6,6 +6,8 @@ import {
   PricesMap,
   RecipeMap,
   ScenarioRowsResult,
+  Exchange,
+  PriceType,
 } from "../types";
 import { findPrice } from "./price";
 import { composeScenario, scenarioDisplayName } from "./scenario";
@@ -16,7 +18,8 @@ import { composeScenario, scenarioDisplayName } from "./scenario";
 const BEST_MEMO = new Map<string, MakeOption>();
 const ALL_SCENARIOS_MEMO = new Map<string, MakeOption[]>();
 
-const memoKey = (mode: PriceMode, ticker: string) => `${mode}::${ticker}`;
+const memoKey = (exchange: Exchange, priceType: PriceType, ticker: string) =>
+  `${exchange}::${priceType}::${ticker}`;
 
 /** Clear all caches - call this between different analyses if needed */
 export function clearScenarioCache() {
@@ -133,7 +136,8 @@ function topDisplayScenarioOptionsForTicker(
   materialTicker: string,
   recipeMap: RecipeMap,
   priceMap: PricesMap,
-  priceMode: PriceMode,
+  exchange: Exchange,
+  priceType: PriceType,
   bestMap: any, // Enhanced BestMap with top3DisplayScenarios
   honorRecipeIdFilter: boolean,
   seen: Set<string> = new Set()
@@ -141,12 +145,12 @@ function topDisplayScenarioOptionsForTicker(
   const bestEntry = bestMap?.[materialTicker];
   if (!bestEntry || !bestEntry.top3DisplayScenarios || bestEntry.top3DisplayScenarios.length === 0) {
     // Fallback to single best option
-    const best = bestOptionForTicker(materialTicker, recipeMap, priceMap, priceMode, bestMap, honorRecipeIdFilter, seen);
+    const best = bestOptionForTicker(materialTicker, recipeMap, priceMap, exchange, priceType, bestMap, honorRecipeIdFilter, seen);
     return best ? [best] : [];
   }
 
   // Build all options for this ticker and match against stored display scenarios
-  const allOptions = buildAllOptionsForTicker(materialTicker, recipeMap, priceMap, priceMode, bestMap, honorRecipeIdFilter, seen);
+  const allOptions = buildAllOptionsForTicker(materialTicker, recipeMap, priceMap, exchange, priceType, bestMap, honorRecipeIdFilter, seen);
 
   // Match options to the stored top 3 display scenarios
   const matchedOptions: MakeOption[] = [];
@@ -172,7 +176,8 @@ function buildAllOptionsForTicker(
   materialTicker: string,
   recipeMap: RecipeMap,
   priceMap: PricesMap,
-  priceMode: PriceMode,
+  exchange: Exchange,
+  priceType: PriceType,
   bestMap: any,
   honorRecipeIdFilter: boolean,
   seen: Set<string>
@@ -227,13 +232,14 @@ function buildAllOptionsForTicker(
       if (matIndex !== -1 && row[matIndex]) {
         const inputTicker = String(row[matIndex]);
         const inputAmount = Number(row[cntIndex] ?? 0);
-        const ask = findPrice(inputTicker, priceMap, "ask");
+        const ask = findPrice(inputTicker, priceMap, exchange, "ask");
         const buyCost = ask != null ? inputAmount * ask : null;
         const childBest = bestOptionForTicker(
           inputTicker,
           recipeMap,
           priceMap,
-          priceMode,
+          exchange,
+          priceType,
           bestMap,
           honorRecipeIdFilter,
           seen
@@ -252,7 +258,7 @@ function buildAllOptionsForTicker(
       if (matIndex !== -1 && row[matIndex]) {
         const outTicker = String(row[matIndex]);
         const outAmt = Number(row[cntIndex] ?? 0);
-        const outPrice = findPrice(outTicker, priceMap, priceMode);
+        const outPrice = findPrice(outTicker, priceMap, exchange, priceType);
         if (!outPrice) continue;
         const totalVal = outAmt * outPrice;
         totalOutputValue += totalVal;
@@ -426,12 +432,13 @@ function bestOptionForTicker(
   materialTicker: string,
   recipeMap: RecipeMap,
   priceMap: PricesMap,
-  priceMode: PriceMode,
+  exchange: Exchange,
+  priceType: PriceType,
   bestMap: BestMap,
   honorRecipeIdFilter: boolean,
   seen: Set<string> = new Set()
 ): MakeOption | null {
-  const mkey = memoKey(priceMode, materialTicker);
+  const mkey = memoKey(exchange, priceType, materialTicker);
   if (BEST_MEMO.has(mkey)) return BEST_MEMO.get(mkey)!;
 
   // guard against cycles
@@ -494,13 +501,14 @@ function bestOptionForTicker(
       if (matIndex !== -1 && row[matIndex]) {
         const inputTicker = String(row[matIndex]);
         const inputAmount = Number(row[cntIndex] ?? 0);
-        const ask = findPrice(inputTicker, priceMap, "ask");
+        const ask = findPrice(inputTicker, priceMap, exchange, "ask");
         const buyCost = ask != null ? inputAmount * ask : null;
         const childBest = bestOptionForTicker(
           inputTicker,
           recipeMap,
           priceMap,
-          priceMode,
+          exchange,
+          priceType,
           bestMap,
           honorRecipeIdFilter,
           nextSeen
@@ -519,7 +527,7 @@ function bestOptionForTicker(
       if (matIndex !== -1 && row[matIndex]) {
         const outTicker = String(row[matIndex]);
         const outAmt = Number(row[cntIndex] ?? 0);
-        const outPrice = findPrice(outTicker, priceMap, priceMode);
+        const outPrice = findPrice(outTicker, priceMap, exchange, priceType);
         if (!outPrice) continue;
         const totalVal = outAmt * outPrice;
         totalOutputValue += totalVal;
@@ -703,7 +711,8 @@ export function findAllMakeOptions(
   materialTicker: string,
   recipeMap: RecipeMap,
   priceMap: PricesMap,
-  priceMode: PriceMode,
+  exchange: Exchange,
+  priceType: PriceType,
   bestMap: BestMap,
   depth = 0,
   exploreAllChildScenarios = false,
@@ -713,7 +722,7 @@ export function findAllMakeOptions(
   if (depth > 0) {
     if (exploreAllChildScenarios) {
       // Check full exploration cache
-      const cacheKey = memoKey(priceMode, materialTicker);
+      const cacheKey = memoKey(exchange, priceType, materialTicker);
       if (ALL_SCENARIOS_MEMO.has(cacheKey)) {
         return ALL_SCENARIOS_MEMO.get(cacheKey)!;
       }
@@ -726,7 +735,8 @@ export function findAllMakeOptions(
           materialTicker,
           recipeMap,
           priceMap,
-          priceMode,
+          exchange,
+          priceType,
           bestMap,
           honorRecipeIdFilter
         );
@@ -736,7 +746,8 @@ export function findAllMakeOptions(
           materialTicker,
           recipeMap,
           priceMap,
-          priceMode,
+          exchange,
+          priceType,
           bestMap,
           honorRecipeIdFilter
         );
@@ -810,7 +821,7 @@ export function findAllMakeOptions(
       if (matIndex !== -1 && row[matIndex]) {
         const inputTicker = String(row[matIndex]);
         const inputAmount = Number(row[cntIndex] ?? 0);
-        const ask = findPrice(inputTicker, priceMap, "ask");
+        const ask = findPrice(inputTicker, priceMap, exchange, "ask");
         const buyCost = ask != null ? inputAmount * ask : null;
         
         // Recursively get child options (explore depths 0-2)
@@ -818,7 +829,8 @@ export function findAllMakeOptions(
           inputTicker,
           recipeMap,
           priceMap,
-          priceMode,
+          exchange,
+          priceType,
           bestMap,
           depth + 1,
           depth <= 2 && exploreAllChildScenarios,
@@ -852,7 +864,7 @@ export function findAllMakeOptions(
       if (matIndex !== -1 && row[matIndex]) {
         const outputTicker = String(row[matIndex]);
         const outputAmount = Number(row[cntIndex] ?? 0);
-        const outputPrice = findPrice(outputTicker, priceMap, priceMode);
+        const outputPrice = findPrice(outputTicker, priceMap, exchange, priceType);
         if (!outputPrice) continue;
 
         const totalValue = outputAmount * outputPrice;
@@ -1009,7 +1021,7 @@ export function findAllMakeOptions(
 
   // Cache AFTER all rows processed, OUTSIDE the loop
   if (depth > 0 && results.length > 0 && exploreAllChildScenarios) {
-    const cacheKey = memoKey(priceMode, materialTicker);
+    const cacheKey = memoKey(exchange, priceType, materialTicker);
     ALL_SCENARIOS_MEMO.set(cacheKey, results);
   }
 
