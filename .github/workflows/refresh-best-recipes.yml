@@ -51,18 +51,17 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git add public/data/best-recipes.json public/data/best-recipes-meta.json
-          git commit -m "Update best recipes data (automated) [skip ci]
+          git commit -m "Update best recipes data (automated)
 
           Generated at: $(date -u +"%Y-%m-%d %H:%M:%S UTC")
           Triggered by: ${{ github.event_name }}"
           git push
 
-      - name: Note about deployment
+      - name: Trigger Vercel deployment
         if: steps.git-check.outputs.changed == 'true'
         run: |
           echo "✓ Data updated and committed"
-          echo "ℹ️ Vercel will NOT auto-deploy due to [skip ci] flag"
-          echo "💡 Next manual deployment will pick up the latest data"
+          echo "🚀 Vercel will auto-deploy from git push"
 
       - name: Summary
         run: |
