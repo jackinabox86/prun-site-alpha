@@ -1,0 +1,86 @@
+name: Refresh Best Recipes (Google Cloud Storage)
+
+on:
+  schedule:
+    # Run every hour at minute 0
+    - cron: '0 * * * *'
+
+  # Allow manual trigger from GitHub UI
+  workflow_dispatch:
+
+  # Run on push to main when recipe logic changes
+  push:
+    branches:
+      - main
+    paths:
+      - 'src/server/bestRecipes.ts'
+      - 'src/core/engine.ts'
+
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Generate best recipes
+        run: npm run generate-best-recipes
+
+      - name: Authenticate to Google Cloud
+        uses: google-github-actions/auth@v2
+        with:
+          credentials_json: ${{ secrets.GCP_SA_KEY }}
+
+      - name: Set up Cloud SDK
+        uses: google-github-actions/setup-gcloud@v2
+
+      - name: Upload to Google Cloud Storage
+        run: |
+          # Upload main data file
+          gsutil -h "Cache-Control:public, max-age=300" \
+                 -h "Content-Type:application/json" \
+                 cp public/data/best-recipes.json \
+                 gs://prun-best-recipes/best-recipes.json
+
+          # Upload metadata
+          gsutil -h "Cache-Control:public, max-age=300" \
+                 -h "Content-Type:application/json" \
+                 cp public/data/best-recipes-meta.json \
+                 gs://prun-best-recipes/best-recipes-meta.json
+
+          echo "✅ Files uploaded to GCS"
+
+      - name: Get public URLs
+        run: |
+          echo "📦 Best Recipes Data:"
+          echo "https://storage.googleapis.com/prun-best-recipes/best-recipes.json"
+          echo ""
+          echo "📊 Metadata:"
+          echo "https://storage.googleapis.com/prun-best-recipes/best-recipes-meta.json"
+
+      - name: Summary
+        run: |
+          echo "## Upload Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "✅ Best recipes data uploaded to Google Cloud Storage" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          if [ -f public/data/best-recipes-meta.json ]; then
+            echo "### Metadata" >> $GITHUB_STEP_SUMMARY
+            echo "\`\`\`json" >> $GITHUB_STEP_SUMMARY
+            cat public/data/best-recipes-meta.json >> $GITHUB_STEP_SUMMARY
+            echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
+          fi
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### Public URLs" >> $GITHUB_STEP_SUMMARY
+          echo "- Data: https://storage.googleapis.com/prun-best-recipes/best-recipes.json" >> $GITHUB_STEP_SUMMARY
+          echo "- Meta: https://storage.googleapis.com/prun-best-recipes/best-recipes-meta.json" >> $GITHUB_STEP_SUMMARY

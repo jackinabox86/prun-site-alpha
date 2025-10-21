@@ -51,9 +51,15 @@ class CachedBestRecipes {
   }
 
   private async initialize(): Promise<void> {
-    // Try to load from pre-generated static file first (fast path)
-    const staticDataLoaded = this.loadFromStaticFile();
+    // Try to load from Google Cloud Storage first (if configured)
+    const gcsDataLoaded = await this.loadFromGCS();
+    if (gcsDataLoaded) {
+      console.log("Loaded best recipes from Google Cloud Storage");
+      return;
+    }
 
+    // Try to load from pre-generated static file (build-time generated)
+    const staticDataLoaded = this.loadFromStaticFile();
     if (staticDataLoaded) {
       console.log("Loaded best recipes from pre-generated static file");
       return;
@@ -68,6 +74,40 @@ class CachedBestRecipes {
 
     const duration = ((Date.now() - startTime) / 1000).toFixed(2);
     console.log(`Best recipes generated and cached: ${this.bestRecipeResults.length} entries in ${duration}s`);
+  }
+
+  /**
+   * Try to load best recipes from Google Cloud Storage
+   * Returns true if successful, false otherwise
+   */
+  private async loadFromGCS(): Promise<boolean> {
+    try {
+      const { BEST_RECIPES_URL } = await import("@/lib/config");
+
+      // Skip if URL points to local file
+      if (!BEST_RECIPES_URL.startsWith('http')) {
+        return false;
+      }
+
+      console.log(`Fetching best recipes from GCS: ${BEST_RECIPES_URL}`);
+      const response = await fetch(BEST_RECIPES_URL, {
+        cache: 'no-store', // Always get fresh data
+      });
+
+      if (!response.ok) {
+        console.log(`GCS fetch failed: ${response.status} ${response.statusText}`);
+        return false;
+      }
+
+      this.bestRecipeResults = await response.json() as BestRecipeResult[];
+      this.bestMap = convertToBestMap(this.bestRecipeResults);
+
+      console.log(`Loaded ${this.bestRecipeResults.length} best recipes from GCS`);
+      return true;
+    } catch (error) {
+      console.log("Error loading from GCS:", error);
+      return false;
+    }
   }
 
   /**
