@@ -8,7 +8,6 @@
     "start": "next start"
   },
   "dependencies": {
-    "@vercel/blob": "^2.0.0",
     "csv-parse": "^6.1.0",
     "next": "latest",
     "plotly.js": "^3.1.1",
