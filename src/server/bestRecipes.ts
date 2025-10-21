@@ -2,6 +2,7 @@
 import { loadAllFromCsv } from "@/lib/loadFromCsv";
 import { findAllMakeOptions, buildScenarioRows, clearScenarioCache } from "@/core/engine";
 import { findPrice } from "@/core/price";
+import { scenarioDisplayName } from "@/core/scenario";
 import { CSV_URLS } from "@/lib/config";
 import type { RecipeSheet, BestMap, PriceMode } from "@/types";
 
@@ -11,6 +12,18 @@ export interface BestRecipeResult {
   scenario: string;
   profitPA: number;
   buyAllProfitPA: number | null; // Profit P/A if all inputs are bought instead of made, null if inputs missing
+  top3DisplayScenarios?: Array<{ displayScenario: string; scenario: string; profitPA: number }>; // Top 3 simple scenarios for higher-stage analysis
+}
+
+/**
+ * Enhanced BestMap that includes top 3 display scenarios for each ticker
+ */
+export interface EnhancedBestMap {
+  [ticker: string]: {
+    recipeId: string | null;
+    scenario: string;
+    top3DisplayScenarios?: Array<{ displayScenario: string; scenario: string; profitPA: number }>;
+  };
 }
 
 /**
@@ -23,6 +36,21 @@ export function convertToBestMap(results: BestRecipeResult[]): BestMap {
     bestMap[result.ticker] = {
       recipeId: result.recipeId,
       scenario: result.scenario,
+    };
+  }
+  return bestMap;
+}
+
+/**
+ * Convert BestRecipeResult array to EnhancedBestMap format with top 3 display scenarios
+ */
+export function convertToEnhancedBestMap(results: BestRecipeResult[]): EnhancedBestMap {
+  const bestMap: EnhancedBestMap = {};
+  for (const result of results) {
+    bestMap[result.ticker] = {
+      recipeId: result.recipeId,
+      scenario: result.scenario,
+      top3DisplayScenarios: result.top3DisplayScenarios,
     };
   }
   return bestMap;
@@ -215,7 +243,8 @@ export async function refreshBestRecipeIDs(): Promise<BestRecipeResult[]> {
 
   // Cache to store best scenarios (mimics Apps Script's setScenarioCacheForTicker)
   // This will be used by findAllMakeOptions internally via the BEST_MEMO
-  const bestMapBuilding: Record<string, { recipeId: string | null; scenario: string }> = {};
+  // Enhanced to include top 3 display scenarios for better higher-stage analysis
+  const bestMapBuilding: EnhancedBestMap = {};
 
   // Loop through all tickers in dependency order
   let processed = 0;
@@ -248,13 +277,38 @@ export async function refreshBestRecipeIDs(): Promise<BestRecipeResult[]> {
       options.sort((a, b) => (b.totalProfitPA || 0) - (a.totalProfitPA || 0));
       const best = options[0];
 
+      // Group options by display scenario and get top option for each
+      const displayScenarioMap = new Map<string, { scenario: string; profitPA: number }>();
+      for (const option of options) {
+        const displayScenario = scenarioDisplayName(option.scenario || "");
+        const profitPA = option.totalProfitPA || 0;
+
+        if (!displayScenarioMap.has(displayScenario) || profitPA > displayScenarioMap.get(displayScenario)!.profitPA) {
+          displayScenarioMap.set(displayScenario, {
+            scenario: option.scenario || "",
+            profitPA,
+          });
+        }
+      }
+
+      // Get top 3 display scenarios by profit P/A
+      const top3DisplayScenarios = Array.from(displayScenarioMap.entries())
+        .map(([displayScenario, data]) => ({
+          displayScenario,
+          scenario: data.scenario,
+          profitPA: data.profitPA,
+        }))
+        .sort((a, b) => b.profitPA - a.profitPA)
+        .slice(0, 3);
+
       // Calculate "buy all inputs" P/A using simple helper function
       const buyAllProfitPA = calculateBuyAllProfitPA(ticker, recipeMap, pricesMap, "bid");
 
-      // Cache normalized best (mimics setScenarioCacheForTicker)
+      // Cache normalized best plus top 3 display scenarios (mimics setScenarioCacheForTicker)
       bestMapBuilding[ticker] = {
         recipeId: null, // Normalized as in the original script
         scenario: best.scenario || "",
+        top3DisplayScenarios,
       };
 
       // Save to output
@@ -264,6 +318,7 @@ export async function refreshBestRecipeIDs(): Promise<BestRecipeResult[]> {
         scenario: best.scenario || "",
         profitPA: best.totalProfitPA || 0,
         buyAllProfitPA,
+        top3DisplayScenarios,
       });
 
       processed++;
