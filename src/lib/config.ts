@@ -9,4 +9,4 @@ export const CSV_URLS = {
 // Falls back to local file if not set
 export const BEST_RECIPES_URL =
   process.env.GCS_BEST_RECIPES_URL ||
-  "https://storage.googleapis.com/prun-best-recipes/best-recipes.json";
+  "https://storage.googleapis.com/prun-site-alpha-bucket/best-recipes.json";

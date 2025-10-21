@@ -11,14 +11,14 @@
 
 ```bash
 # Set your project ID
-export PROJECT_ID="your-project-id"
+export PROJECT_ID="prun-site-alpha"
 gcloud config set project $PROJECT_ID
 
 # Create a bucket (must be globally unique name)
-gsutil mb -p $PROJECT_ID -c STANDARD -l US gs://prun-best-recipes/
+gsutil mb -p $PROJECT_ID -c STANDARD -l US gs://prun-site-alpha-bucket/
 
 # Make bucket publicly readable (optional, for public access)
-gsutil iam ch allUsers:objectViewer gs://prun-best-recipes/
+gsutil iam ch allUsers:objectViewer gs://prun-site-alpha-bucket/
 ```
 
 ### 2. Create a Service Account for GitHub Actions
