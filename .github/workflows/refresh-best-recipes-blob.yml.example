@@ -1,0 +1,40 @@
+name: Refresh Best Recipes (Vercel Blob)
+
+# This is an ALTERNATIVE approach that uploads to Vercel Blob instead of git
+# Advantages: No rebuilds, instant updates
+# Disadvantages: Requires Vercel Blob token setup
+
+on:
+  schedule:
+    - cron: '0 * * * *'
+  workflow_dispatch:
+
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Generate best recipes
+        run: npm run generate-best-recipes
+
+      - name: Upload to Vercel Blob
+        env:
+          BLOB_READ_WRITE_TOKEN: ${{ secrets.BLOB_READ_WRITE_TOKEN }}
+        run: |
+          npx @vercel/blob upload public/data/best-recipes.json \
+            --token "$BLOB_READ_WRITE_TOKEN" \
+            --public \
+            --force
+
+      - name: Summary
+        run: |
+          echo "✅ Best recipes updated in Vercel Blob (no rebuild needed)"
+          echo "🚀 Changes are live immediately"
