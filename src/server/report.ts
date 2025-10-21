@@ -3,8 +3,11 @@ import { loadAllFromCsv } from "@/lib/loadFromCsv";
 import { findAllMakeOptions, buildScenarioRows } from "@/core/engine";
 import { computeRoiNarrow, computeRoiBroad } from "@/core/roi";
 import { computeInputPayback } from "@/core/inputPayback";
+import { cachedBestRecipes } from "@/server/cachedBestRecipes";
 import { CSV_URLS } from "@/lib/config";
 import type { PriceMode } from "@/types";
+
+const honorRecipeIdFilter = false;  // Set to false to explore all recipe variants
 
 type WithMetrics<T> = T & {
   roiNarrowDays?: number | null;
@@ -23,9 +26,16 @@ export async function buildReport(opts: {
 }) {
   const { ticker, priceMode } = opts;
 
-  const { recipeMap, pricesMap, bestMap } = await loadAllFromCsv(CSV_URLS);
+  // Get cached best recipes (will be generated on first call)
+  const { bestMap } = await cachedBestRecipes.getBestRecipes();
 
-  const options = findAllMakeOptions(ticker, recipeMap, pricesMap, priceMode, bestMap);
+  // Load other data (recipes and prices) without best CSV
+  const { recipeMap, pricesMap } = await loadAllFromCsv(
+    { recipes: CSV_URLS.recipes, prices: CSV_URLS.prices },
+    { bestMap }
+  );
+
+  const options = findAllMakeOptions(ticker, recipeMap, pricesMap, priceMode, bestMap, 0, true, honorRecipeIdFilter);
   if (!options.length) {
     return {
       schemaVersion: 3,

@@ -3,10 +3,11 @@
   "scripts": {
     "dev": "next dev --turbopack",
     "build": "next build",
+    "postbuild": "tsx scripts/generate-best-recipes.ts",
+    "generate-best-recipes": "tsx scripts/generate-best-recipes.ts",
     "start": "next start"
   },
   "dependencies": {
-    "@vercel/blob": "^2.0.0",
     "csv-parse": "^6.1.0",
     "next": "latest",
     "plotly.js": "^3.1.1",
@@ -18,6 +19,7 @@
     "@types/node": "^20.11.30",
     "@types/react": "^18.3.5",
     "@types/react-dom": "^18.3.0",
+    "tsx": "^4.20.6",
     "typescript": "^5.6.0"
   }
 }

@@ -11,26 +11,44 @@ import type {
   RecipeSheet,
 } from "@/types";
 
-export async function loadAllFromCsv(urls: {
-  recipes: string;
-  prices: string;
-  best: string;
-}): Promise<{
+export async function loadAllFromCsv(
+  urls: {
+    recipes: string;
+    prices: string;
+    best?: string;
+  },
+  options?: {
+    bestMap?: BestMap;
+  }
+): Promise<{
   recipeMap: RecipeMap;
   pricesMap: PricesMap;
   bestMap: BestMap;
   __rawBestRows: Array<Record<string, any>>;
 }> {
-  const [recipesRows, pricesRows, bestRows] = await Promise.all([
-    fetchCsv(urls.recipes), // -> Array<Record<string, any>>
+  // If bestMap is provided via options, don't fetch best CSV
+  const shouldFetchBest = !options?.bestMap && urls.best;
+
+  const promises = [
+    fetchCsv(urls.recipes),
     fetchCsv(urls.prices),
-    fetchCsv(urls.best),
-  ]);
+  ];
+
+  if (shouldFetchBest) {
+    promises.push(fetchCsv(urls.best!));
+  }
+
+  const results = await Promise.all(promises);
+  const recipesRows = results[0];
+  const pricesRows = results[1];
+  const bestRows = shouldFetchBest ? results[2] : [];
 
   // --- Guards (nice errors vs silent failures)
   if (!recipesRows.length) throw new Error("Recipes CSV returned no rows");
   if (!pricesRows.length)  throw new Error("Prices CSV returned no rows");
-  if (!bestRows.length)    throw new Error("BestRecipeIDs CSV returned no rows");
+  if (!options?.bestMap && !bestRows.length) {
+    throw new Error("BestRecipeIDs CSV returned no rows and no bestMap provided");
+  }
   if (!("Ticker" in recipesRows[0])) {
     throw new Error("Recipes CSV missing 'Ticker' header");
   }
@@ -54,8 +72,8 @@ export async function loadAllFromCsv(urls: {
   }))
 );
 
-  // Best map: pass object rows directly (returns { recipeId, scenario } per ticker)
-  const bestMap: BestMap = readBestRecipeMap(bestRows as Array<Record<string, any>>);
+  // Best map: use provided bestMap or read from CSV
+  const bestMap: BestMap = options?.bestMap ?? readBestRecipeMap(bestRows as Array<Record<string, any>>);
 
   // include raw best rows for parity checks / debugging
   return { recipeMap, pricesMap, bestMap, __rawBestRows: bestRows };
