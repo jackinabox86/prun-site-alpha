@@ -36,6 +36,57 @@ export async function buildReport(opts: {
     { bestMap }
   );
 
+  // Check if the ticker exists in price data
+  const tickerPrices = pricesMap[ticker];
+  if (!tickerPrices) {
+    return {
+      schemaVersion: 3,
+      ticker,
+      exchange,
+      priceType,
+      totalOptions: 0,
+      bestPA: null,
+      bestScenario: "",
+      best: null,
+      top20: [],
+      error: `No price data available for ticker ${ticker}`,
+    };
+  }
+
+  // Check if the ticker has price data for the selected exchange
+  const exchangePrices = tickerPrices[exchange];
+  if (!exchangePrices) {
+    return {
+      schemaVersion: 3,
+      ticker,
+      exchange,
+      priceType,
+      totalOptions: 0,
+      bestPA: null,
+      bestScenario: "",
+      best: null,
+      top20: [],
+      error: `No price data available for ticker ${ticker} on exchange ${exchange}`,
+    };
+  }
+
+  // Check if the ticker has a price for the selected price type
+  const price = exchangePrices[priceType];
+  if (!price) {
+    return {
+      schemaVersion: 3,
+      ticker,
+      exchange,
+      priceType,
+      totalOptions: 0,
+      bestPA: null,
+      bestScenario: "",
+      best: null,
+      top20: [],
+      error: `No ${priceType} price available for ticker ${ticker} on exchange ${exchange}`,
+    };
+  }
+
   const options = findAllMakeOptions(ticker, recipeMap, pricesMap, exchange, priceType, bestMap, 0, true, honorRecipeIdFilter);
   if (!options.length) {
     return {
@@ -48,6 +99,7 @@ export async function buildReport(opts: {
       bestScenario: "",
       best: null,
       top20: [],
+      error: `No profitable production scenarios found for ticker ${ticker} with ${exchange} ${priceType} pricing`,
     };
   }
 

@@ -166,7 +166,7 @@ export default function ReportClient() {
           style={{
             display: "grid",
             gap: 20,
-            gridTemplateColumns: "60px 50px 52px 120px",
+            gridTemplateColumns: "60px 50px 52px 120px 500px",
             alignItems: "end",
             maxWidth: 900,
           }}
@@ -228,6 +228,10 @@ export default function ReportClient() {
         >
           {loading ? "Running..." : "Run"}
         </button>
+
+        <div style={{ fontSize: 20, paddingBottom: 6 }}>
+          {exchange === "ANT" ? "😊" : "😢"}
+        </div>
         </div>
       </div>
 
@@ -239,10 +243,16 @@ export default function ReportClient() {
           </p>
         )}
 
+        {report && report.error && (
+          <p style={{ marginTop: 12, color: "#b00" }}>
+            {report.error}
+          </p>
+        )}
+
         {report && (
           <>
             {/* Results */}
-            {report && !error && (
+            {report && !error && !report.error && (
               <>
                 {report.best ? (
                   <section style={{ marginTop: 10 }}>
@@ -258,16 +268,16 @@ export default function ReportClient() {
                         maxWidth: 867,
                       }}
                     >
-                                        <p style={{ margin: "0 0 12px 0", fontSize: 18, paddingLeft: "21px" }}>
-                      <strong>Ticker:</strong> {report.ticker}  &nbsp; | &nbsp;
+                                        <p style={{ margin: "0 0 12px 0", fontSize: 16, paddingLeft: "20px" }}>
+                      <strong> {report.ticker} </strong> &nbsp; | &nbsp;
                       <strong>Best P/A:</strong>{" "}
-                      {report.bestPA != null ? Number(report.bestPA).toFixed(6) : "n/a"}  &nbsp; | &nbsp;
+                      {report.bestPA != null ? Number(report.bestPA).toFixed(6) : "n/a"}   | &nbsp;
                       {report.best.scenario && (
                         <>
-                          <strong>Scenario:</strong> {scenarioDisplayName(report.best.scenario)}  &nbsp; | &nbsp;
+                          <strong>Scenario:</strong> {scenarioDisplayName(report.best.scenario)}   | &nbsp;
                         </>
                       )}
-                      <strong>Mode:</strong> {report.exchange} {report.priceType}
+                      <strong>Options Run:</strong> {report.totalOptions.toLocaleString()}
                     </p>
                     <div style={{ display: "grid", gap: 6, fontSize: 14 }}>
                       
@@ -403,7 +413,7 @@ export default function ReportClient() {
       </div>
 
       {/* Sankey Chart - Full Width */}
-      {report && !error && report.best && (
+      {report && !error && !report.error && report.best && (
         <div
           key={`sankey-${report.ticker}-${report.best.scenario}`}
           style={{
@@ -419,7 +429,7 @@ export default function ReportClient() {
       )}
 
       <div style={{ padding: "0 24px" }}>
-        {report && !error && (
+        {report && !error && !report.error && (
           <section style={{
             marginTop: 10,
             position: "relative",

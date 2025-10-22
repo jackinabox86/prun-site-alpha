@@ -252,6 +252,7 @@ function buildAllOptionsForTicker(
     let totalOutputValue = 0;
     let byproductValue = 0;
     let output1Amount = 0;
+    let output1HasPrice = false;
     for (let j = 0; j < 10; j++) {
       const matIndex = headers.indexOf(`Output${j + 1}MAT`);
       const cntIndex = headers.indexOf(`Output${j + 1}CNT`);
@@ -259,12 +260,29 @@ function buildAllOptionsForTicker(
         const outTicker = String(row[matIndex]);
         const outAmt = Number(row[cntIndex] ?? 0);
         const outPrice = findPrice(outTicker, priceMap, exchange, priceType);
-        if (!outPrice) continue;
-        const totalVal = outAmt * outPrice;
-        totalOutputValue += totalVal;
-        if (j === 0) output1Amount = outAmt;
-        else byproductValue += totalVal;
+
+        if (j === 0) {
+          // Main ticker must have a price
+          output1Amount = outAmt;
+          if (outPrice) {
+            output1HasPrice = true;
+            const totalVal = outAmt * outPrice;
+            totalOutputValue += totalVal;
+          }
+        } else {
+          // Byproducts are optional
+          if (outPrice) {
+            const totalVal = outAmt * outPrice;
+            totalOutputValue += totalVal;
+            byproductValue += totalVal;
+          }
+        }
       }
+    }
+
+    // Skip this recipe if the main output ticker doesn't have a price for the selected price mode
+    if (!output1HasPrice) {
+      continue;
     }
 
     // Build scenarios for THIS ticker: each input → BUY or MAKE(childBest)
@@ -521,6 +539,7 @@ function bestOptionForTicker(
     let totalOutputValue = 0;
     let byproductValue = 0;
     let output1Amount = 0;
+    let output1HasPrice = false;
     for (let j = 0; j < 10; j++) {
       const matIndex = headers.indexOf(`Output${j + 1}MAT`);
       const cntIndex = headers.indexOf(`Output${j + 1}CNT`);
@@ -528,12 +547,29 @@ function bestOptionForTicker(
         const outTicker = String(row[matIndex]);
         const outAmt = Number(row[cntIndex] ?? 0);
         const outPrice = findPrice(outTicker, priceMap, exchange, priceType);
-        if (!outPrice) continue;
-        const totalVal = outAmt * outPrice;
-        totalOutputValue += totalVal;
-        if (j === 0) output1Amount = outAmt;
-        else byproductValue += totalVal;
+
+        if (j === 0) {
+          // Main ticker must have a price
+          output1Amount = outAmt;
+          if (outPrice) {
+            output1HasPrice = true;
+            const totalVal = outAmt * outPrice;
+            totalOutputValue += totalVal;
+          }
+        } else {
+          // Byproducts are optional
+          if (outPrice) {
+            const totalVal = outAmt * outPrice;
+            totalOutputValue += totalVal;
+            byproductValue += totalVal;
+          }
+        }
       }
+    }
+
+    // Skip this recipe if the main output ticker doesn't have a price for the selected price mode
+    if (!output1HasPrice) {
+      continue;
     }
 
     // Build scenarios for THIS ticker only: each input → BUY or MAKE(childBest)
@@ -857,6 +893,7 @@ export function findAllMakeOptions(
     let totalOutputValue = 0;
     let byproductValue = 0;
     let output1Amount = 0;
+    let output1HasPrice = false;
 
     for (let j = 0; j < 10; j++) {
       const matIndex = headers.indexOf(`Output${j + 1}MAT`);
@@ -865,14 +902,29 @@ export function findAllMakeOptions(
         const outputTicker = String(row[matIndex]);
         const outputAmount = Number(row[cntIndex] ?? 0);
         const outputPrice = findPrice(outputTicker, priceMap, exchange, priceType);
-        if (!outputPrice) continue;
 
-        const totalValue = outputAmount * outputPrice;
-        totalOutputValue += totalValue;
-
-        if (j === 0) output1Amount = outputAmount;
-        else byproductValue += totalValue;
+        if (j === 0) {
+          // Main ticker must have a price
+          output1Amount = outputAmount;
+          if (outputPrice) {
+            output1HasPrice = true;
+            const totalValue = outputAmount * outputPrice;
+            totalOutputValue += totalValue;
+          }
+        } else {
+          // Byproducts are optional
+          if (outputPrice) {
+            const totalValue = outputAmount * outputPrice;
+            totalOutputValue += totalValue;
+            byproductValue += totalValue;
+          }
+        }
       }
+    }
+
+    // Skip this recipe if the main output ticker doesn't have a price for the selected price mode
+    if (!output1HasPrice) {
+      continue;
     }
 
     // Build scenarios: each input → BUY or MAKE(all child options)
