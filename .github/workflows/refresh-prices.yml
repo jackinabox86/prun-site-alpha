@@ -1,0 +1,81 @@
+name: Refresh Prices (Google Cloud Storage)
+
+on:
+  schedule:
+    # Run every 30 minutes
+    - cron: '*/30 * * * *'
+
+  # Allow manual trigger from GitHub UI
+  workflow_dispatch:
+
+  # Run on push to main when merge logic changes
+  push:
+    branches:
+      - main
+    paths:
+      - 'scripts/merge-prices.ts'
+
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Merge price data
+        run: npm run merge-prices
+
+      - name: Authenticate to Google Cloud
+        uses: google-github-actions/auth@v2
+        with:
+          credentials_json: ${{ secrets.GCP_SA_KEY }}
+
+      - name: Set up Cloud SDK
+        uses: google-github-actions/setup-gcloud@v2
+
+      - name: Upload to Google Cloud Storage
+        run: |
+          # Upload merged prices file with 30-minute cache
+          gsutil -h "Cache-Control:public, max-age=1800" \
+                 -h "Content-Type:text/csv" \
+                 cp public/data/prices-merged.csv \
+                 gs://prun-site-alpha-bucket/prices.csv
+
+          echo "✅ Prices file uploaded to GCS"
+
+      - name: Get public URL
+        run: |
+          echo "📊 Merged Prices Data:"
+          echo "https://storage.googleapis.com/prun-site-alpha-bucket/prices.csv"
+
+      - name: Summary
+        run: |
+          echo "## Upload Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "✅ Merged prices data uploaded to Google Cloud Storage" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### Details" >> $GITHUB_STEP_SUMMARY
+          echo "- Source 1: FNAR (rest.fnar.net/csv/prices)" >> $GITHUB_STEP_SUMMARY
+          echo "- Source 2: PrunPlanner (api.prunplanner.org/csv/exchange)" >> $GITHUB_STEP_SUMMARY
+          echo "- Cache duration: 30 minutes" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### Public URL" >> $GITHUB_STEP_SUMMARY
+          echo "- https://storage.googleapis.com/prun-site-alpha-bucket/prices.csv" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### File Stats" >> $GITHUB_STEP_SUMMARY
+          if [ -f public/data/prices-merged.csv ]; then
+            ROWS=$(wc -l < public/data/prices-merged.csv)
+            SIZE=$(du -h public/data/prices-merged.csv | cut -f1)
+            echo "- Rows: $ROWS" >> $GITHUB_STEP_SUMMARY
+            echo "- Size: $SIZE" >> $GITHUB_STEP_SUMMARY
+          fi
