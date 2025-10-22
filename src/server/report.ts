@@ -5,7 +5,7 @@ import { computeRoiNarrow, computeRoiBroad } from "@/core/roi";
 import { computeInputPayback } from "@/core/inputPayback";
 import { cachedBestRecipes } from "@/server/cachedBestRecipes";
 import { CSV_URLS } from "@/lib/config";
-import type { PriceMode } from "@/types";
+import type { PriceMode, Exchange, PriceType } from "@/types";
 
 const honorRecipeIdFilter = false;  // Set to false to explore all recipe variants
 
@@ -22,9 +22,10 @@ type WithMetrics<T> = T & {
 
 export async function buildReport(opts: {
   ticker: string;
-  priceMode: PriceMode;
+  exchange: Exchange;
+  priceType: PriceType;
 }) {
-  const { ticker, priceMode } = opts;
+  const { ticker, exchange, priceType } = opts;
 
   // Get cached best recipes (will be generated on first call)
   const { bestMap } = await cachedBestRecipes.getBestRecipes();
@@ -35,17 +36,70 @@ export async function buildReport(opts: {
     { bestMap }
   );
 
-  const options = findAllMakeOptions(ticker, recipeMap, pricesMap, priceMode, bestMap, 0, true, honorRecipeIdFilter);
-  if (!options.length) {
+  // Check if the ticker exists in price data
+  const tickerPrices = pricesMap[ticker];
+  if (!tickerPrices) {
     return {
       schemaVersion: 3,
       ticker,
-      priceMode,
+      exchange,
+      priceType,
       totalOptions: 0,
       bestPA: null,
       bestScenario: "",
       best: null,
       top20: [],
+      error: `No price data available for ticker ${ticker}`,
+    };
+  }
+
+  // Check if the ticker has price data for the selected exchange
+  const exchangePrices = tickerPrices[exchange];
+  if (!exchangePrices) {
+    return {
+      schemaVersion: 3,
+      ticker,
+      exchange,
+      priceType,
+      totalOptions: 0,
+      bestPA: null,
+      bestScenario: "",
+      best: null,
+      top20: [],
+      error: `No price data available for ticker ${ticker} on exchange ${exchange}`,
+    };
+  }
+
+  // Check if the ticker has a price for the selected price type
+  const price = exchangePrices[priceType];
+  if (!price) {
+    return {
+      schemaVersion: 3,
+      ticker,
+      exchange,
+      priceType,
+      totalOptions: 0,
+      bestPA: null,
+      bestScenario: "",
+      best: null,
+      top20: [],
+      error: `No ${priceType} price available for ticker ${ticker} on exchange ${exchange}`,
+    };
+  }
+
+  const options = findAllMakeOptions(ticker, recipeMap, pricesMap, exchange, priceType, bestMap, 0, true, honorRecipeIdFilter);
+  if (!options.length) {
+    return {
+      schemaVersion: 3,
+      ticker,
+      exchange,
+      priceType,
+      totalOptions: 0,
+      bestPA: null,
+      bestScenario: "",
+      best: null,
+      top20: [],
+      error: `No profitable production scenarios found for ticker ${ticker} with ${exchange} ${priceType} pricing`,
     };
   }
 
@@ -116,7 +170,8 @@ export async function buildReport(opts: {
   return {
     schemaVersion: 3,
     ticker,
-    priceMode,
+    exchange,
+    priceType,
     totalOptions: ranked.length,
     bestPA: best.r.subtreeProfitPerArea ?? null,
     bestScenario: best.o.scenario ?? "",

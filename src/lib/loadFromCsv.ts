@@ -61,14 +61,35 @@ export async function loadAllFromCsv(
   const recipeSheet: RecipeSheet = [recipeHeaders, ...typedRows];
   const recipeMap: RecipeMap = buildRecipeMap(recipeSheet);
 
-  // Prices: build PricesMap (ask/bid/pp7/pp30)
+  // Prices: build PricesMap with all exchanges
   const pricesMap: PricesMap = buildPriceMap(
   pricesRows.map(r => ({
     Ticker: r["Ticker"],
+    // ANT (Antares) - AI1
     "AI1-AskPrice": Number(r["AI1-AskPrice"]) || 0,
     "AI1-BidPrice": Number(r["AI1-BidPrice"]) || 0,
     "A1-PP7":       Number(r["A1-PP7"])       || 0,
     "A1-PP30":      Number(r["A1-PP30"])      || 0,
+    // CIS (Castillon) - CI1
+    "CI1-AskPrice": Number(r["CI1-AskPrice"]) || 0,
+    "CI1-BidPrice": Number(r["CI1-BidPrice"]) || 0,
+    "CI1-PP7":      Number(r["CI1-PP7"])      || 0,
+    "CI1-PP30":     Number(r["CI1-PP30"])     || 0,
+    // ICA (Icarus) - IC1
+    "IC1-AskPrice": Number(r["IC1-AskPrice"]) || 0,
+    "IC1-BidPrice": Number(r["IC1-BidPrice"]) || 0,
+    "IC1-PP7":      Number(r["IC1-PP7"])      || 0,
+    "IC1-PP30":     Number(r["IC1-PP30"])     || 0,
+    // NCC (Neocassildas) - NC1
+    "NC1-AskPrice": Number(r["NC1-AskPrice"]) || 0,
+    "NC1-BidPrice": Number(r["NC1-BidPrice"]) || 0,
+    "NC1-PP7":      Number(r["NC1-PP7"])      || 0,
+    "NC1-PP30":     Number(r["NC1-PP30"])     || 0,
+    // UNV (Universe) - future columns
+    "UNV-AskPrice": Number(r["UNV-AskPrice"]) || 0,
+    "UNV-BidPrice": Number(r["UNV-BidPrice"]) || 0,
+    "UNV-PP7":      Number(r["UNV-PP7"])      || 0,
+    "UNV-PP30":     Number(r["UNV-PP30"])     || 0,
   }))
 );
 

@@ -4,7 +4,7 @@ import { loadAllFromCsv } from "@/lib/loadFromCsv";
 import { findAllMakeOptions } from "@/core/engine";
 import { scenarioEquals, normalizeScenario } from "@/core/scenario";
 import { cachedBestRecipes } from "@/server/cachedBestRecipes";
-import type { PriceMode } from "@/types";
+import type { Exchange, PriceType } from "@/types";
 import { CSV_URLS } from "@/lib/config";
 
 export const runtime = "nodejs";
@@ -19,7 +19,8 @@ export async function GET() {
     { bestMap }
   );
 
-  const priceMode: PriceMode = "bid";
+  const exchange: Exchange = "ANT";
+  const priceType: PriceType = "bid";
   const mismatches: Array<{ ticker: string; sheet: string; computed: string }> = [];
 
   // Walk the generated best recipes and recompute each child's best scenario
@@ -29,7 +30,7 @@ export async function GET() {
     if (!t) continue;
 
     // depth=1 → "child mode": return exactly one best option for the ticker
-    const best = findAllMakeOptions(t, recipeMap, pricesMap, priceMode, bestMap, 1)[0];
+    const best = findAllMakeOptions(t, recipeMap, pricesMap, exchange, priceType, bestMap, 1)[0];
     const computed = best?.scenario ?? "";
 
     if (!scenarioEquals(sheetScenario, computed)) {

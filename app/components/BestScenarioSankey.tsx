@@ -3,7 +3,7 @@
 
 import { useMemo, memo } from "react";
 import PlotlySankey from "./PlotlySankey";
-import type { PriceMode } from "@/types";
+import type { Exchange, PriceType } from "@/types";
 import { scenarioDisplayName } from "@/core/scenario";
 
 // ---- API shapes (must match your report output) ----
@@ -46,11 +46,13 @@ type ApiMakeOption = {
 const BestScenarioSankey = memo(function BestScenarioSankey({
   best,
   height = 400,
-  priceMode,
+  exchange,
+  priceType,
 }: {
   best: ApiMakeOption | null | undefined;
   height?: number;
-  priceMode?: PriceMode;
+  exchange?: Exchange;
+  priceType?: PriceType;
 }) {
   const result = useMemo(() => {
     if (!best) return null;
@@ -374,7 +376,7 @@ const BestScenarioSankey = memo(function BestScenarioSankey({
         height: dynamicHeight,
       },
     };
-  }, [best, priceMode, height]);
+  }, [best, exchange, priceType, height]);
 
   if (!result || !best) return null;
   return <PlotlySankey data={result.data} layout={result.layout} />;

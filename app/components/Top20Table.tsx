@@ -4,6 +4,7 @@
 import React, { useState } from "react";
 import { scenarioDisplayName } from "@/core/scenario";
 import BestScenarioSankey from "./BestScenarioSankey";
+import type { Exchange, PriceType } from "@/types";
 
 type Top20Option = {
   ticker: string;
@@ -22,7 +23,7 @@ type Top20Option = {
   inputPaybackDays7Broad?: number | null;
 };
 
-export default function Top20Table({ options, priceMode }: { options: Top20Option[]; priceMode?: string }) {
+export default function Top20Table({ options, exchange, priceType }: { options: Top20Option[]; exchange?: Exchange; priceType?: PriceType }) {
   const [expandedRows, setExpandedRows] = useState<Set<number>>(new Set());
 
   if (!options || options.length === 0) return null;
@@ -135,7 +136,7 @@ export default function Top20Table({ options, priceMode }: { options: Top20Optio
                         isolation: "isolate",
                         marginBottom: "20px"
                       }}>
-                        <BestScenarioSankey best={option as any} priceMode={priceMode as any} height={400} />
+                        <BestScenarioSankey best={option as any} exchange={exchange} priceType={priceType} height={400} />
                       </div>
 
                       {/* Info Section */}

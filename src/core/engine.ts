@@ -6,6 +6,8 @@ import {
   PricesMap,
   RecipeMap,
   ScenarioRowsResult,
+  Exchange,
+  PriceType,
 } from "../types";
 import { findPrice } from "./price";
 import { composeScenario, scenarioDisplayName } from "./scenario";
@@ -16,7 +18,8 @@ import { composeScenario, scenarioDisplayName } from "./scenario";
 const BEST_MEMO = new Map<string, MakeOption>();
 const ALL_SCENARIOS_MEMO = new Map<string, MakeOption[]>();
 
-const memoKey = (mode: PriceMode, ticker: string) => `${mode}::${ticker}`;
+const memoKey = (exchange: Exchange, priceType: PriceType, ticker: string) =>
+  `${exchange}::${priceType}::${ticker}`;
 
 /** Clear all caches - call this between different analyses if needed */
 export function clearScenarioCache() {
@@ -133,7 +136,8 @@ function topDisplayScenarioOptionsForTicker(
   materialTicker: string,
   recipeMap: RecipeMap,
   priceMap: PricesMap,
-  priceMode: PriceMode,
+  exchange: Exchange,
+  priceType: PriceType,
   bestMap: any, // Enhanced BestMap with top3DisplayScenarios
   honorRecipeIdFilter: boolean,
   seen: Set<string> = new Set()
@@ -141,12 +145,12 @@ function topDisplayScenarioOptionsForTicker(
   const bestEntry = bestMap?.[materialTicker];
   if (!bestEntry || !bestEntry.top3DisplayScenarios || bestEntry.top3DisplayScenarios.length === 0) {
     // Fallback to single best option
-    const best = bestOptionForTicker(materialTicker, recipeMap, priceMap, priceMode, bestMap, honorRecipeIdFilter, seen);
+    const best = bestOptionForTicker(materialTicker, recipeMap, priceMap, exchange, priceType, bestMap, honorRecipeIdFilter, seen);
     return best ? [best] : [];
   }
 
   // Build all options for this ticker and match against stored display scenarios
-  const allOptions = buildAllOptionsForTicker(materialTicker, recipeMap, priceMap, priceMode, bestMap, honorRecipeIdFilter, seen);
+  const allOptions = buildAllOptionsForTicker(materialTicker, recipeMap, priceMap, exchange, priceType, bestMap, honorRecipeIdFilter, seen);
 
   // Match options to the stored top 3 display scenarios
   const matchedOptions: MakeOption[] = [];
@@ -172,7 +176,8 @@ function buildAllOptionsForTicker(
   materialTicker: string,
   recipeMap: RecipeMap,
   priceMap: PricesMap,
-  priceMode: PriceMode,
+  exchange: Exchange,
+  priceType: PriceType,
   bestMap: any,
   honorRecipeIdFilter: boolean,
   seen: Set<string>
@@ -227,13 +232,14 @@ function buildAllOptionsForTicker(
       if (matIndex !== -1 && row[matIndex]) {
         const inputTicker = String(row[matIndex]);
         const inputAmount = Number(row[cntIndex] ?? 0);
-        const ask = findPrice(inputTicker, priceMap, "ask");
+        const ask = findPrice(inputTicker, priceMap, exchange, "ask");
         const buyCost = ask != null ? inputAmount * ask : null;
         const childBest = bestOptionForTicker(
           inputTicker,
           recipeMap,
           priceMap,
-          priceMode,
+          exchange,
+          priceType,
           bestMap,
           honorRecipeIdFilter,
           seen
@@ -246,19 +252,37 @@ function buildAllOptionsForTicker(
     let totalOutputValue = 0;
     let byproductValue = 0;
     let output1Amount = 0;
+    let output1HasPrice = false;
     for (let j = 0; j < 10; j++) {
       const matIndex = headers.indexOf(`Output${j + 1}MAT`);
       const cntIndex = headers.indexOf(`Output${j + 1}CNT`);
       if (matIndex !== -1 && row[matIndex]) {
         const outTicker = String(row[matIndex]);
         const outAmt = Number(row[cntIndex] ?? 0);
-        const outPrice = findPrice(outTicker, priceMap, priceMode);
-        if (!outPrice) continue;
-        const totalVal = outAmt * outPrice;
-        totalOutputValue += totalVal;
-        if (j === 0) output1Amount = outAmt;
-        else byproductValue += totalVal;
+        const outPrice = findPrice(outTicker, priceMap, exchange, priceType);
+
+        if (j === 0) {
+          // Main ticker must have a price
+          output1Amount = outAmt;
+          if (outPrice) {
+            output1HasPrice = true;
+            const totalVal = outAmt * outPrice;
+            totalOutputValue += totalVal;
+          }
+        } else {
+          // Byproducts are optional
+          if (outPrice) {
+            const totalVal = outAmt * outPrice;
+            totalOutputValue += totalVal;
+            byproductValue += totalVal;
+          }
+        }
       }
+    }
+
+    // Skip this recipe if the main output ticker doesn't have a price for the selected price mode
+    if (!output1HasPrice) {
+      continue;
     }
 
     // Build scenarios for THIS ticker: each input → BUY or MAKE(childBest)
@@ -426,12 +450,13 @@ function bestOptionForTicker(
   materialTicker: string,
   recipeMap: RecipeMap,
   priceMap: PricesMap,
-  priceMode: PriceMode,
+  exchange: Exchange,
+  priceType: PriceType,
   bestMap: BestMap,
   honorRecipeIdFilter: boolean,
   seen: Set<string> = new Set()
 ): MakeOption | null {
-  const mkey = memoKey(priceMode, materialTicker);
+  const mkey = memoKey(exchange, priceType, materialTicker);
   if (BEST_MEMO.has(mkey)) return BEST_MEMO.get(mkey)!;
 
   // guard against cycles
@@ -494,13 +519,14 @@ function bestOptionForTicker(
       if (matIndex !== -1 && row[matIndex]) {
         const inputTicker = String(row[matIndex]);
         const inputAmount = Number(row[cntIndex] ?? 0);
-        const ask = findPrice(inputTicker, priceMap, "ask");
+        const ask = findPrice(inputTicker, priceMap, exchange, "ask");
         const buyCost = ask != null ? inputAmount * ask : null;
         const childBest = bestOptionForTicker(
           inputTicker,
           recipeMap,
           priceMap,
-          priceMode,
+          exchange,
+          priceType,
           bestMap,
           honorRecipeIdFilter,
           nextSeen
@@ -513,19 +539,37 @@ function bestOptionForTicker(
     let totalOutputValue = 0;
     let byproductValue = 0;
     let output1Amount = 0;
+    let output1HasPrice = false;
     for (let j = 0; j < 10; j++) {
       const matIndex = headers.indexOf(`Output${j + 1}MAT`);
       const cntIndex = headers.indexOf(`Output${j + 1}CNT`);
       if (matIndex !== -1 && row[matIndex]) {
         const outTicker = String(row[matIndex]);
         const outAmt = Number(row[cntIndex] ?? 0);
-        const outPrice = findPrice(outTicker, priceMap, priceMode);
-        if (!outPrice) continue;
-        const totalVal = outAmt * outPrice;
-        totalOutputValue += totalVal;
-        if (j === 0) output1Amount = outAmt;
-        else byproductValue += totalVal;
+        const outPrice = findPrice(outTicker, priceMap, exchange, priceType);
+
+        if (j === 0) {
+          // Main ticker must have a price
+          output1Amount = outAmt;
+          if (outPrice) {
+            output1HasPrice = true;
+            const totalVal = outAmt * outPrice;
+            totalOutputValue += totalVal;
+          }
+        } else {
+          // Byproducts are optional
+          if (outPrice) {
+            const totalVal = outAmt * outPrice;
+            totalOutputValue += totalVal;
+            byproductValue += totalVal;
+          }
+        }
       }
+    }
+
+    // Skip this recipe if the main output ticker doesn't have a price for the selected price mode
+    if (!output1HasPrice) {
+      continue;
     }
 
     // Build scenarios for THIS ticker only: each input → BUY or MAKE(childBest)
@@ -703,7 +747,8 @@ export function findAllMakeOptions(
   materialTicker: string,
   recipeMap: RecipeMap,
   priceMap: PricesMap,
-  priceMode: PriceMode,
+  exchange: Exchange,
+  priceType: PriceType,
   bestMap: BestMap,
   depth = 0,
   exploreAllChildScenarios = false,
@@ -713,7 +758,7 @@ export function findAllMakeOptions(
   if (depth > 0) {
     if (exploreAllChildScenarios) {
       // Check full exploration cache
-      const cacheKey = memoKey(priceMode, materialTicker);
+      const cacheKey = memoKey(exchange, priceType, materialTicker);
       if (ALL_SCENARIOS_MEMO.has(cacheKey)) {
         return ALL_SCENARIOS_MEMO.get(cacheKey)!;
       }
@@ -726,7 +771,8 @@ export function findAllMakeOptions(
           materialTicker,
           recipeMap,
           priceMap,
-          priceMode,
+          exchange,
+          priceType,
           bestMap,
           honorRecipeIdFilter
         );
@@ -736,7 +782,8 @@ export function findAllMakeOptions(
           materialTicker,
           recipeMap,
           priceMap,
-          priceMode,
+          exchange,
+          priceType,
           bestMap,
           honorRecipeIdFilter
         );
@@ -810,7 +857,7 @@ export function findAllMakeOptions(
       if (matIndex !== -1 && row[matIndex]) {
         const inputTicker = String(row[matIndex]);
         const inputAmount = Number(row[cntIndex] ?? 0);
-        const ask = findPrice(inputTicker, priceMap, "ask");
+        const ask = findPrice(inputTicker, priceMap, exchange, "ask");
         const buyCost = ask != null ? inputAmount * ask : null;
         
         // Recursively get child options (explore depths 0-2)
@@ -818,7 +865,8 @@ export function findAllMakeOptions(
           inputTicker,
           recipeMap,
           priceMap,
-          priceMode,
+          exchange,
+          priceType,
           bestMap,
           depth + 1,
           depth <= 2 && exploreAllChildScenarios,
@@ -845,6 +893,7 @@ export function findAllMakeOptions(
     let totalOutputValue = 0;
     let byproductValue = 0;
     let output1Amount = 0;
+    let output1HasPrice = false;
 
     for (let j = 0; j < 10; j++) {
       const matIndex = headers.indexOf(`Output${j + 1}MAT`);
@@ -852,15 +901,30 @@ export function findAllMakeOptions(
       if (matIndex !== -1 && row[matIndex]) {
         const outputTicker = String(row[matIndex]);
         const outputAmount = Number(row[cntIndex] ?? 0);
-        const outputPrice = findPrice(outputTicker, priceMap, priceMode);
-        if (!outputPrice) continue;
+        const outputPrice = findPrice(outputTicker, priceMap, exchange, priceType);
 
-        const totalValue = outputAmount * outputPrice;
-        totalOutputValue += totalValue;
-
-        if (j === 0) output1Amount = outputAmount;
-        else byproductValue += totalValue;
+        if (j === 0) {
+          // Main ticker must have a price
+          output1Amount = outputAmount;
+          if (outputPrice) {
+            output1HasPrice = true;
+            const totalValue = outputAmount * outputPrice;
+            totalOutputValue += totalValue;
+          }
+        } else {
+          // Byproducts are optional
+          if (outputPrice) {
+            const totalValue = outputAmount * outputPrice;
+            totalOutputValue += totalValue;
+            byproductValue += totalValue;
+          }
+        }
       }
+    }
+
+    // Skip this recipe if the main output ticker doesn't have a price for the selected price mode
+    if (!output1HasPrice) {
+      continue;
     }
 
     // Build scenarios: each input → BUY or MAKE(all child options)
@@ -1009,7 +1073,7 @@ export function findAllMakeOptions(
 
   // Cache AFTER all rows processed, OUTSIDE the loop
   if (depth > 0 && results.length > 0 && exploreAllChildScenarios) {
-    const cacheKey = memoKey(priceMode, materialTicker);
+    const cacheKey = memoKey(exchange, priceType, materialTicker);
     ALL_SCENARIOS_MEMO.set(cacheKey, results);
   }
 

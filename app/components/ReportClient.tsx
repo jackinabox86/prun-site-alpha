@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import type { PriceMode } from "@/types";
+import type { PriceMode, Exchange, PriceType } from "@/types";
 import BestScenarioSankey from "./BestScenarioSankey";
 import Top20Table from "./Top20Table";
 import { scenarioDisplayName } from "@/core/scenario";
@@ -11,7 +11,8 @@ type ApiReport = {
   ok?: boolean;
   error?: string;
   ticker: string;
-  priceMode: PriceMode;
+  exchange: Exchange;
+  priceType: PriceType;
   totalOptions: number;
   bestPA: number | null;
   best: any;
@@ -21,7 +22,8 @@ type ApiReport = {
 export default function ReportClient() {
   const [tickers, setTickers] = useState<string[]>([]);
   const [tickerInput, setTickerInput] = useState<string>("REP");
-  const [priceMode, setPriceMode] = useState<PriceMode>("bid");
+  const [exchange, setExchange] = useState<Exchange>("ANT");
+  const [priceType, setPriceType] = useState<PriceType>("bid");
   const [urlParamsChecked, setUrlParamsChecked] = useState(false);
 
   const [loading, setLoading] = useState(false);
@@ -58,7 +60,8 @@ export default function ReportClient() {
     try {
       const qs = new URLSearchParams({
         ticker: tickerInput.trim().toUpperCase(),
-        priceMode,
+        exchange,
+        priceType,
       });
       const res = await fetch(`/api/report?${qs.toString()}`, { cache: "no-store" });
       const json = await res.json();
@@ -162,21 +165,20 @@ export default function ReportClient() {
         <div
           style={{
             display: "grid",
-            gap: 12,
-            gridTemplateColumns: "1fr auto auto",
+            gap: 20,
+            gridTemplateColumns: "60px 50px 52px 120px 500px",
             alignItems: "end",
             maxWidth: 900,
           }}
         >
         <div>
-          <label style={{ display: "block", fontSize: 14, marginBottom: 4 }}>
+          <label style={{ display: "block", fontSize: 14, marginBottom: 4, textAlign: "center" }}>
             Ticker
           </label>
           <input
             list="ticker-list"
             value={tickerInput}
             onChange={(e) => setTickerInput(e.target.value)}
-            placeholder="Type a ticker (e.g., PCB)"
             style={{ width: "100%", padding: "8px 10px", fontWeight: 600, fontFamily: "inherit" }}
           />
           <datalist id="ticker-list">
@@ -187,28 +189,49 @@ export default function ReportClient() {
         </div>
 
         <div>
-          <label style={{ display: "block", fontSize: 14,  marginBottom: 4 }}>
-            Price Mode
+          <label style={{ display: "block", fontSize: 14,  marginBottom: 4, textAlign: "center" }}>
+            Exchange
           </label>
           <select
-            value={priceMode}
-            onChange={(e) => setPriceMode(e.target.value as PriceMode)}
+            value={exchange}
+            onChange={(e) => setExchange(e.target.value as Exchange)}
             style={{ padding: "8px 10px", fontWeight: 600, fontFamily: "inherit" }}
           >
-            <option value="bid">bid</option>
-            <option value="ask">ask</option>
-            <option value="pp7">pp7</option>
-            <option value="pp30">pp30</option>
+            <option value="ANT">ANT</option>
+            <option value="CIS">CIS</option>
+            <option value="ICA">ICA</option>
+            <option value="NCC">NCC</option>
+            <option value="UNV">UNV</option>
+          </select>
+        </div>
+
+        <div>
+          <label style={{ display: "block", fontSize: 14,  marginBottom: 4, textAlign: "center" }}>
+            Sell At
+          </label>
+          <select
+            value={priceType}
+            onChange={(e) => setPriceType(e.target.value as PriceType)}
+            style={{ padding: "8px 10px", fontWeight: 600, fontFamily: "inherit" }}
+          >
+            <option value="ask">Ask</option>
+            <option value="bid">Bid</option>
+            <option value="pp7">PP7</option>
+            <option value="pp30">PP30</option>
           </select>
         </div>
 
         <button
           onClick={run}
           disabled={loading || !tickerInput.trim()}
-          style={{ padding: "10px 14px", fontWeight: 600, fontFamily: "inherit" }}
+          style={{ padding: "8px 10px", fontWeight: 600, fontFamily: "inherit" }}
         >
           {loading ? "Running..." : "Run"}
         </button>
+
+        <div style={{ fontSize: 20, paddingBottom: 6 }}>
+          {exchange === "ANT" ? "😊" : "😢"}
+        </div>
         </div>
       </div>
 
@@ -220,10 +243,16 @@ export default function ReportClient() {
           </p>
         )}
 
+        {report && report.error && (
+          <p style={{ marginTop: 12, color: "#b00" }}>
+            {report.error}
+          </p>
+        )}
+
         {report && (
           <>
             {/* Results */}
-            {report && !error && (
+            {report && !error && !report.error && (
               <>
                 {report.best ? (
                   <section style={{ marginTop: 10 }}>
@@ -239,16 +268,16 @@ export default function ReportClient() {
                         maxWidth: 867,
                       }}
                     >
-                                        <p style={{ margin: "0 0 12px 0", fontSize: 18, paddingLeft: "21px" }}>
-                      <strong>Ticker:</strong> {report.ticker}  &nbsp; | &nbsp;
+                                        <p style={{ margin: "0 0 12px 0", fontSize: 16, paddingLeft: "20px" }}>
+                      <strong> {report.ticker} </strong> &nbsp; | &nbsp;
                       <strong>Best P/A:</strong>{" "}
-                      {report.bestPA != null ? Number(report.bestPA).toFixed(6) : "n/a"}  &nbsp; | &nbsp;
+                      {report.bestPA != null ? Number(report.bestPA).toFixed(6) : "n/a"}   | &nbsp;
                       {report.best.scenario && (
                         <>
-                          <strong>Scenario:</strong> {scenarioDisplayName(report.best.scenario)}  &nbsp; | &nbsp;
+                          <strong>Scenario:</strong> {scenarioDisplayName(report.best.scenario)}   | &nbsp;
                         </>
                       )}
-                      <strong>Mode:</strong> {report.priceMode}
+                      <strong>Options Run:</strong> {report.totalOptions.toLocaleString()}
                     </p>
                     <div style={{ display: "grid", gap: 6, fontSize: 14 }}>
                       
@@ -384,7 +413,7 @@ export default function ReportClient() {
       </div>
 
       {/* Sankey Chart - Full Width */}
-      {report && !error && report.best && (
+      {report && !error && !report.error && report.best && (
         <div
           key={`sankey-${report.ticker}-${report.best.scenario}`}
           style={{
@@ -395,12 +424,12 @@ export default function ReportClient() {
             zIndex: 1
           }}
         >
-          <BestScenarioSankey best={report.best} priceMode={report.priceMode} />
+          <BestScenarioSankey best={report.best} exchange={report.exchange} priceType={report.priceType} />
         </div>
       )}
 
       <div style={{ padding: "0 24px" }}>
-        {report && !error && (
+        {report && !error && !report.error && (
           <section style={{
             marginTop: 10,
             position: "relative",
@@ -449,7 +478,7 @@ export default function ReportClient() {
             <p style={{ margin: "8px 0 16px", color: "#555", maxWidth: 760 }}>
               List of up to 20 other production scenarios ranked by profit per area.
             </p>
-            <Top20Table options={report.top20} priceMode={report.priceMode} />
+            <Top20Table options={report.top20} exchange={report.exchange} priceType={report.priceType} />
           </section>
         )}
       </div>

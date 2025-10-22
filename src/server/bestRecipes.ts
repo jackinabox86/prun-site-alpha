@@ -4,7 +4,7 @@ import { findAllMakeOptions, buildScenarioRows, clearScenarioCache } from "@/cor
 import { findPrice } from "@/core/price";
 import { scenarioDisplayName } from "@/core/scenario";
 import { CSV_URLS } from "@/lib/config";
-import type { RecipeSheet, BestMap, PriceMode } from "@/types";
+import type { RecipeSheet, BestMap, PriceMode, Exchange, PriceType } from "@/types";
 
 export interface BestRecipeResult {
   ticker: string;
@@ -64,7 +64,8 @@ function calculateBuyAllProfitPA(
   ticker: string,
   recipeMap: any,
   pricesMap: any,
-  priceMode: PriceMode
+  exchange: Exchange,
+  priceType: PriceType
 ): number | null {
   const headers = recipeMap.headers;
   const rows = recipeMap.map[ticker] || [];
@@ -97,7 +98,7 @@ function calculateBuyAllProfitPA(
       if (matIndex !== -1 && row[matIndex]) {
         const inputTicker = String(row[matIndex]);
         const inputAmount = Number(row[cntIndex] ?? 0);
-        const ask = findPrice(inputTicker, pricesMap, "ask");
+        const ask = findPrice(inputTicker, pricesMap, exchange, "ask");
         if (ask == null) {
           // No market price available for this input - can't buy it
           hasAllPrices = false;
@@ -118,7 +119,7 @@ function calculateBuyAllProfitPA(
       if (matIndex !== -1 && row[matIndex]) {
         const outTicker = String(row[matIndex]);
         const outAmount = Number(row[cntIndex] ?? 0);
-        const outPrice = findPrice(outTicker, pricesMap, priceMode);
+        const outPrice = findPrice(outTicker, pricesMap, exchange, priceType);
         if (outPrice) {
           totalOutputValue += outAmount * outPrice;
         }
@@ -257,6 +258,7 @@ export async function refreshBestRecipeIDs(): Promise<BestRecipeResult[]> {
         ticker,
         recipeMap,
         pricesMap,
+        "ANT",
         "bid",
         bestMapBuilding, // Pass the building best map
         0,
@@ -302,7 +304,7 @@ export async function refreshBestRecipeIDs(): Promise<BestRecipeResult[]> {
         .slice(0, 3);
 
       // Calculate "buy all inputs" P/A using simple helper function
-      const buyAllProfitPA = calculateBuyAllProfitPA(ticker, recipeMap, pricesMap, "bid");
+      const buyAllProfitPA = calculateBuyAllProfitPA(ticker, recipeMap, pricesMap, "ANT", "bid");
 
       // Cache normalized best plus top 3 display scenarios (mimics setScenarioCacheForTicker)
       bestMapBuilding[ticker] = {

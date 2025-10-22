@@ -51,22 +51,49 @@ class CachedBestRecipes {
   }
 
   private async initialize(): Promise<void> {
-    // Try to load from Google Cloud Storage first (if configured)
-    const gcsDataLoaded = await this.loadFromGCS();
-    if (gcsDataLoaded) {
-      console.log("Loaded best recipes from Google Cloud Storage");
+    // Try to load from both GCS and local file, then use the fresher one
+    const [gcsData, localData] = await Promise.all([
+      this.loadFromGCS(),
+      this.loadFromStaticFile(),
+    ]);
+
+    // Compare timestamps and use fresher data
+    if (gcsData && localData) {
+      const gcsTimestamp = new Date(gcsData.generatedAt || 0).getTime();
+      const localTimestamp = new Date(localData.generatedAt || 0).getTime();
+
+      if (gcsTimestamp >= localTimestamp) {
+        this.bestRecipeResults = gcsData.results;
+        this.bestMap = convertToBestMap(this.bestRecipeResults);
+        console.log(`Using GCS data (generated: ${gcsData.generatedAt}, newer than local: ${localData.generatedAt})`);
+      } else {
+        this.bestRecipeResults = localData.results;
+        this.bestMap = convertToBestMap(this.bestRecipeResults);
+        console.log(`Using local data (generated: ${localData.generatedAt}, newer than GCS: ${gcsData.generatedAt})`);
+      }
       return;
     }
 
-    // Try to load from pre-generated static file (build-time generated)
-    const staticDataLoaded = this.loadFromStaticFile();
-    if (staticDataLoaded) {
-      console.log("Loaded best recipes from pre-generated static file");
+    // Use whichever source succeeded
+    if (gcsData) {
+      this.bestRecipeResults = gcsData.results;
+      this.bestMap = convertToBestMap(this.bestRecipeResults);
+      console.log(`Loaded ${this.bestRecipeResults.length} best recipes from GCS (generated: ${gcsData.generatedAt})`);
+      return;
+    }
+
+    if (localData) {
+      this.bestRecipeResults = localData.results;
+      this.bestMap = convertToBestMap(this.bestRecipeResults);
+      console.warn(`⚠️ ALERT: GCS failed, falling back to local file (generated: ${localData.generatedAt})`);
+      console.warn(`⚠️ Check GCS bucket and network connectivity`);
       return;
     }
 
     // Fallback to runtime generation (slow path)
-    console.log("No static data found, generating best recipes at runtime...");
+    console.error("🚨 ALERT: Both GCS and local file failed!");
+    console.error("🚨 Generating best recipes at runtime (slow, ~7 seconds)...");
+    console.error("🚨 Check GCS bucket, local file, and build process");
     const startTime = Date.now();
 
     this.bestRecipeResults = await refreshBestRecipeIDs();
@@ -78,15 +105,15 @@ class CachedBestRecipes {
 
   /**
    * Try to load best recipes from Google Cloud Storage
-   * Returns true if successful, false otherwise
+   * Returns data and timestamp if successful, null otherwise
    */
-  private async loadFromGCS(): Promise<boolean> {
+  private async loadFromGCS(): Promise<{ results: BestRecipeResult[]; generatedAt: string } | null> {
     try {
       const { BEST_RECIPES_URL } = await import("@/lib/config");
 
       // Skip if URL points to local file
       if (!BEST_RECIPES_URL.startsWith('http')) {
-        return false;
+        return null;
       }
 
       console.log(`Fetching best recipes from GCS: ${BEST_RECIPES_URL}`);
@@ -96,51 +123,83 @@ class CachedBestRecipes {
 
       if (!response.ok) {
         console.log(`GCS fetch failed: ${response.status} ${response.statusText}`);
-        return false;
+        return null;
       }
 
-      this.bestRecipeResults = await response.json() as BestRecipeResult[];
-      this.bestMap = convertToBestMap(this.bestRecipeResults);
+      const text = await response.text();
+      let results: BestRecipeResult[];
 
-      console.log(`Loaded ${this.bestRecipeResults.length} best recipes from GCS`);
-      return true;
+      try {
+        results = JSON.parse(text) as BestRecipeResult[];
+      } catch (parseError) {
+        console.error(`Failed to parse GCS response as JSON. First 200 chars: ${text.substring(0, 200)}`);
+        console.error(`Parse error:`, parseError);
+        return null;
+      }
+
+      // Try to fetch metadata for timestamp
+      const metaUrl = BEST_RECIPES_URL.replace('.json', '-meta.json');
+      let generatedAt = new Date(0).toISOString(); // Default to epoch if no metadata
+
+      try {
+        const metaResponse = await fetch(metaUrl, { cache: 'no-store' });
+        if (metaResponse.ok) {
+          const metaText = await metaResponse.text();
+          try {
+            const meta = JSON.parse(metaText);
+            generatedAt = meta.generatedAt || generatedAt;
+          } catch (metaParseError) {
+            console.log(`GCS metadata parse failed, using default timestamp`);
+          }
+        }
+      } catch (metaError) {
+        // Metadata fetch failed, use default
+        console.log(`GCS metadata fetch failed, using default timestamp`);
+      }
+
+      console.log(`Fetched ${results.length} best recipes from GCS`);
+      return { results, generatedAt };
     } catch (error) {
       console.log("Error loading from GCS:", error);
-      return false;
+      return null;
     }
   }
 
   /**
    * Try to load best recipes from pre-generated static JSON file
-   * Returns true if successful, false otherwise
+   * Returns data and timestamp if successful, null otherwise
    */
-  private loadFromStaticFile(): boolean {
+  private async loadFromStaticFile(): Promise<{ results: BestRecipeResult[]; generatedAt: string } | null> {
     try {
       // Path to the static file generated at build time or by GitHub Actions
       const staticFilePath = join(process.cwd(), 'public', 'data', 'best-recipes.json');
 
       if (!existsSync(staticFilePath)) {
         console.log("Static best-recipes.json not found");
-        return false;
+        return null;
       }
 
       const fileContent = readFileSync(staticFilePath, 'utf-8');
-      this.bestRecipeResults = JSON.parse(fileContent) as BestRecipeResult[];
-      this.bestMap = convertToBestMap(this.bestRecipeResults);
+      const results = JSON.parse(fileContent) as BestRecipeResult[];
 
-      // Try to load metadata for logging
+      // Try to load metadata for timestamp
+      let generatedAt = new Date(0).toISOString(); // Default to epoch if no metadata
       const metaFilePath = join(process.cwd(), 'public', 'data', 'best-recipes-meta.json');
+
       if (existsSync(metaFilePath)) {
-        const meta = JSON.parse(readFileSync(metaFilePath, 'utf-8'));
-        console.log(`Loaded ${this.bestRecipeResults.length} best recipes from static file (generated: ${meta.generatedAt})`);
-      } else {
-        console.log(`Loaded ${this.bestRecipeResults.length} best recipes from static file`);
+        try {
+          const meta = JSON.parse(readFileSync(metaFilePath, 'utf-8'));
+          generatedAt = meta.generatedAt || generatedAt;
+        } catch {
+          // Metadata parse failed, use default
+        }
       }
 
-      return true;
+      console.log(`Loaded ${results.length} best recipes from static file`);
+      return { results, generatedAt };
     } catch (error) {
       console.error("Error loading static best recipes file:", error);
-      return false;
+      return null;
     }
   }
 
