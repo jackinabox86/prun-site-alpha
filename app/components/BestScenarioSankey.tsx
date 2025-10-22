@@ -176,7 +176,6 @@ const BestScenarioSankey = memo(function BestScenarioSankey({
           const buyHover = [
             `<b>Buy ${inp.ticker}</b>`,
             inp.unitCost != null ? `Price: ${money(inp.unitCost)}` : null,
-            `Cost/d: ${money(costPerDay)}`,
           ].filter(Boolean).join("<br>");
 
           const buyIdx = ensureNode(buyNodeId, buyLabel, palette.buy, buyHover, depth + 1);
@@ -205,7 +204,7 @@ const BestScenarioSankey = memo(function BestScenarioSankey({
         const childHover = [
           `<b>Make ${child.recipeId || child.ticker}</b>`,
           inp.childScenario ? `Scen: ${scenarioDisplayName(inp.childScenario)}` : null,
-          `COGM/day: ${money(costPerDay)}`,
+          `COGM: ${money(cogm)}`,
           `Base profit/day: ${money(child.baseProfitPerDay)}`,
           `Area/day: ${fmtROI(child.totalAreaPerDay ?? child.fullSelfAreaPerDay)}`,
           child.roiNarrowDays != null ? `ROI (narrow): ${fmtROI(child.roiNarrowDays)} days` : null,

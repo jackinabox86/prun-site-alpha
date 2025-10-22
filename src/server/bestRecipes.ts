@@ -219,14 +219,21 @@ function getTickersInDependencyOrder(recipeSheet: RecipeSheet): string[] {
 /**
  * Refresh best recipe IDs for all tickers in dependency order
  * This is the core logic from the Apps Script refreshBestRecipeIDs function
+ * @param priceSource - "local" for local prices, "gcs" for GCS prices (default: "local")
  */
-export async function refreshBestRecipeIDs(): Promise<BestRecipeResult[]> {
+export async function refreshBestRecipeIDs(priceSource: "local" | "gcs" = "local"): Promise<BestRecipeResult[]> {
   // Clear caches
   clearScenarioCache();
 
+  // Determine which prices URL to use
+  const { GCS_PRICES_URL } = await import("@/lib/config");
+  const pricesUrl = priceSource === "gcs" ? GCS_PRICES_URL : CSV_URLS.prices;
+
+  console.log(`Using ${priceSource} prices: ${pricesUrl}`);
+
   // Load data (no bestMap needed since we're generating it)
   const { recipeMap, pricesMap } = await loadAllFromCsv(
-    { recipes: CSV_URLS.recipes, prices: CSV_URLS.prices },
+    { recipes: CSV_URLS.recipes, prices: pricesUrl },
     { bestMap: {} } // Pass empty bestMap since we're generating the best recipes
   );
 

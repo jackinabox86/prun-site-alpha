@@ -24,7 +24,7 @@ export default function ReportClient() {
   const [tickerInput, setTickerInput] = useState<string>("REP");
   const [exchange, setExchange] = useState<Exchange>("ANT");
   const [priceType, setPriceType] = useState<PriceType>("bid");
-  const [priceSource, setPriceSource] = useState<"local" | "gcs">("local");
+  const [priceSource, setPriceSource] = useState<"local" | "gcs">("gcs");
   const [urlParamsChecked, setUrlParamsChecked] = useState(false);
 
   const [loading, setLoading] = useState(false);

@@ -267,17 +267,23 @@ class CachedBestRecipes {
    */
   clearCache(): void {
     console.log("Clearing best recipes cache");
-    this.bestRecipeResults = null;
-    this.bestMap = null;
-    this.initPromise = null;
-    this.isInitializing = false;
+    this.localResults = null;
+    this.localMap = null;
+    this.gcsResults = null;
+    this.gcsMap = null;
+    this.autoResults = null;
+    this.autoMap = null;
+    this.initPromises.clear();
   }
 
   /**
-   * Check if cache is populated
+   * Check if cache is populated for a given source
    */
-  isCached(): boolean {
-    return this.bestRecipeResults !== null && this.bestMap !== null;
+  isCached(priceSource?: "local" | "gcs"): boolean {
+    const source = priceSource || "auto";
+    if (source === "local") return this.localResults !== null && this.localMap !== null;
+    if (source === "gcs") return this.gcsResults !== null && this.gcsMap !== null;
+    return this.autoResults !== null && this.autoMap !== null;
   }
 }
 

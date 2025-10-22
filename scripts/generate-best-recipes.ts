@@ -13,8 +13,9 @@ async function generateBestRecipes() {
   const startTime = Date.now();
 
   try {
-    console.log('Running refreshBestRecipeIDs...');
-    const results = await refreshBestRecipeIDs();
+    // Use GCS prices for generation (aligns with production deployment)
+    console.log('Running refreshBestRecipeIDs with GCS prices...');
+    const results = await refreshBestRecipeIDs("gcs");
 
     // Ensure output directory exists
     const outputDir = join(process.cwd(), 'public', 'data');
