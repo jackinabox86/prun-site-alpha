@@ -1,3 +1,6 @@
+Important: Do not commit without asking for approval.  Do not merge PRs without asking for approval.
+
+
 # Production Profitability Optimizer
 
 ## Overview
