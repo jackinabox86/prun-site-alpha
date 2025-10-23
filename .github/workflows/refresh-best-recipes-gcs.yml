@@ -34,6 +34,10 @@ jobs:
         run: npm ci
 
       - name: Generate best recipes
+        env:
+          GCS_RECIPES_URL: https://storage.googleapis.com/prun-site-alpha-bucket/recipes.csv
+          GCS_PRICES_URL: https://storage.googleapis.com/prun-site-alpha-bucket/prices.csv
+          GCS_BEST_RECIPES_URL: https://storage.googleapis.com/prun-site-alpha-bucket/best-recipes.json
         run: npm run generate-best-recipes
 
       - name: Authenticate to Google Cloud
