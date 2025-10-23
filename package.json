@@ -3,7 +3,6 @@
   "scripts": {
     "dev": "next dev --turbopack",
     "build": "next build",
-    "postbuild": "tsx scripts/generate-best-recipes.ts",
     "generate-best-recipes": "tsx scripts/generate-best-recipes.ts",
     "merge-prices": "tsx scripts/merge-prices.ts",
     "start": "next start"

@@ -225,15 +225,15 @@ export async function refreshBestRecipeIDs(priceSource: "local" | "gcs" = "local
   // Clear caches
   clearScenarioCache();
 
-  // Determine which prices URL to use
-  const { GCS_PRICES_URL } = await import("@/lib/config");
-  const pricesUrl = priceSource === "gcs" ? GCS_PRICES_URL : CSV_URLS.prices;
+  // Determine which data sources to use
+  const { LOCAL_DATA_SOURCES, GCS_DATA_SOURCES } = await import("@/lib/config");
+  const dataSources = priceSource === "gcs" ? GCS_DATA_SOURCES : LOCAL_DATA_SOURCES;
 
-  console.log(`Using ${priceSource} prices: ${pricesUrl}`);
+  console.log(`Using ${priceSource} prices: ${dataSources.prices}`);
 
   // Load data (no bestMap needed since we're generating it)
   const { recipeMap, pricesMap } = await loadAllFromCsv(
-    { recipes: CSV_URLS.recipes, prices: pricesUrl },
+    { recipes: dataSources.recipes, prices: dataSources.prices },
     { bestMap: {} } // Pass empty bestMap since we're generating the best recipes
   );
 

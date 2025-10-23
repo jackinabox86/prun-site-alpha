@@ -11,16 +11,17 @@ export async function GET(request: Request) {
   try {
     const { searchParams } = new URL(request.url);
     const clearCache = searchParams.get("clearCache") === "true";
+    const priceSource = (searchParams.get("priceSource") || "gcs") as "local" | "gcs";
 
     if (clearCache) {
       console.log("Clearing best recipes cache...");
       cachedBestRecipes.clearCache();
     }
 
-    console.log("Getting best recipes...");
+    console.log(`Getting best recipes (${priceSource} mode)...`);
     const startTime = Date.now();
 
-    const { results } = await cachedBestRecipes.getBestRecipes();
+    const { results } = await cachedBestRecipes.getBestRecipes(priceSource);
 
     const duration = ((Date.now() - startTime) / 1000).toFixed(2);
     console.log(`Best recipes retrieved in ${duration}s`);
@@ -29,7 +30,8 @@ export async function GET(request: Request) {
       success: true,
       data: results,
       count: results.length,
-      cached: cachedBestRecipes.isCached(),
+      priceSource,
+      cached: cachedBestRecipes.isCached(priceSource),
       durationSeconds: parseFloat(duration)
     });
   } catch (err: any) {

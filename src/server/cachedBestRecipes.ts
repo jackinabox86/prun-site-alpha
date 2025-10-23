@@ -6,8 +6,8 @@ import { join } from "path";
 
 /**
  * Cached best recipes singleton
- * Ensures best recipes are generated once and reused across all operations
- * Prefers pre-generated static data from build/GitHub Actions when available
+ * Separate caches for local (legacy) and GCS (live) data sources
+ * No fallbacks - fails fast if data source is unavailable
  */
 class CachedBestRecipes {
   // Separate caches for local and GCS sources
@@ -15,150 +15,89 @@ class CachedBestRecipes {
   private localMap: BestMap | null = null;
   private gcsResults: BestRecipeResult[] | null = null;
   private gcsMap: BestMap | null = null;
-  private autoResults: BestRecipeResult[] | null = null;
-  private autoMap: BestMap | null = null;
   private initPromises: Map<string, Promise<void>> = new Map();
 
   /**
-   * Get or generate the best recipes and bestMap
-   * This will cache data per priceSource to support switching between local and GCS
-   * @param priceSource - "local" to prefer local file, "gcs" to prefer GCS, undefined for auto (newest)
+   * Get or load the best recipes and bestMap
+   * @param priceSource - "local" for legacy static files, "gcs" for live GCS data (required)
    */
-  async getBestRecipes(priceSource?: "local" | "gcs"): Promise<{ results: BestRecipeResult[]; bestMap: BestMap }> {
-    const source = priceSource || "auto";
+  async getBestRecipes(priceSource: "local" | "gcs"): Promise<{ results: BestRecipeResult[]; bestMap: BestMap }> {
+    if (!priceSource) {
+      throw new Error("priceSource is required - must be 'local' or 'gcs'");
+    }
 
     // Return cached data if available for this source
-    if (source === "local" && this.localResults && this.localMap) {
+    if (priceSource === "local" && this.localResults && this.localMap) {
       console.log(`Using cached local best recipes (${this.localResults.length} entries)`);
       return { results: this.localResults, bestMap: this.localMap };
     }
-    if (source === "gcs" && this.gcsResults && this.gcsMap) {
+    if (priceSource === "gcs" && this.gcsResults && this.gcsMap) {
       console.log(`Using cached GCS best recipes (${this.gcsResults.length} entries)`);
       return { results: this.gcsResults, bestMap: this.gcsMap };
     }
-    if (source === "auto" && this.autoResults && this.autoMap) {
-      console.log(`Using cached auto best recipes (${this.autoResults.length} entries)`);
-      return { results: this.autoResults, bestMap: this.autoMap };
-    }
 
     // If already initializing this source, wait for that to complete
-    const existingPromise = this.initPromises.get(source);
+    const existingPromise = this.initPromises.get(priceSource);
     if (existingPromise) {
-      console.log(`Waiting for ongoing ${source} best recipes generation...`);
+      console.log(`Waiting for ongoing ${priceSource} best recipes load...`);
       await existingPromise;
       // Return the now-cached data
-      return this.getCachedData(source);
+      return this.getCachedData(priceSource);
     }
 
     // Start new initialization for this source
     const initPromise = this.initialize(priceSource);
-    this.initPromises.set(source, initPromise);
+    this.initPromises.set(priceSource, initPromise);
     await initPromise;
-    this.initPromises.delete(source);
+    this.initPromises.delete(priceSource);
 
-    return this.getCachedData(source);
+    return this.getCachedData(priceSource);
   }
 
-  private getCachedData(source: string): { results: BestRecipeResult[]; bestMap: BestMap } {
-    if (source === "local") return { results: this.localResults!, bestMap: this.localMap! };
-    if (source === "gcs") return { results: this.gcsResults!, bestMap: this.gcsMap! };
-    return { results: this.autoResults!, bestMap: this.autoMap! };
+  private getCachedData(source: "local" | "gcs"): { results: BestRecipeResult[]; bestMap: BestMap } {
+    if (source === "local") {
+      if (!this.localResults || !this.localMap) {
+        throw new Error("Local best recipes not loaded");
+      }
+      return { results: this.localResults, bestMap: this.localMap };
+    }
+    if (!this.gcsResults || !this.gcsMap) {
+      throw new Error("GCS best recipes not loaded");
+    }
+    return { results: this.gcsResults, bestMap: this.gcsMap };
   }
 
-  private async initialize(priceSource?: "local" | "gcs"): Promise<void> {
-    // Try to load from both GCS and local file
-    const [gcsData, localData] = await Promise.all([
-      this.loadFromGCS(),
-      this.loadFromStaticFile(priceSource),
-    ]);
-
-    // If priceSource is specified, store in the appropriate cache
-    if (priceSource === "local" && localData) {
+  private async initialize(priceSource: "local" | "gcs"): Promise<void> {
+    if (priceSource === "local") {
+      const localData = await this.loadFromStaticFile();
+      if (!localData) {
+        throw new Error(
+          "Failed to load local best recipes from public/data/best-recipes-315.json. " +
+          "File may be missing or corrupted."
+        );
+      }
       this.localResults = localData.results;
       this.localMap = convertToBestMap(this.localResults);
       console.log(`Loaded local best recipes (${this.localResults.length} entries, generated: ${localData.generatedAt})`);
       return;
     }
 
-    if (priceSource === "gcs" && gcsData) {
+    if (priceSource === "gcs") {
+      const gcsData = await this.loadFromGCS();
+      if (!gcsData) {
+        throw new Error(
+          "Failed to load GCS best recipes. " +
+          "Check that GCS_BEST_RECIPES_URL environment variable is set and the GCS bucket is accessible. " +
+          "URL should point to: https://storage.googleapis.com/prun-site-alpha-bucket/best-recipes.json"
+        );
+      }
       this.gcsResults = gcsData.results;
       this.gcsMap = convertToBestMap(this.gcsResults);
       console.log(`Loaded GCS best recipes (${this.gcsResults.length} entries, generated: ${gcsData.generatedAt})`);
       return;
     }
 
-    // Auto mode: compare timestamps and use fresher data
-    if (gcsData && localData) {
-      const gcsTimestamp = new Date(gcsData.generatedAt || 0).getTime();
-      const localTimestamp = new Date(localData.generatedAt || 0).getTime();
-
-      if (gcsTimestamp >= localTimestamp) {
-        this.autoResults = gcsData.results;
-        this.autoMap = convertToBestMap(this.autoResults);
-        console.log(`Using GCS data (generated: ${gcsData.generatedAt}, newer than local: ${localData.generatedAt})`);
-      } else {
-        this.autoResults = localData.results;
-        this.autoMap = convertToBestMap(this.autoResults);
-        console.log(`Using local data (generated: ${localData.generatedAt}, newer than GCS: ${gcsData.generatedAt})`);
-      }
-      return;
-    }
-
-    // Use whichever source succeeded (for auto mode or if preferred source failed)
-    const source = priceSource || "auto";
-
-    if (source === "gcs" && gcsData) {
-      this.gcsResults = gcsData.results;
-      this.gcsMap = convertToBestMap(this.gcsResults);
-      console.log(`Loaded ${this.gcsResults.length} best recipes from GCS (generated: ${gcsData.generatedAt})`);
-      return;
-    }
-
-    if (source === "local" && localData) {
-      this.localResults = localData.results;
-      this.localMap = convertToBestMap(this.localResults);
-      console.log(`Loaded ${this.localResults.length} best recipes from local (generated: ${localData.generatedAt})`);
-      return;
-    }
-
-    if (gcsData) {
-      this.autoResults = gcsData.results;
-      this.autoMap = convertToBestMap(this.autoResults);
-      console.log(`Loaded ${this.autoResults.length} best recipes from GCS (generated: ${gcsData.generatedAt})`);
-      return;
-    }
-
-    if (localData) {
-      this.autoResults = localData.results;
-      this.autoMap = convertToBestMap(this.autoResults);
-      console.warn(`⚠️ ALERT: GCS failed, falling back to local file (generated: ${localData.generatedAt})`);
-      console.warn(`⚠️ Check GCS bucket and network connectivity`);
-      return;
-    }
-
-    // Fallback to runtime generation (slow path)
-    console.error("🚨 ALERT: Both GCS and local file failed!");
-    console.error("🚨 Generating best recipes at runtime (slow, ~7 seconds)...");
-    console.error("🚨 Check GCS bucket, local file, and build process");
-    const startTime = Date.now();
-
-    const generated = await refreshBestRecipeIDs();
-    const generatedMap = convertToBestMap(generated);
-
-    // Store in the appropriate cache
-    if (source === "local") {
-      this.localResults = generated;
-      this.localMap = generatedMap;
-    } else if (source === "gcs") {
-      this.gcsResults = generated;
-      this.gcsMap = generatedMap;
-    } else {
-      this.autoResults = generated;
-      this.autoMap = generatedMap;
-    }
-
-    const duration = ((Date.now() - startTime) / 1000).toFixed(2);
-    console.log(`Best recipes generated and cached: ${generated.length} entries in ${duration}s`);
+    throw new Error(`Invalid priceSource: ${priceSource}. Must be 'local' or 'gcs'`);
   }
 
   /**
@@ -167,15 +106,11 @@ class CachedBestRecipes {
    */
   private async loadFromGCS(): Promise<{ results: BestRecipeResult[]; generatedAt: string } | null> {
     try {
-      const { BEST_RECIPES_URL } = await import("@/lib/config");
+      const { GCS_DATA_SOURCES } = await import("@/lib/config");
 
-      // Skip if URL points to local file
-      if (!BEST_RECIPES_URL.startsWith('http')) {
-        return null;
-      }
-
-      console.log(`Fetching best recipes from GCS: ${BEST_RECIPES_URL}`);
-      const response = await fetch(BEST_RECIPES_URL, {
+      const url = GCS_DATA_SOURCES.bestRecipes;
+      console.log(`Fetching best recipes from GCS: ${url}`);
+      const response = await fetch(url, {
         cache: 'no-store', // Always get fresh data
       });
 
@@ -196,7 +131,7 @@ class CachedBestRecipes {
       }
 
       // Try to fetch metadata for timestamp
-      const metaUrl = BEST_RECIPES_URL.replace('.json', '-meta.json');
+      const metaUrl = url.replace('.json', '-meta.json');
       let generatedAt = new Date(0).toISOString(); // Default to epoch if no metadata
 
       try {
@@ -227,14 +162,14 @@ class CachedBestRecipes {
    * Try to load best recipes from pre-generated static JSON file
    * Returns data and timestamp if successful, null otherwise
    */
-  private async loadFromStaticFile(priceSource?: "local" | "gcs"): Promise<{ results: BestRecipeResult[]; generatedAt: string } | null> {
+  private async loadFromStaticFile(): Promise<{ results: BestRecipeResult[]; generatedAt: string } | null> {
     try {
-      // Use -315 backup files for local mode to preserve 315-ticker version
-      const fileSuffix = priceSource === "local" ? "-315" : "";
-      const staticFilePath = join(process.cwd(), 'public', 'data', `best-recipes${fileSuffix}.json`);
+      const { LOCAL_DATA_SOURCES } = await import("@/lib/config");
+
+      const staticFilePath = join(process.cwd(), LOCAL_DATA_SOURCES.bestRecipes);
 
       if (!existsSync(staticFilePath)) {
-        console.log(`Static best-recipes${fileSuffix}.json not found`);
+        console.log(`Static file not found: ${staticFilePath}`);
         return null;
       }
 
@@ -243,7 +178,7 @@ class CachedBestRecipes {
 
       // Try to load metadata for timestamp
       let generatedAt = new Date(0).toISOString(); // Default to epoch if no metadata
-      const metaFilePath = join(process.cwd(), 'public', 'data', `best-recipes-meta${fileSuffix}.json`);
+      const metaFilePath = join(process.cwd(), LOCAL_DATA_SOURCES.bestRecipesMeta);
 
       if (existsSync(metaFilePath)) {
         try {
@@ -254,7 +189,7 @@ class CachedBestRecipes {
         }
       }
 
-      console.log(`Loaded ${results.length} best recipes from static file (${fileSuffix || "default"})`);
+      console.log(`Loaded ${results.length} best recipes from static file`);
       return { results, generatedAt };
     } catch (error) {
       console.error("Error loading static best recipes file:", error);
@@ -263,7 +198,7 @@ class CachedBestRecipes {
   }
 
   /**
-   * Clear the cache and force regeneration on next access
+   * Clear the cache and force reload on next access
    */
   clearCache(): void {
     console.log("Clearing best recipes cache");
@@ -271,19 +206,16 @@ class CachedBestRecipes {
     this.localMap = null;
     this.gcsResults = null;
     this.gcsMap = null;
-    this.autoResults = null;
-    this.autoMap = null;
     this.initPromises.clear();
   }
 
   /**
    * Check if cache is populated for a given source
    */
-  isCached(priceSource?: "local" | "gcs"): boolean {
-    const source = priceSource || "auto";
-    if (source === "local") return this.localResults !== null && this.localMap !== null;
-    if (source === "gcs") return this.gcsResults !== null && this.gcsMap !== null;
-    return this.autoResults !== null && this.autoMap !== null;
+  isCached(priceSource: "local" | "gcs"): boolean {
+    if (priceSource === "local") return this.localResults !== null && this.localMap !== null;
+    if (priceSource === "gcs") return this.gcsResults !== null && this.gcsMap !== null;
+    return false;
   }
 }
 
