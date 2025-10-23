@@ -13,6 +13,14 @@ import { findPrice } from "./price";
 import { composeScenario, scenarioDisplayName } from "./scenario";
 
 /**──────────────────────────────────────────────────────────────────────────────
+ * Helper: Determine which price type to use for buying inputs
+ * UNV exchange doesn't have ask/bid prices, so use the selected priceType
+ *─────────────────────────────────────────────────────────────────────────────*/
+function getInputPriceType(exchange: Exchange, priceType: PriceType): PriceType {
+  return exchange === "UNV" ? priceType : "ask";
+}
+
+/**──────────────────────────────────────────────────────────────────────────────
  * Memoization for child scenarios
  *─────────────────────────────────────────────────────────────────────────────*/
 const BEST_MEMO = new Map<string, MakeOption>();
@@ -232,8 +240,9 @@ function buildAllOptionsForTicker(
       if (matIndex !== -1 && row[matIndex]) {
         const inputTicker = String(row[matIndex]);
         const inputAmount = Number(row[cntIndex] ?? 0);
-        const ask = findPrice(inputTicker, priceMap, exchange, "ask");
-        const buyCost = ask != null ? inputAmount * ask : null;
+        const inputPriceType = getInputPriceType(exchange, priceType);
+        const inputPrice = findPrice(inputTicker, priceMap, exchange, inputPriceType);
+        const buyCost = inputPrice != null ? inputAmount * inputPrice : null;
         const childBest = bestOptionForTicker(
           inputTicker,
           recipeMap,
@@ -519,8 +528,9 @@ function bestOptionForTicker(
       if (matIndex !== -1 && row[matIndex]) {
         const inputTicker = String(row[matIndex]);
         const inputAmount = Number(row[cntIndex] ?? 0);
-        const ask = findPrice(inputTicker, priceMap, exchange, "ask");
-        const buyCost = ask != null ? inputAmount * ask : null;
+        const inputPriceType = getInputPriceType(exchange, priceType);
+        const inputPrice = findPrice(inputTicker, priceMap, exchange, inputPriceType);
+        const buyCost = inputPrice != null ? inputAmount * inputPrice : null;
         const childBest = bestOptionForTicker(
           inputTicker,
           recipeMap,
@@ -857,9 +867,10 @@ export function findAllMakeOptions(
       if (matIndex !== -1 && row[matIndex]) {
         const inputTicker = String(row[matIndex]);
         const inputAmount = Number(row[cntIndex] ?? 0);
-        const ask = findPrice(inputTicker, priceMap, exchange, "ask");
-        const buyCost = ask != null ? inputAmount * ask : null;
-        
+        const inputPriceType = getInputPriceType(exchange, priceType);
+        const inputPrice = findPrice(inputTicker, priceMap, exchange, inputPriceType);
+        const buyCost = inputPrice != null ? inputAmount * inputPrice : null;
+
         // Recursively get child options (explore depths 0-2)
         let childOptions = findAllMakeOptions(
           inputTicker,

@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { CSV_URLS } from "@/lib/config";
+import { GCS_DATA_SOURCES } from "@/lib/config";
 import { loadAllFromCsv } from "@/lib/loadFromCsv";
 import { cachedBestRecipes } from "@/server/cachedBestRecipes";
 
@@ -11,12 +11,13 @@ export const dynamic = "force-dynamic";
 
 export async function GET() {
   try {
-    // Get cached best recipes (will be generated on first call)
-    const { bestMap } = await cachedBestRecipes.getBestRecipes();
+    // Use GCS mode for testing (production data)
+    const priceSource = "gcs";
+    const { bestMap } = await cachedBestRecipes.getBestRecipes(priceSource);
 
     // Load other data without best CSV
     const { recipeMap, pricesMap } = await loadAllFromCsv(
-      { recipes: CSV_URLS.recipes, prices: CSV_URLS.prices },
+      { recipes: GCS_DATA_SOURCES.recipes, prices: GCS_DATA_SOURCES.prices },
       { bestMap }
     );
 

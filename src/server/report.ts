@@ -4,7 +4,7 @@ import { findAllMakeOptions, buildScenarioRows } from "@/core/engine";
 import { computeRoiNarrow, computeRoiBroad } from "@/core/roi";
 import { computeInputPayback } from "@/core/inputPayback";
 import { cachedBestRecipes } from "@/server/cachedBestRecipes";
-import { CSV_URLS } from "@/lib/config";
+import { LOCAL_DATA_SOURCES, GCS_DATA_SOURCES } from "@/lib/config";
 import type { PriceMode, Exchange, PriceType } from "@/types";
 
 const honorRecipeIdFilter = false;  // Set to false to explore all recipe variants
@@ -24,15 +24,19 @@ export async function buildReport(opts: {
   ticker: string;
   exchange: Exchange;
   priceType: PriceType;
+  priceSource?: "local" | "gcs";
 }) {
-  const { ticker, exchange, priceType } = opts;
+  const { ticker, exchange, priceType, priceSource = "local" } = opts;
 
-  // Get cached best recipes (will be generated on first call)
-  const { bestMap } = await cachedBestRecipes.getBestRecipes();
+  // Get cached best recipes matching the price source
+  const { bestMap } = await cachedBestRecipes.getBestRecipes(priceSource);
 
-  // Load other data (recipes and prices) without best CSV
+  // Determine which data sources to use based on priceSource
+  const dataSources = priceSource === "gcs" ? GCS_DATA_SOURCES : LOCAL_DATA_SOURCES;
+
+  // Load recipes and prices from the appropriate source
   const { recipeMap, pricesMap } = await loadAllFromCsv(
-    { recipes: CSV_URLS.recipes, prices: CSV_URLS.prices },
+    { recipes: dataSources.recipes, prices: dataSources.prices },
     { bestMap }
   );
 

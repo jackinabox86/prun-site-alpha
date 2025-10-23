@@ -5,17 +5,18 @@ import { findAllMakeOptions } from "@/core/engine";
 import { scenarioEquals, normalizeScenario } from "@/core/scenario";
 import { cachedBestRecipes } from "@/server/cachedBestRecipes";
 import type { Exchange, PriceType } from "@/types";
-import { CSV_URLS } from "@/lib/config";
+import { GCS_DATA_SOURCES } from "@/lib/config";
 
 export const runtime = "nodejs";
 
 export async function GET() {
-  // Get cached best recipes (will be generated on first call)
-  const { bestMap, results: bestRecipeResults } = await cachedBestRecipes.getBestRecipes();
+  // Use GCS mode for parity checking (production data)
+  const priceSource = "gcs";
+  const { bestMap, results: bestRecipeResults } = await cachedBestRecipes.getBestRecipes(priceSource);
 
   // Load other data without best CSV
   const { recipeMap, pricesMap } = await loadAllFromCsv(
-    { recipes: CSV_URLS.recipes, prices: CSV_URLS.prices },
+    { recipes: GCS_DATA_SOURCES.recipes, prices: GCS_DATA_SOURCES.prices },
     { bestMap }
   );
 

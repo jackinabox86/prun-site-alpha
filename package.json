@@ -3,12 +3,13 @@
   "scripts": {
     "dev": "next dev --turbopack",
     "build": "next build",
-    "postbuild": "tsx scripts/generate-best-recipes.ts",
     "generate-best-recipes": "tsx scripts/generate-best-recipes.ts",
+    "merge-prices": "tsx scripts/merge-prices.ts",
     "start": "next start"
   },
   "dependencies": {
     "csv-parse": "^6.1.0",
+    "csv-stringify": "^6.6.0",
     "next": "latest",
     "plotly.js": "^3.1.1",
     "react": "^18.3.1",
