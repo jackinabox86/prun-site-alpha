@@ -106,31 +106,99 @@ Updated workflow that runs every 30 minutes:
 
 ## Setup Instructions
 
-### Initial Setup (One-Time)
+### Prerequisites
 
-1. **Populate the requirement CSVs:**
-   - Fill `public/data/workforce-requirements.csv` with all buildings
-   - Fill `public/data/build-requirements.csv` with all buildings
+✅ **Already configured (no action needed):**
+- GitHub secret `GCP_SA_KEY` (already exists - used by existing workflows)
+- Environment variables in workflow (hardcoded in `.github/workflows/refresh-prices.yml`)
+- npm dependencies (already in package.json)
+- GCS bucket `prun-site-alpha-bucket` (already exists)
 
-2. **Upload to GCS:**
-   ```bash
-   gsutil -h "Cache-Control:public, max-age=86400" \
-          cp public/data/workforce-requirements.csv \
-          gs://prun-site-alpha-bucket/workforce-requirements.csv
+### Required Actions (One-Time Setup)
 
-   gsutil -h "Cache-Control:public, max-age=86400" \
-          cp public/data/build-requirements.csv \
-          gs://prun-site-alpha-bucket/build-requirements.csv
-   ```
+**You MUST complete these steps before merging to main:**
 
-3. **Create backup of base recipes:**
-   ```bash
-   gsutil cp gs://prun-site-alpha-bucket/recipes.csv \
-             gs://prun-site-alpha-bucket/recipes-base.csv
-   ```
+#### Step 1: Populate the Requirement CSVs
 
-4. **Merge to main:**
-   - The workflow will automatically start calculating dynamic costs
+Edit these local files with complete building data:
+- `public/data/workforce-requirements.csv`
+- `public/data/build-requirements.csv`
+
+**CSV Structures:**
+
+`workforce-requirements.csv`:
+```csv
+Building,Input1MAT,Input1CNT,Input2MAT,Input2CNT,Input3MAT,Input3CNT,Input4MAT,Input4CNT,Input5MAT,Input5CNT
+AAF,DW,100,PE,20,RAT,5,,,,,
+AML,PIo,80,RAT,3,,,,,,,
+```
+
+`build-requirements.csv`:
+```csv
+Building,BuildingType,Input1MAT,Input1CNT,Input2MAT,Input2CNT,...,Input10MAT,Input10CNT
+AAF,PRODUCTION,AEF,10,BSE,20,MCG,8,...
+HAB,HABITATION,AEF,5,BSE,10,...
+```
+
+**Important notes:**
+- Include ALL buildings that appear in recipes.csv
+- BuildingType must be either "PRODUCTION" or "HABITATION"
+- Use empty cells (,,,) for unused input slots
+- Material tickers must match exactly with prices.csv
+
+#### Step 2: Upload Requirements to GCS
+
+After populating the CSVs, upload them:
+
+```bash
+# Upload workforce requirements
+gsutil -h "Cache-Control:public, max-age=86400" \
+       cp public/data/workforce-requirements.csv \
+       gs://prun-site-alpha-bucket/workforce-requirements.csv
+
+# Upload build requirements
+gsutil -h "Cache-Control:public, max-age=86400" \
+       cp public/data/build-requirements.csv \
+       gs://prun-site-alpha-bucket/build-requirements.csv
+```
+
+**Verify uploads:**
+```bash
+gsutil ls -lh gs://prun-site-alpha-bucket/workforce-requirements.csv
+gsutil ls -lh gs://prun-site-alpha-bucket/build-requirements.csv
+```
+
+#### Step 3: Create Backup of Production Recipes
+
+Before the first run, backup your current recipes.csv:
+
+```bash
+gsutil cp gs://prun-site-alpha-bucket/recipes.csv \
+          gs://prun-site-alpha-bucket/recipes-base.csv
+```
+
+This gives you a recovery point if needed.
+
+#### Step 4: Test the Workflow (BEFORE merging to main!)
+
+See "Testing" section below for safe testing instructions.
+
+#### Step 5: Merge to Main
+
+Once testing confirms everything works:
+- Create a pull request from `dynamic-cost` → `main`
+- Merge the PR
+- The workflow will automatically run every 30 minutes on the `main` branch
+- Dynamic costs will update continuously based on market prices
+
+### No Other Setup Required
+
+**You do NOT need to:**
+- ❌ Create any environment variables in GitHub (already in workflow)
+- ❌ Add any new GitHub secrets (GCP_SA_KEY already exists)
+- ❌ Modify GCS bucket permissions (already configured)
+- ❌ Install any additional npm packages (already in package.json)
+- ❌ Create any other files or configurations
 
 ### Updating Requirements (When Game Changes)
 
@@ -139,6 +207,14 @@ Updated workflow that runs every 30 minutes:
 3. Next workflow run will use updated requirements
 
 ## Testing
+
+### Pre-Flight Checklist
+
+Before testing, ensure you've completed:
+- ✅ Populated `public/data/workforce-requirements.csv` with all building data
+- ✅ Populated `public/data/build-requirements.csv` with all building data
+- ✅ Uploaded both CSVs to GCS (see Step 2 in Setup Instructions)
+- ✅ Created backup: `recipes-base.csv` on GCS (see Step 3 in Setup Instructions)
 
 ### Safe GitHub Actions Testing (RECOMMENDED)
 
@@ -216,14 +292,85 @@ The workflow automatically enters **TEST MODE** when run from non-main branches,
 
 ## Troubleshooting
 
+### CSV Format Issues
+
+**Problem: Workflow fails with "Cannot read property of undefined"**
+- **Cause:** CSV headers don't match expected format
+- **Solution:** Ensure CSVs have exact headers as shown in Setup Instructions
+- **Check:** No extra spaces, correct capitalization (e.g., `BuildingType` not `buildingtype`)
+
+**Problem: "Building X not found" warnings in logs**
+- **Cause:** recipes.csv contains buildings not in your requirement CSVs
+- **Solution:** Add all buildings from recipes.csv to both workforce-requirements.csv and build-requirements.csv
+- **Quick check:** `grep "^[A-Z]" recipes.csv | cut -d',' -f1 | sort -u` lists all buildings
+
 **Problem: Script fails with "No price found for X"**
-- Solution: That material doesn't have market data. Either add fallback or verify the ticker is correct in requirements CSV.
+- **Cause:** Material ticker in requirements doesn't have market data
+- **Solution:**
+  - Verify ticker spelling matches prices.csv exactly (case-sensitive)
+  - Check if that material trades on any exchange
+  - Script will warn and skip, but calculations continue
+
+**Problem: Empty or zero costs in output**
+- **Cause:** Missing data in requirement CSVs
+- **Solution:**
+  - Check for empty rows or missing Building column
+  - Ensure material counts are numbers (not text)
+  - Verify BuildingType is exactly "PRODUCTION" or "HABITATION"
+
+### Calculation Issues
 
 **Problem: Costs seem too high/low**
-- Solution: Check the Runs P/D value for that recipe. Remember costs are per-batch, not per-day.
+- **Cause:** Runs P/D normalization or wrong material counts
+- **Solution:**
+  - Check Runs P/D value for that recipe (in recipes.csv)
+  - Remember: WfCst and Deprec are per-batch, not per-day
+  - Verify material counts in requirements match game values
+  - Example: If recipe has 0.5 Runs P/D, costs will be 2× daily cost
 
 **Problem: AllBuildCst is different for same building**
-- Solution: This is a bug - all recipes for same building should have same AllBuildCst. Check the calculation logic.
+- **Cause:** Bug in calculation logic
+- **Solution:** All recipes for same building MUST have identical AllBuildCst
+- **Check:** `grep "^AAF," recipes-dynamic.csv | cut -d',' -f7 | sort -u` (should show one value)
 
-**Problem: Workflow fails to upload**
-- Solution: Check GCP credentials and bucket permissions.
+**Problem: Depreciation is zero for production buildings**
+- **Cause:** BuildingType not set to "PRODUCTION" in build-requirements.csv
+- **Solution:** Check BuildingType column is exactly "PRODUCTION" (case-sensitive)
+
+### Workflow Issues
+
+**Problem: Workflow fails to upload to GCS**
+- **Cause:** GCP credentials or permissions issue
+- **Solution:**
+  - Verify `GCP_SA_KEY` secret is set in GitHub repo settings
+  - Check service account has write permissions to bucket
+  - Existing workflows use same credentials, so this is unlikely
+
+**Problem: Test mode uploads overwrite production files**
+- **Cause:** Running workflow from `main` branch
+- **Solution:** Always test from a feature branch (e.g., `dynamic-cost`)
+- **Check logs:** Should see "TEST MODE" warnings if on non-main branch
+
+**Problem: Calculation takes too long or times out**
+- **Cause:** Too many buildings or complex calculations
+- **Solution:**
+  - Check workflow timeout settings (default: 2 hours)
+  - Review script performance with local testing first
+  - Consider reducing number of buildings in test run
+
+### Validation Commands
+
+```bash
+# Check CSV format (should show clean columns)
+head -3 public/data/workforce-requirements.csv
+
+# Count buildings in each file (should match)
+grep -v "^Building," public/data/workforce-requirements.csv | wc -l
+grep -v "^Building," public/data/build-requirements.csv | wc -l
+
+# Verify no duplicate buildings
+cut -d',' -f1 public/data/workforce-requirements.csv | sort | uniq -d
+
+# Check for invalid BuildingType values
+grep -v "PRODUCTION\|HABITATION\|BuildingType" public/data/build-requirements.csv
+```
