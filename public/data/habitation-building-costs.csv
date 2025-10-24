@@ -1,0 +1,6 @@
+HabitationType,Input1MAT,Input1CNT,Input2MAT,Input2CNT,Input3MAT,Input3CNT,Input4MAT,Input4CNT,Input5MAT,Input5CNT,Input6MAT,Input6CNT,Input7MAT,Input7CNT,Input8MAT,Input8CNT,Input9MAT,Input9CNT,Input10MAT,Input10CNT
+HB1,AEF,5,BSE,10,,,,,,,,,,,,,,,
+HBB,AEF,8,BSE,15,MCG,3,,,,,,,,,,,,,
+HBL,AEF,12,BSE,20,MCG,5,,,,,,,,,,,,,
+HBM,AEF,15,BSE,25,MCG,8,,,,,,,,,,,,,
+HBC,AEF,20,BSE,30,MCG,12,,,,,,,,,,,,,

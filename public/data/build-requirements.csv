@@ -1,4 +1,3 @@
 Building,BuildingType,Input1MAT,Input1CNT,Input2MAT,Input2CNT,Input3MAT,Input3CNT,Input4MAT,Input4CNT,Input5MAT,Input5CNT,Input6MAT,Input6CNT,Input7MAT,Input7CNT,Input8MAT,Input8CNT,Input9MAT,Input9CNT,Input10MAT,Input10CNT
 AAF,PRODUCTION,AEF,10,BSE,20,MCG,8,BDE,5,TSH,15,,,,,,,,,
 AML,PRODUCTION,AEF,8,BSE,15,MCG,6,,,,,,,,,,,,,
-HAB,HABITATION,AEF,5,BSE,10,,,,,,,,,,,,,,,

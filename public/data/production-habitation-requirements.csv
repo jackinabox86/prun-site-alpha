@@ -1,0 +1,4 @@
+ProductionBuilding,FactorAmount,Hab1Type,Hab1Qty,Hab2Type,Hab2Qty,Hab3Type,Hab3Qty,Hab4Type,Hab4Qty,Hab5Type,Hab5Qty
+AAF,100,HBM,0.5,HBC,1.2,,,,,
+AML,100,HBB,0.8,HBM,0.3,,,,,
+APF,100,HB1,1.5,HBB,0.6,HBL,0.2,,
