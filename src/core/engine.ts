@@ -21,6 +21,17 @@ function getInputPriceType(exchange: Exchange, priceType: PriceType): PriceType 
 }
 
 /**──────────────────────────────────────────────────────────────────────────────
+ * Helper: Get exchange-specific column names for cost fields
+ *─────────────────────────────────────────────────────────────────────────────*/
+function getCostColumnNames(exchange: Exchange) {
+  return {
+    wfCst: `WfCst-${exchange}`,
+    deprec: `Deprec-${exchange}`,
+    allBuildCst: `AllBuildCst-${exchange}`
+  };
+}
+
+/**──────────────────────────────────────────────────────────────────────────────
  * Memoization for child scenarios
  *─────────────────────────────────────────────────────────────────────────────*/
 const BEST_MEMO = new Map<string, MakeOption>();
@@ -194,12 +205,13 @@ function buildAllOptionsForTicker(
   const rows = recipeMap.map[materialTicker] || [];
   if (!rows.length) return [];
 
+  const costCols = getCostColumnNames(exchange);
   const idx = {
     recipeId: headers.indexOf("RecipeID"),
-    wf: headers.indexOf("WfCst"),
-    dep: headers.indexOf("Deprec"),
+    wf: headers.indexOf(costCols.wfCst),
+    dep: headers.indexOf(costCols.deprec),
     area: headers.indexOf("Area"),
-    build: headers.indexOf("AllBuildCst"),
+    build: headers.indexOf(costCols.allBuildCst),
     runs: headers.indexOf("Runs P/D"),
     areaPerOut: headers.indexOf("AreaPerOutput"),
   };
@@ -477,12 +489,13 @@ function bestOptionForTicker(
   const rows = recipeMap.map[materialTicker] || [];
   if (!rows.length) return null;
 
+  const costCols = getCostColumnNames(exchange);
   const idx = {
     recipeId: headers.indexOf("RecipeID"),
-    wf: headers.indexOf("WfCst"),
-    dep: headers.indexOf("Deprec"),
+    wf: headers.indexOf(costCols.wfCst),
+    dep: headers.indexOf(costCols.deprec),
     area: headers.indexOf("Area"),
-    build: headers.indexOf("AllBuildCst"),
+    build: headers.indexOf(costCols.allBuildCst),
     runs: headers.indexOf("Runs P/D"),
     areaPerOut: headers.indexOf("AreaPerOutput"),
   };
@@ -807,11 +820,12 @@ export function findAllMakeOptions(
   const headers = recipeMap.headers;
   const rows = recipeMap.map[materialTicker] || [];
 
+  const costCols = getCostColumnNames(exchange);
   const recipeIdIndex = headers.indexOf("RecipeID");
-  const workforceCostIndex = headers.indexOf("WfCst");
-  const depreciationCostIndex = headers.indexOf("Deprec");
+  const workforceCostIndex = headers.indexOf(costCols.wfCst);
+  const depreciationCostIndex = headers.indexOf(costCols.deprec);
   const areaIndex = headers.indexOf("Area");
-  const buildCostIndex = headers.indexOf("AllBuildCst");
+  const buildCostIndex = headers.indexOf(costCols.allBuildCst);
   const runsPerDayIndex = headers.indexOf("Runs P/D");
   const areaPerOutputIndex = headers.indexOf("AreaPerOutput");
 

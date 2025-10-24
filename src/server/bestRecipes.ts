@@ -57,6 +57,17 @@ export function convertToEnhancedBestMap(results: BestRecipeResult[]): EnhancedB
 }
 
 /**
+ * Get exchange-specific column names for cost fields
+ */
+function getCostColumnNames(exchange: Exchange) {
+  return {
+    wfCst: `WfCst-${exchange}`,
+    deprec: `Deprec-${exchange}`,
+    allBuildCst: `AllBuildCst-${exchange}`
+  };
+}
+
+/**
  * Calculate buy-all profit per area for a ticker
  * This is a simple calculation where all inputs are bought (no MAKE scenarios)
  */
@@ -71,10 +82,11 @@ function calculateBuyAllProfitPA(
   const rows = recipeMap.map[ticker] || [];
   if (!rows.length) return 0;
 
+  const costCols = getCostColumnNames(exchange);
   const idx = {
     recipeId: headers.indexOf("RecipeID"),
-    wf: headers.indexOf("WfCst"),
-    dep: headers.indexOf("Deprec"),
+    wf: headers.indexOf(costCols.wfCst),
+    dep: headers.indexOf(costCols.deprec),
     area: headers.indexOf("Area"),
     runs: headers.indexOf("Runs P/D"),
   };
