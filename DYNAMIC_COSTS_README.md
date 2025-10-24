@@ -138,7 +138,39 @@ Updated workflow that runs every 30 minutes:
 2. Upload to GCS (same commands as above)
 3. Next workflow run will use updated requirements
 
-## Testing Locally
+## Testing
+
+### Safe GitHub Actions Testing (RECOMMENDED)
+
+The workflow automatically enters **TEST MODE** when run from non-main branches, uploading to separate test files instead of overwriting production data.
+
+**Branch-based file naming:**
+- `main` branch → `recipes.csv`, `prices.csv` (PRODUCTION)
+- Other branches → `recipes-test.csv`, `prices-test.csv` (TEST - safe!)
+
+**To test safely in GitHub Actions:**
+
+1. Push your branch to GitHub:
+   ```bash
+   git push -u origin dynamic-cost
+   ```
+
+2. Go to GitHub → Actions → "Refresh Prices (Google Cloud Storage)"
+
+3. Click "Run workflow" → Select branch: `dynamic-cost` → Run workflow
+
+4. The workflow will:
+   - Show "⚠️ TEST MODE" warnings throughout
+   - Upload to `recipes-test.csv` and `prices-test.csv`
+   - **NOT touch production files**
+
+5. Inspect the test output:
+   - https://storage.googleapis.com/prun-site-alpha-bucket/recipes-test.csv
+   - https://storage.googleapis.com/prun-site-alpha-bucket/prices-test.csv
+
+6. Once verified, merge to main for production deployment
+
+### Local Testing
 
 1. **Set environment variables:**
    ```bash
@@ -157,6 +189,8 @@ Updated workflow that runs every 30 minutes:
    ```bash
    head -n 20 public/data/recipes-dynamic.csv
    ```
+
+**Note:** Local testing only tests the calculation script, not the full GitHub Actions workflow or GCS upload.
 
 ## Impact on Application
 
