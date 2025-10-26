@@ -5,7 +5,8 @@ import { writeFileSync } from "fs";
 // GCS URLs - provided via environment variables
 const GCS_RECIPES_URL = process.env.GCS_RECIPES_URL || "https://storage.googleapis.com/prun-site-alpha-bucket/recipes.csv";
 const GCS_PRICES_URL = process.env.GCS_PRICES_URL || "https://storage.googleapis.com/prun-site-alpha-bucket/prices.csv";
-const GCS_WORKFORCE_URL = process.env.GCS_WORKFORCE_URL || "https://storage.googleapis.com/prun-site-alpha-bucket/workforce-requirements.csv";
+const GCS_WORKER_TYPE_COSTS_URL = process.env.GCS_WORKER_TYPE_COSTS_URL || "https://storage.googleapis.com/prun-site-alpha-bucket/worker-type-costs.csv";
+const GCS_PRODUCTION_WORKER_REQ_URL = process.env.GCS_PRODUCTION_WORKER_REQ_URL || "https://storage.googleapis.com/prun-site-alpha-bucket/production-worker-requirements.csv";
 const GCS_BUILD_URL = process.env.GCS_BUILD_URL || "https://storage.googleapis.com/prun-site-alpha-bucket/build-requirements.csv";
 const GCS_HABITATION_COSTS_URL = process.env.GCS_HABITATION_COSTS_URL || "https://storage.googleapis.com/prun-site-alpha-bucket/habitation-building-costs.csv";
 const GCS_PRODUCTION_HAB_REQ_URL = process.env.GCS_PRODUCTION_HAB_REQ_URL || "https://storage.googleapis.com/prun-site-alpha-bucket/production-habitation-requirements.csv";
@@ -33,8 +34,13 @@ interface RecipeRow {
   [key: string]: any;
 }
 
-interface WorkforceRequirement {
-  Building: string;
+interface WorkerTypeCost {
+  WorkerType: string;
+  [key: string]: string;
+}
+
+interface ProductionWorkerRequirement {
+  ProductionBuilding: string;
   [key: string]: string;
 }
 
@@ -156,10 +162,11 @@ async function main() {
   console.log("Starting dynamic cost calculation...\n");
 
   // Fetch all required CSVs
-  const [recipesText, pricesText, workforceText, buildText, habitationCostsText, productionHabReqText] = await Promise.all([
+  const [recipesText, pricesText, workerTypeCostsText, productionWorkerReqText, buildText, habitationCostsText, productionHabReqText] = await Promise.all([
     fetchCsvText(GCS_RECIPES_URL),
     fetchCsvText(GCS_PRICES_URL),
-    fetchCsvText(GCS_WORKFORCE_URL),
+    fetchCsvText(GCS_WORKER_TYPE_COSTS_URL),
+    fetchCsvText(GCS_PRODUCTION_WORKER_REQ_URL),
     fetchCsvText(GCS_BUILD_URL),
     fetchCsvText(GCS_HABITATION_COSTS_URL),
     fetchCsvText(GCS_PRODUCTION_HAB_REQ_URL),
@@ -178,11 +185,17 @@ async function main() {
   });
   console.log(`✓ Loaded ${priceRows.length} price rows`);
 
-  const workforceRows: WorkforceRequirement[] = parse(workforceText, {
+  const workerTypeCostRows: WorkerTypeCost[] = parse(workerTypeCostsText, {
     columns: true,
     skip_empty_lines: true,
   });
-  console.log(`✓ Loaded ${workforceRows.length} workforce requirement rows`);
+  console.log(`✓ Loaded ${workerTypeCostRows.length} worker type cost rows`);
+
+  const productionWorkerReqRows: ProductionWorkerRequirement[] = parse(productionWorkerReqText, {
+    columns: true,
+    skip_empty_lines: true,
+  });
+  console.log(`✓ Loaded ${productionWorkerReqRows.length} production-worker requirement rows`);
 
   const buildRows: BuildRequirement[] = parse(buildText, {
     columns: true,
@@ -208,9 +221,14 @@ async function main() {
     pricesMap.set(row.Ticker, row);
   }
 
-  const workforceMap = new Map<string, WorkforceRequirement>();
-  for (const row of workforceRows) {
-    workforceMap.set(row.Building, row);
+  const workerTypeCostsMap = new Map<string, WorkerTypeCost>();
+  for (const row of workerTypeCostRows) {
+    workerTypeCostsMap.set(row.WorkerType, row);
+  }
+
+  const productionWorkerReqMap = new Map<string, ProductionWorkerRequirement>();
+  for (const row of productionWorkerReqRows) {
+    productionWorkerReqMap.set(row.ProductionBuilding, row);
   }
 
   // Build map can have multiple rows per building (PRODUCTION + HABITATION)
@@ -306,6 +324,62 @@ async function main() {
     }
   }
 
+  // Calculate worker type costs (daily)
+  console.log("\nCalculating worker type costs (daily)...\n");
+
+  interface WorkerTypeCostData {
+    costs: Record<Exchange, number>;
+  }
+
+  const workerTypeCostsCalculatedMap = new Map<string, WorkerTypeCostData>();
+
+  for (const workerRow of workerTypeCostRows) {
+    const workerType = workerRow.WorkerType;
+    const costs: Record<Exchange, number> = {
+      ANT: 0, CIS: 0, ICA: 0, NCC: 0, UNV: 0
+    };
+
+    for (const exchange of EXCHANGES) {
+      costs[exchange] = calculateMaterialCost(workerRow, pricesMap, exchange);
+    }
+
+    workerTypeCostsCalculatedMap.set(workerType, { costs });
+
+    console.log(`Worker type ${workerType}:`);
+    for (const exchange of EXCHANGES) {
+      console.log(`  ${exchange}: ${costs[exchange].toFixed(2)}`);
+    }
+  }
+
+  // Export worker-type-costs-calculated.csv
+  console.log("\nExporting worker-type-costs-calculated.csv...");
+
+  interface WorkerTypeCostCalculatedRow {
+    WorkerType: string;
+    "ANT-Cost": string;
+    "CIS-Cost": string;
+    "ICA-Cost": string;
+    "NCC-Cost": string;
+    "UNV-Cost": string;
+  }
+
+  const workerTypeCostCalculatedRows: WorkerTypeCostCalculatedRow[] = [];
+  for (const [workerType, data] of workerTypeCostsCalculatedMap.entries()) {
+    workerTypeCostCalculatedRows.push({
+      WorkerType: workerType,
+      "ANT-Cost": data.costs.ANT.toFixed(2),
+      "CIS-Cost": data.costs.CIS.toFixed(2),
+      "ICA-Cost": data.costs.ICA.toFixed(2),
+      "NCC-Cost": data.costs.NCC.toFixed(2),
+      "UNV-Cost": data.costs.UNV.toFixed(2),
+    });
+  }
+
+  const workerTypeCostsCsv = stringify(workerTypeCostCalculatedRows, { header: true });
+  const workerTypeCostsPath = "public/data/worker-type-costs-calculated.csv";
+  writeFileSync(workerTypeCostsPath, workerTypeCostsCsv);
+  console.log(`✓ Worker type costs exported to ${workerTypeCostsPath}\n`);
+
   // Export building-costs.csv
   console.log("\nExporting building-costs.csv...");
 
@@ -354,7 +428,7 @@ async function main() {
       buildingsProcessed.add(building);
       console.log(`\n=== Processing ${building} ===`);
 
-      const workforceReq = workforceMap.get(building);
+      const workerReq = productionWorkerReqMap.get(building);
       const productionBuildingData = buildingCostsMap.get(building);
       const habitationReq = productionHabReqMap.get(building);
 
@@ -368,10 +442,31 @@ async function main() {
       };
 
       for (const exchange of EXCHANGES) {
-        // Calculate workforce cost
+        // Calculate workforce cost using worker types
         let dailyWorkforceCost = 0;
-        if (workforceReq) {
-          dailyWorkforceCost = calculateMaterialCost(workforceReq, pricesMap, exchange);
+        if (workerReq) {
+          const factorAmount = Number(workerReq.FactorAmount) || 1;
+          let totalWorkerCost = 0;
+
+          for (let i = 1; i <= 5; i++) {
+            const workerTypeKey = `Worker${i}Type`;
+            const workerQtyKey = `Worker${i}Qty`;
+            const workerType = workerReq[workerTypeKey];
+            const workerQty = Number(workerReq[workerQtyKey]);
+
+            if (workerType && workerQty > 0) {
+              const workerData = workerTypeCostsCalculatedMap.get(workerType);
+              if (workerData) {
+                const workerUnitCost = workerData.costs[exchange];
+                totalWorkerCost += workerUnitCost * workerQty;
+              } else {
+                console.warn(`  Warning: Worker type ${workerType} not found in worker costs map`);
+              }
+            }
+          }
+
+          // Divide by FactorAmount to get per-building worker cost
+          dailyWorkforceCost = totalWorkerCost / factorAmount;
         }
 
         // Calculate build cost and depreciation

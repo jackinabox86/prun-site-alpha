@@ -1,0 +1,6 @@
+WorkerType,Input1MAT,Input1CNT,Input2MAT,Input2CNT,Input3MAT,Input3CNT,Input4MAT,Input4CNT,Input5MAT,Input5CNT,Input6MAT,Input6CNT,Input7MAT,Input7CNT,Input8MAT,Input8CNT,Input9MAT,Input9CNT,Input10MAT,Input10CNT
+Pioneer,DW,5,OVE,2,RAT,1,,,,,,,,,,,,
+Settler,DW,8,OVE,3,RAT,2,,,,,,,,,,,,
+Technician,DW,12,OVE,5,RAT,3,COF,1,,,,,,,,,
+Engineer,DW,18,OVE,8,RAT,5,COF,2,,,,,,,,,
+Scientist,DW,25,OVE,12,RAT,8,COF,4,,,,,,,,,

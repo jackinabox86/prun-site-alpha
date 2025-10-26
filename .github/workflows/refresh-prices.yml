@@ -49,7 +49,8 @@ jobs:
         env:
           GCS_RECIPES_URL: https://storage.googleapis.com/prun-site-alpha-bucket/recipes.csv
           GCS_PRICES_URL: https://storage.googleapis.com/prun-site-alpha-bucket/prices.csv
-          GCS_WORKFORCE_URL: https://storage.googleapis.com/prun-site-alpha-bucket/workforce-requirements.csv
+          GCS_WORKER_TYPE_COSTS_URL: https://storage.googleapis.com/prun-site-alpha-bucket/worker-type-costs.csv
+          GCS_PRODUCTION_WORKER_REQ_URL: https://storage.googleapis.com/prun-site-alpha-bucket/production-worker-requirements.csv
           GCS_BUILD_URL: https://storage.googleapis.com/prun-site-alpha-bucket/build-requirements.csv
           GCS_HABITATION_COSTS_URL: https://storage.googleapis.com/prun-site-alpha-bucket/habitation-building-costs.csv
           GCS_PRODUCTION_HAB_REQ_URL: https://storage.googleapis.com/prun-site-alpha-bucket/production-habitation-requirements.csv
@@ -88,6 +89,12 @@ jobs:
                  cp public/data/building-costs.csv \
                  gs://prun-site-alpha-bucket/building-costs${SUFFIX}.csv
 
+          # Upload worker type costs file with 30-minute cache
+          gsutil -h "Cache-Control:public, max-age=1800" \
+                 -h "Content-Type:text/csv" \
+                 cp public/data/worker-type-costs-calculated.csv \
+                 gs://prun-site-alpha-bucket/worker-type-costs-calculated${SUFFIX}.csv
+
           if [ "$MODE" = "PRODUCTION" ]; then
             echo "✅ Production files uploaded to GCS"
           else
@@ -108,6 +115,9 @@ jobs:
           echo ""
           echo "🏢 Building Costs:"
           echo "https://storage.googleapis.com/prun-site-alpha-bucket/building-costs${SUFFIX}.csv"
+          echo ""
+          echo "👷 Worker Type Costs:"
+          echo "https://storage.googleapis.com/prun-site-alpha-bucket/worker-type-costs-calculated${SUFFIX}.csv"
 
           if [ "$MODE" != "PRODUCTION" ]; then
             echo ""
@@ -141,6 +151,7 @@ jobs:
           echo "- Prices: https://storage.googleapis.com/prun-site-alpha-bucket/prices${SUFFIX}.csv" >> $GITHUB_STEP_SUMMARY
           echo "- Recipes: https://storage.googleapis.com/prun-site-alpha-bucket/recipes${SUFFIX}.csv" >> $GITHUB_STEP_SUMMARY
           echo "- Building Costs: https://storage.googleapis.com/prun-site-alpha-bucket/building-costs${SUFFIX}.csv" >> $GITHUB_STEP_SUMMARY
+          echo "- Worker Type Costs: https://storage.googleapis.com/prun-site-alpha-bucket/worker-type-costs-calculated${SUFFIX}.csv" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "### File Stats" >> $GITHUB_STEP_SUMMARY
           if [ -f public/data/prices-merged.csv ]; then
@@ -157,4 +168,9 @@ jobs:
             BUILDING_ROWS=$(wc -l < public/data/building-costs.csv)
             BUILDING_SIZE=$(du -h public/data/building-costs.csv | cut -f1)
             echo "- Building Costs: $BUILDING_ROWS rows, $BUILDING_SIZE" >> $GITHUB_STEP_SUMMARY
+          fi
+          if [ -f public/data/worker-type-costs-calculated.csv ]; then
+            WORKER_ROWS=$(wc -l < public/data/worker-type-costs-calculated.csv)
+            WORKER_SIZE=$(du -h public/data/worker-type-costs-calculated.csv | cut -f1)
+            echo "- Worker Type Costs: $WORKER_ROWS rows, $WORKER_SIZE" >> $GITHUB_STEP_SUMMARY
           fi

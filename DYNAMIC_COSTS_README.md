@@ -67,12 +67,37 @@ WfCst-UNV, Deprec-UNV, AllBuildCst-UNV,
 
 ### Input Files (on GCS)
 
-1. **workforce-requirements.csv** - Material needs for workforce per building
-   - Location: `gs://prun-site-alpha-bucket/workforce-requirements.csv`
-   - Structure: Building, Input1MAT, Input1CNT, ..., Input5MAT, Input5CNT
+1. **worker-type-costs.csv** - Daily material requirements per worker type
+   - Location: `gs://prun-site-alpha-bucket/worker-type-costs.csv`
+   - Structure: WorkerType, Input1MAT, Input1CNT, ..., Input10MAT, Input10CNT
+   - Defines daily consumables for each worker type (Pioneer, Settler, Technician, Engineer, Scientist)
    - Update: Manually when game changes (rarely)
 
-2. **build-requirements.csv** - Construction materials per production building
+   **Example:**
+   ```csv
+   WorkerType,Input1MAT,Input1CNT,Input2MAT,Input2CNT,...
+   Pioneer,DW,5,OVE,2,RAT,1,...
+   Settler,DW,8,OVE,3,RAT,2,...
+   Technician,DW,12,OVE,5,RAT,3,COF,1,...
+   ```
+
+2. **production-worker-requirements.csv** - Worker type requirements per production building
+   - Location: `gs://prun-site-alpha-bucket/production-worker-requirements.csv`
+   - Structure: ProductionBuilding, FactorAmount, Worker1Type, Worker1Qty, ..., Worker5Type, Worker5Qty
+   - Maps production buildings to worker types and quantities
+   - **FactorAmount**: Divisor applied to total worker costs (e.g., 100 if workers serve 100 buildings)
+   - Update: Manually when game changes or workforce distribution changes
+
+   **Example:**
+   ```csv
+   ProductionBuilding,FactorAmount,Worker1Type,Worker1Qty,Worker2Type,Worker2Qty,...
+   AAF,1,Pioneer,50,Settler,30,Technician,10,...
+   AML,1,Settler,40,Technician,20,Engineer,5,...
+   ```
+   - Quantities represent the number of each worker type needed
+   - **Calculation**: Daily workforce cost = [Σ(worker type cost × quantity)] / FactorAmount
+
+3. **build-requirements.csv** - Construction materials per production building
    - Location: `gs://prun-site-alpha-bucket/build-requirements.csv`
    - Structure: Building, BuildingType, Input1MAT, Input1CNT, ..., Input10MAT, Input10CNT
    - BuildingType: "PRODUCTION" (only production buildings)
@@ -86,7 +111,7 @@ WfCst-UNV, Deprec-UNV, AllBuildCst-UNV,
    AML,PRODUCTION,AEF,8,BSE,15,MCG,6,...
    ```
 
-3. **habitation-building-costs.csv** - Construction materials per habitation building type
+4. **habitation-building-costs.csv** - Construction materials per habitation building type
    - Location: `gs://prun-site-alpha-bucket/habitation-building-costs.csv`
    - Structure: HabitationType, Input1MAT, Input1CNT, ..., Input10MAT, Input10CNT
    - Lists materials needed to construct ONE building of each habitation type
@@ -102,7 +127,7 @@ WfCst-UNV, Deprec-UNV, AllBuildCst-UNV,
    HBC,AEF,20,BSE,30,MCG,12,...
    ```
 
-4. **production-habitation-requirements.csv** - Habitation needs per production building
+5. **production-habitation-requirements.csv** - Habitation needs per production building
    - Location: `gs://prun-site-alpha-bucket/production-habitation-requirements.csv`
    - Structure: ProductionBuilding, FactorAmount, Hab1Type, Hab1Qty, Hab2Type, Hab2Qty, ..., Hab5Type, Hab5Qty
    - Maps each production building to required habitation buildings (quantities can be fractional)
@@ -120,12 +145,12 @@ WfCst-UNV, Deprec-UNV, AllBuildCst-UNV,
    - **Calculation**: Habitation cost = [Σ(habitation building cost × quantity)] / FactorAmount
    - Total build cost = Production building cost + Habitation cost (after dividing by FactorAmount)
 
-5. **recipes.csv** (base) - Authoritative recipe data
+6. **recipes.csv** (base) - Authoritative recipe data
    - Location: `gs://prun-site-alpha-bucket/recipes.csv`
    - This is the base file that gets dynamically updated
    - Backup available as `recipes-base.csv`
 
-6. **prices.csv** - Current market prices (auto-updated every 30 min)
+7. **prices.csv** - Current market prices (auto-updated every 30 min)
    - Location: `gs://prun-site-alpha-bucket/prices.csv`
 
 ### Output Files
@@ -142,22 +167,31 @@ WfCst-UNV, Deprec-UNV, AllBuildCst-UNV,
   - Useful for transparency, debugging, and understanding cost breakdowns
   - Location: `gs://prun-site-alpha-bucket/building-costs.csv`
 
+- **worker-type-costs-calculated.csv** - Daily cost per worker type per exchange
+  - Generated alongside recipes.csv every 30 minutes
+  - Structure: WorkerType, ANT-Cost, CIS-Cost, ICA-Cost, NCC-Cost, UNV-Cost
+  - Shows daily consumable cost for ONE worker of each type across all exchanges
+  - Useful for transparency, debugging workforce cost calculations
+  - Location: `gs://prun-site-alpha-bucket/worker-type-costs-calculated.csv`
+
 ## Scripts
 
 ### `scripts/calculate-dynamic-costs.ts`
 
 Main calculation script with two-phase architecture:
 
-**Phase 1: Calculate ALL building costs per exchange**
+**Phase 1: Calculate ALL building and worker type costs per exchange**
 1. Fetches all required CSVs from GCS
-2. Builds lookup maps for prices, workforce, build requirements, habitation costs, and habitation requirements
+2. Builds lookup maps for prices, worker types, production-worker requirements, build requirements, habitation costs, and habitation requirements
 3. Calculates production building costs for all 5 exchanges (ANT, CIS, ICA, NCC, UNV)
 4. Calculates habitation building costs for all 5 exchanges
-5. Stores all building costs in `buildingCostsMap`
-6. Exports `public/data/building-costs.csv`
+5. Calculates worker type costs (daily) for all 5 exchanges
+6. Stores all building costs in `buildingCostsMap` and worker type costs in `workerTypeCostsCalculatedMap`
+7. Exports `public/data/building-costs.csv` and `public/data/worker-type-costs-calculated.csv`
 
-**Phase 2: Calculate recipe costs with habitation**
+**Phase 2: Calculate recipe costs with habitation and workforce**
 1. For each production building:
+   - Calculates workforce cost: [Σ(worker type cost × quantity)] / FactorAmount per exchange
    - Gets production building cost from buildingCostsMap (exchange-specific)
    - Calculates habitation cost: [Σ(habitation building cost × quantity)] / FactorAmount per exchange
    - Total build cost = production + habitation (both exchange-specific)
@@ -167,16 +201,18 @@ Main calculation script with two-phase architecture:
 
 **Key Features:**
 - **Exchange-specific pricing**: All costs calculated separately for ANT, CIS, ICA, NCC, UNV
+- **Modular worker type costs**: Worker types calculated once, reused for all production buildings
 - **Modular habitation costs**: Habitation buildings calculated once, reused for all production buildings
 - **Fractional quantities**: Supports fractional habitation requirements (e.g., 0.5 HBM, 1.2 HBC)
-- **FactorAmount scaling**: Habitation costs divided by FactorAmount to account for shared/distributed costs
-- **Transparent output**: building-costs.csv shows all intermediate building costs
+- **FactorAmount scaling**: Both worker and habitation costs divided by FactorAmount to account for shared/distributed costs
+- **Transparent output**: building-costs.csv and worker-type-costs-calculated.csv show all intermediate costs
 - **Depreciation**: Only production buildings depreciate (habitation costs included in build cost but not depreciated)
 
 **Environment Variables:**
 - `GCS_RECIPES_URL` - Base recipes CSV
 - `GCS_PRICES_URL` - Current prices CSV
-- `GCS_WORKFORCE_URL` - Workforce requirements CSV
+- `GCS_WORKER_TYPE_COSTS_URL` - Worker type daily costs CSV
+- `GCS_PRODUCTION_WORKER_REQ_URL` - Production-worker requirements mapping CSV
 - `GCS_BUILD_URL` - Build requirements CSV (production buildings only)
 - `GCS_HABITATION_COSTS_URL` - Habitation building costs CSV
 - `GCS_PRODUCTION_HAB_REQ_URL` - Production-habitation requirements mapping CSV
@@ -220,18 +256,27 @@ Updated workflow that runs every 30 minutes:
 #### Step 1: Populate the Requirement CSVs
 
 Edit these local files with complete building data:
-- `public/data/workforce-requirements.csv`
+- `public/data/worker-type-costs.csv`
+- `public/data/production-worker-requirements.csv`
 - `public/data/build-requirements.csv`
 - `public/data/habitation-building-costs.csv`
 - `public/data/production-habitation-requirements.csv`
 
 **CSV Structures:**
 
-`workforce-requirements.csv`:
+`worker-type-costs.csv`:
 ```csv
-Building,Input1MAT,Input1CNT,Input2MAT,Input2CNT,Input3MAT,Input3CNT,Input4MAT,Input4CNT,Input5MAT,Input5CNT
-AAF,DW,100,PE,20,RAT,5,,,,,
-AML,PIo,80,RAT,3,,,,,,,
+WorkerType,Input1MAT,Input1CNT,Input2MAT,Input2CNT,...,Input10MAT,Input10CNT
+Pioneer,DW,5,OVE,2,RAT,1,...
+Settler,DW,8,OVE,3,RAT,2,...
+Technician,DW,12,OVE,5,RAT,3,COF,1,...
+```
+
+`production-worker-requirements.csv`:
+```csv
+ProductionBuilding,FactorAmount,Worker1Type,Worker1Qty,Worker2Type,Worker2Qty,...,Worker5Type,Worker5Qty
+AAF,1,Pioneer,50,Settler,30,Technician,10,...
+AML,1,Settler,40,Technician,20,Engineer,5,...
 ```
 
 `build-requirements.csv`:
@@ -262,10 +307,12 @@ APF,100,HB1,1.5,HBB,0.6,HBL,0.2
 **Important notes:**
 - Include ALL buildings that appear in recipes.csv
 - **Production buildings have ONLY ONE row** in build-requirements.csv (PRODUCTION type only)
+- Worker type costs represent DAILY consumption of materials per worker
+- Worker quantities can be fractional (e.g., 0.5, 10.5)
 - Habitation costs are calculated separately and dynamically combined
 - BuildingType must be "PRODUCTION" in build-requirements.csv
 - Habitation building quantities can be fractional (e.g., 0.5, 1.2)
-- **FactorAmount** is a divisor applied to total habitation costs (defaults to 1 if not specified)
+- **FactorAmount** is a divisor applied to total worker/habitation costs (defaults to 1 if not specified)
 - Use empty cells (,,,) for unused input slots
 - Material tickers must match exactly with prices.csv
 
@@ -274,10 +321,15 @@ APF,100,HB1,1.5,HBB,0.6,HBL,0.2
 After populating the CSVs, upload them:
 
 ```bash
-# Upload workforce requirements
+# Upload worker type costs
 gsutil -h "Cache-Control:public, max-age=86400" \
-       cp public/data/workforce-requirements.csv \
-       gs://prun-site-alpha-bucket/workforce-requirements.csv
+       cp public/data/worker-type-costs.csv \
+       gs://prun-site-alpha-bucket/worker-type-costs.csv
+
+# Upload production-worker requirements
+gsutil -h "Cache-Control:public, max-age=86400" \
+       cp public/data/production-worker-requirements.csv \
+       gs://prun-site-alpha-bucket/production-worker-requirements.csv
 
 # Upload build requirements (production buildings only)
 gsutil -h "Cache-Control:public, max-age=86400" \
@@ -297,7 +349,8 @@ gsutil -h "Cache-Control:public, max-age=86400" \
 
 **Verify uploads:**
 ```bash
-gsutil ls -lh gs://prun-site-alpha-bucket/workforce-requirements.csv
+gsutil ls -lh gs://prun-site-alpha-bucket/worker-type-costs.csv
+gsutil ls -lh gs://prun-site-alpha-bucket/production-worker-requirements.csv
 gsutil ls -lh gs://prun-site-alpha-bucket/build-requirements.csv
 gsutil ls -lh gs://prun-site-alpha-bucket/habitation-building-costs.csv
 gsutil ls -lh gs://prun-site-alpha-bucket/production-habitation-requirements.csv
@@ -346,9 +399,12 @@ Once testing confirms everything works:
 ### Pre-Flight Checklist
 
 Before testing, ensure you've completed:
-- ✅ Populated `public/data/workforce-requirements.csv` with all building data
+- ✅ Populated `public/data/worker-type-costs.csv` with all worker types
+- ✅ Populated `public/data/production-worker-requirements.csv` with all building data
 - ✅ Populated `public/data/build-requirements.csv` with all building data
-- ✅ Uploaded both CSVs to GCS (see Step 2 in Setup Instructions)
+- ✅ Populated `public/data/habitation-building-costs.csv` with all habitation types
+- ✅ Populated `public/data/production-habitation-requirements.csv` with all building data
+- ✅ Uploaded all CSVs to GCS (see Step 2 in Setup Instructions)
 - ✅ Created backup: `recipes-base.csv` on GCS (see Step 3 in Setup Instructions)
 
 ### Safe GitHub Actions Testing (RECOMMENDED)
@@ -387,8 +443,11 @@ The workflow automatically enters **TEST MODE** when run from non-main branches,
    ```bash
    export GCS_RECIPES_URL=https://storage.googleapis.com/prun-site-alpha-bucket/recipes.csv
    export GCS_PRICES_URL=https://storage.googleapis.com/prun-site-alpha-bucket/prices.csv
-   export GCS_WORKFORCE_URL=https://storage.googleapis.com/prun-site-alpha-bucket/workforce-requirements.csv
+   export GCS_WORKER_TYPE_COSTS_URL=https://storage.googleapis.com/prun-site-alpha-bucket/worker-type-costs.csv
+   export GCS_PRODUCTION_WORKER_REQ_URL=https://storage.googleapis.com/prun-site-alpha-bucket/production-worker-requirements.csv
    export GCS_BUILD_URL=https://storage.googleapis.com/prun-site-alpha-bucket/build-requirements.csv
+   export GCS_HABITATION_COSTS_URL=https://storage.googleapis.com/prun-site-alpha-bucket/habitation-building-costs.csv
+   export GCS_PRODUCTION_HAB_REQ_URL=https://storage.googleapis.com/prun-site-alpha-bucket/production-habitation-requirements.csv
    ```
 
 2. **Run the script:**
@@ -428,26 +487,26 @@ The workflow automatically enters **TEST MODE** when run from non-main branches,
 ## Files Modified
 
 ### New Files
-- `public/data/workforce-requirements.csv` - Material requirements for workforce per building
+- `public/data/worker-type-costs.csv` - Daily material requirements per worker type (Pioneer, Settler, etc.)
+- `public/data/production-worker-requirements.csv` - Worker type requirements (with quantities and FactorAmount) per production building
 - `public/data/build-requirements.csv` - Construction materials per production building (PRODUCTION rows only)
 - `public/data/habitation-building-costs.csv` - Construction materials for ONE building of each habitation type
 - `public/data/production-habitation-requirements.csv` - Habitation needs (with fractional quantities and FactorAmount) per production building
 - `public/data/building-costs.csv` - (OUTPUT) Individual building costs per exchange for all buildings
+- `public/data/worker-type-costs-calculated.csv` - (OUTPUT) Daily cost per worker type per exchange
 
 ### Updated Files
-- `scripts/calculate-dynamic-costs.ts` - Two-phase calculation with habitation cost system
-  - Added `Exchange` type and `EXCHANGE_PREFIXES` mapping
-  - Added interfaces for `HabitationBuildingCost` and `ProductionHabitationRequirement`
-  - Added GCS URLs for new CSV files
-  - **Phase 1**: Calculate all building costs (production + habitation) per exchange
-  - **Phase 2**: Calculate recipe costs using pre-calculated building costs + habitation requirements
-  - Exports `building-costs.csv` showing cost of ONE building per type per exchange
-  - Supports fractional habitation quantities (e.g., 0.5 HBM, 1.2 HBC)
-  - Applies FactorAmount divisor to habitation costs for proper per-building allocation
+- `scripts/calculate-dynamic-costs.ts` - Two-phase calculation with worker type and habitation cost systems
+  - Replaced `WorkforceRequirement` interface with `WorkerTypeCost` and `ProductionWorkerRequirement`
+  - Updated GCS URLs: replaced `GCS_WORKFORCE_URL` with `GCS_WORKER_TYPE_COSTS_URL` and `GCS_PRODUCTION_WORKER_REQ_URL`
+  - **Phase 1**: Calculate worker type costs (daily) + building costs (production + habitation) per exchange
+  - **Phase 2**: Calculate recipe costs using pre-calculated worker type costs + building costs + requirements
+  - Exports `worker-type-costs-calculated.csv` and `building-costs.csv`
+  - Supports fractional worker quantities and FactorAmount divisor for workforce costs
   - All costs calculated per exchange (ANT, CIS, ICA, NCC, UNV)
-- `.github/workflows/refresh-prices.yml` - Added new CSV environment variables and building-costs.csv upload
-  - Added `GCS_HABITATION_COSTS_URL` and `GCS_PRODUCTION_HAB_REQ_URL` environment variables
-  - Uploads `building-costs.csv` to GCS alongside recipes and prices
+- `.github/workflows/refresh-prices.yml` - Updated environment variables and added worker-type-costs upload
+  - Replaced `GCS_WORKFORCE_URL` with `GCS_WORKER_TYPE_COSTS_URL` and `GCS_PRODUCTION_WORKER_REQ_URL`
+  - Uploads `worker-type-costs-calculated.csv` to GCS alongside other output files
 - `src/core/engine.ts` - Reads exchange-specific cost columns (no changes in this update)
   - Added `getCostColumnNames(exchange)` helper (from previous update)
   - Updated all cost column lookups to use exchange-specific names (from previous update)
@@ -468,8 +527,23 @@ The workflow automatically enters **TEST MODE** when run from non-main branches,
 
 **Problem: "Building X not found" warnings in logs**
 - **Cause:** recipes.csv contains buildings not in your requirement CSVs
-- **Solution:** Add all buildings from recipes.csv to both workforce-requirements.csv and build-requirements.csv
+- **Solution:** Add all buildings from recipes.csv to both production-worker-requirements.csv and build-requirements.csv
 - **Quick check:** `grep "^[A-Z]" recipes.csv | cut -d',' -f1 | sort -u` lists all buildings
+
+**Problem: "Worker type X not found in worker costs map" warning**
+- **Cause:** Worker type referenced in production-worker-requirements.csv doesn't exist in worker-type-costs.csv
+- **Solution:**
+  - Add missing worker type to worker-type-costs.csv
+  - Verify spelling/capitalization matches exactly between the two CSVs (e.g., "Pioneer" not "pioneer")
+  - Check that worker-type-costs.csv was uploaded to GCS
+
+**Problem: Worker costs are zero or missing**
+- **Cause:** Missing or incomplete data in worker-type-costs.csv or production-worker-requirements.csv
+- **Solution:**
+  - Verify worker types exist in worker-type-costs.csv with material requirements
+  - Check that production-worker-requirements.csv has worker quantities populated
+  - Ensure FactorAmount is a positive number (defaults to 1 if missing)
+  - Check console output for warnings about missing worker types
 
 **Problem: Script fails with "No price found for X"**
 - **Cause:** Material ticker in requirements doesn't have market data
@@ -562,14 +636,21 @@ The workflow automatically enters **TEST MODE** when run from non-main branches,
 
 ```bash
 # Check CSV format (should show clean columns)
-head -3 public/data/workforce-requirements.csv
+head -3 public/data/worker-type-costs.csv
+head -3 public/data/production-worker-requirements.csv
+
+# Count worker types
+grep -v "^WorkerType," public/data/worker-type-costs.csv | wc -l
 
 # Count buildings in each file (should match)
-grep -v "^Building," public/data/workforce-requirements.csv | wc -l
+grep -v "^ProductionBuilding," public/data/production-worker-requirements.csv | wc -l
 grep -v "^Building," public/data/build-requirements.csv | wc -l
 
+# Verify no duplicate worker types
+cut -d',' -f1 public/data/worker-type-costs.csv | sort | uniq -d
+
 # Verify no duplicate buildings
-cut -d',' -f1 public/data/workforce-requirements.csv | sort | uniq -d
+cut -d',' -f1 public/data/production-worker-requirements.csv | sort | uniq -d
 
 # Check for invalid BuildingType values
 grep -v "PRODUCTION\|HABITATION\|BuildingType" public/data/build-requirements.csv
