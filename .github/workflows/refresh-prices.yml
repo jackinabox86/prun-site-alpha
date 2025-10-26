@@ -49,11 +49,11 @@ jobs:
         env:
           GCS_RECIPES_URL: https://storage.googleapis.com/prun-site-alpha-bucket/recipes.csv
           GCS_PRICES_URL: https://storage.googleapis.com/prun-site-alpha-bucket/prices.csv
-          GCS_WORKER_TYPE_COSTS_URL: https://storage.googleapis.com/prun-site-alpha-bucket/worker-type-costs.csv
-          GCS_PRODUCTION_WORKER_REQ_URL: https://storage.googleapis.com/prun-site-alpha-bucket/production-worker-requirements.csv
-          GCS_BUILD_URL: https://storage.googleapis.com/prun-site-alpha-bucket/build-requirements.csv
-          GCS_HABITATION_COSTS_URL: https://storage.googleapis.com/prun-site-alpha-bucket/habitation-building-costs.csv
-          GCS_PRODUCTION_HAB_REQ_URL: https://storage.googleapis.com/prun-site-alpha-bucket/production-habitation-requirements.csv
+          GCS_WORKER_TYPE_COSTS_URL: https://storage.googleapis.com/prun-site-alpha-bucket/static/worker-type-costs.csv
+          GCS_PRODUCTION_WORKER_REQ_URL: https://storage.googleapis.com/prun-site-alpha-bucket/static/production-worker-requirements.csv
+          GCS_BUILD_URL: https://storage.googleapis.com/prun-site-alpha-bucket/static/build-requirements.csv
+          GCS_HABITATION_COSTS_URL: https://storage.googleapis.com/prun-site-alpha-bucket/static/habitation-building-costs.csv
+          GCS_PRODUCTION_HAB_REQ_URL: https://storage.googleapis.com/prun-site-alpha-bucket/static/production-habitation-requirements.csv
         run: npm run calculate-costs
 
       - name: Authenticate to Google Cloud
