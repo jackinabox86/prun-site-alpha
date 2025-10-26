@@ -152,7 +152,7 @@ function findPrice(ticker: string, pricesMap: Map<string, PriceRow>, exchange: E
  * Calculate cost from material requirements for a specific exchange
  */
 function calculateMaterialCost(
-  requirements: WorkforceRequirement | BuildRequirement,
+  requirements: WorkerTypeCost | BuildRequirement | HabitationBuildingCost,
   pricesMap: Map<string, PriceRow>,
   exchange: Exchange
 ): number {
@@ -182,15 +182,15 @@ function calculateMaterialCost(
 async function main() {
   console.log("Starting dynamic cost calculation...\n");
 
-  // Fetch all required CSVs
+  // Fetch all required CSVs (validated to be non-null above)
   const [recipesText, pricesText, workerTypeCostsText, productionWorkerReqText, buildText, habitationCostsText, productionHabReqText] = await Promise.all([
-    fetchCsvText(GCS_RECIPES_URL),
-    fetchCsvText(GCS_PRICES_URL),
-    fetchCsvText(GCS_WORKER_TYPE_COSTS_URL),
-    fetchCsvText(GCS_PRODUCTION_WORKER_REQ_URL),
-    fetchCsvText(GCS_BUILD_URL),
-    fetchCsvText(GCS_HABITATION_COSTS_URL),
-    fetchCsvText(GCS_PRODUCTION_HAB_REQ_URL),
+    fetchCsvText(GCS_RECIPES_URL!),
+    fetchCsvText(GCS_PRICES_URL!),
+    fetchCsvText(GCS_WORKER_TYPE_COSTS_URL!),
+    fetchCsvText(GCS_PRODUCTION_WORKER_REQ_URL!),
+    fetchCsvText(GCS_BUILD_URL!),
+    fetchCsvText(GCS_HABITATION_COSTS_URL!),
+    fetchCsvText(GCS_PRODUCTION_HAB_REQ_URL!),
   ]);
 
   // Parse CSVs
