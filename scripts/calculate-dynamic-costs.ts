@@ -1,6 +1,10 @@
+import { config } from "dotenv";
 import { parse } from "csv-parse/sync";
 import { stringify } from "csv-stringify/sync";
 import { writeFileSync } from "fs";
+
+// Load environment variables from .env.local
+config({ path: ".env.local" });
 
 // GCS URLs - provided via environment variables (required, no fallbacks)
 const GCS_RECIPES_URL = process.env.GCS_RECIPES_URL;
@@ -154,8 +158,8 @@ function calculateMaterialCost(
 ): number {
   let totalCost = 0;
 
-  // Check up to 10 input slots
-  for (let i = 1; i <= 10; i++) {
+  // Check up to 24 input slots (max across all CSV types)
+  for (let i = 1; i <= 24; i++) {
     const matKey = `Input${i}MAT`;
     const cntKey = `Input${i}CNT`;
 
@@ -504,7 +508,7 @@ async function main() {
         if (habitationReq) {
           const factorAmount = Number(habitationReq.FactorAmount) || 1;
 
-          for (let i = 1; i <= 5; i++) {
+          for (let i = 1; i <= 11; i++) {
             const habTypeKey = `Hab${i}Type`;
             const habQtyKey = `Hab${i}Qty`;
             const habType = habitationReq[habTypeKey];

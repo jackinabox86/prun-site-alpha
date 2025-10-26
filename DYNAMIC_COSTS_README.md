@@ -443,11 +443,11 @@ The workflow automatically enters **TEST MODE** when run from non-main branches,
    ```bash
    export GCS_RECIPES_URL=https://storage.googleapis.com/prun-site-alpha-bucket/recipes.csv
    export GCS_PRICES_URL=https://storage.googleapis.com/prun-site-alpha-bucket/prices.csv
-   export GCS_WORKER_TYPE_COSTS_URL=https://storage.googleapis.com/prun-site-alpha-bucket/worker-type-costs.csv
-   export GCS_PRODUCTION_WORKER_REQ_URL=https://storage.googleapis.com/prun-site-alpha-bucket/production-worker-requirements.csv
-   export GCS_BUILD_URL=https://storage.googleapis.com/prun-site-alpha-bucket/build-requirements.csv
-   export GCS_HABITATION_COSTS_URL=https://storage.googleapis.com/prun-site-alpha-bucket/habitation-building-costs.csv
-   export GCS_PRODUCTION_HAB_REQ_URL=https://storage.googleapis.com/prun-site-alpha-bucket/production-habitation-requirements.csv
+   export GCS_WORKER_TYPE_COSTS_URL=https://storage.googleapis.com/static/prun-site-alpha-bucket/worker-type-costs.csv
+   export GCS_PRODUCTION_WORKER_REQ_URL=https://storage.googleapis.com/static/prun-site-alpha-bucket/production-worker-requirements.csv
+   export GCS_BUILD_URL=https://storage.googleapis.com/prun-site-alpha-bucket/static/build-requirements.csv
+   export GCS_HABITATION_COSTS_URL=https://storage.googleapis.com/prun-site-alpha-bucket/static/habitation-building-costs.csv
+   export GCS_PRODUCTION_HAB_REQ_URL=https://storage.googleapis.com/prun-site-alpha-bucket/static/production-habitation-requirements.csv
    ```
 
 2. **Run the script:**
