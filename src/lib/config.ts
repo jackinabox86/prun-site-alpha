@@ -10,27 +10,48 @@ export const LOCAL_DATA_SOURCES = {
 } as const;
 
 /**
+ * Determine if we should use test files based on environment
+ * Uses -test suffix for preview deployments (non-production branches)
+ */
+function getFileSuffix(): string {
+  // In production (main branch), use no suffix
+  // In preview deployments (other branches), use -test suffix
+  const isProduction = process.env.VERCEL_ENV === 'production' ||
+                       process.env.VERCEL_GIT_COMMIT_REF === 'main';
+  return isProduction ? '' : '-test';
+}
+
+/**
  * GCS data sources - requires environment variables to be set
+ * Automatically uses -test suffix for recipes/prices in preview deployments
+ * Best recipes always uses production file (no -test version generated)
  * Throws explicit errors if environment variables are missing
  */
 export const GCS_DATA_SOURCES = {
   get recipes(): string {
-    if (!process.env.GCS_RECIPES_URL) {
+    const baseUrl = process.env.GCS_RECIPES_URL;
+    if (!baseUrl) {
       throw new Error("GCS_RECIPES_URL environment variable is not set. Required for GCS mode.");
     }
-    return process.env.GCS_RECIPES_URL;
+    const suffix = getFileSuffix();
+    // Replace .csv with -test.csv if needed
+    return suffix ? baseUrl.replace('.csv', `${suffix}.csv`) : baseUrl;
   },
   get prices(): string {
-    if (!process.env.GCS_PRICES_URL) {
+    const baseUrl = process.env.GCS_PRICES_URL;
+    if (!baseUrl) {
       throw new Error("GCS_PRICES_URL environment variable is not set. Required for GCS mode.");
     }
-    return process.env.GCS_PRICES_URL;
+    const suffix = getFileSuffix();
+    return suffix ? baseUrl.replace('.csv', `${suffix}.csv`) : baseUrl;
   },
   get bestRecipes(): string {
-    if (!process.env.GCS_BEST_RECIPES_URL) {
+    const baseUrl = process.env.GCS_BEST_RECIPES_URL;
+    if (!baseUrl) {
       throw new Error("GCS_BEST_RECIPES_URL environment variable is not set. Required for GCS mode.");
     }
-    return process.env.GCS_BEST_RECIPES_URL;
+    // Best recipes always uses production file (no -test version)
+    return baseUrl;
   },
 } as const;
 

@@ -20,6 +20,16 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
+      - name: Set file suffix based on branch
+        id: branch-check
+        run: |
+          if [ "${{ github.ref }}" = "refs/heads/main" ]; then
+            echo "suffix=" >> $GITHUB_OUTPUT
+            echo "mode=PRODUCTION" >> $GITHUB_OUTPUT
+          else
+            echo "suffix=-test" >> $GITHUB_OUTPUT
+            echo "mode=TEST" >> $GITHUB_OUTPUT
+          fi
       - name: Checkout repository
         uses: actions/checkout@v4
 
@@ -35,6 +45,17 @@ jobs:
       - name: Merge price data
         run: npm run merge-prices
 
+      - name: Calculate dynamic costs
+        env:
+          GCS_RECIPES_URL: https://storage.googleapis.com/prun-site-alpha-bucket/recipes.csv
+          GCS_PRICES_URL: https://storage.googleapis.com/prun-site-alpha-bucket/prices.csv
+          GCS_WORKER_TYPE_COSTS_URL: https://storage.googleapis.com/prun-site-alpha-bucket/static/worker-type-costs.csv
+          GCS_PRODUCTION_WORKER_REQ_URL: https://storage.googleapis.com/prun-site-alpha-bucket/static/production-worker-requirements.csv
+          GCS_BUILD_URL: https://storage.googleapis.com/prun-site-alpha-bucket/static/build-requirements.csv
+          GCS_HABITATION_COSTS_URL: https://storage.googleapis.com/prun-site-alpha-bucket/static/habitation-building-costs.csv
+          GCS_PRODUCTION_HAB_REQ_URL: https://storage.googleapis.com/prun-site-alpha-bucket/static/production-habitation-requirements.csv
+        run: npm run calculate-costs
+
       - name: Authenticate to Google Cloud
         uses: google-github-actions/auth@v2
         with:
@@ -45,37 +66,111 @@ jobs:
 
       - name: Upload to Google Cloud Storage
         run: |
+          SUFFIX="${{ steps.branch-check.outputs.suffix }}"
+          MODE="${{ steps.branch-check.outputs.mode }}"
+
+          echo "Running in $MODE mode (suffix: '$SUFFIX')"
+
           # Upload merged prices file with 30-minute cache
           gsutil -h "Cache-Control:public, max-age=1800" \
                  -h "Content-Type:text/csv" \
                  cp public/data/prices-merged.csv \
-                 gs://prun-site-alpha-bucket/prices.csv
+                 gs://prun-site-alpha-bucket/prices${SUFFIX}.csv
 
-          echo "✅ Prices file uploaded to GCS"
+          # Upload dynamic recipes file with 30-minute cache
+          gsutil -h "Cache-Control:public, max-age=1800" \
+                 -h "Content-Type:text/csv" \
+                 cp public/data/recipes-dynamic.csv \
+                 gs://prun-site-alpha-bucket/recipes${SUFFIX}.csv
 
-      - name: Get public URL
+          # Upload building costs file with 30-minute cache
+          gsutil -h "Cache-Control:public, max-age=1800" \
+                 -h "Content-Type:text/csv" \
+                 cp public/data/building-costs.csv \
+                 gs://prun-site-alpha-bucket/building-costs${SUFFIX}.csv
+
+          # Upload worker type costs file with 30-minute cache
+          gsutil -h "Cache-Control:public, max-age=1800" \
+                 -h "Content-Type:text/csv" \
+                 cp public/data/worker-type-costs-calculated.csv \
+                 gs://prun-site-alpha-bucket/worker-type-costs-calculated${SUFFIX}.csv
+
+          if [ "$MODE" = "PRODUCTION" ]; then
+            echo "✅ Production files uploaded to GCS"
+          else
+            echo "✅ Test files uploaded to GCS (NOT overwriting production files)"
+            echo "⚠️  These are test files with ${SUFFIX} suffix"
+          fi
+
+      - name: Get public URLs
         run: |
+          SUFFIX="${{ steps.branch-check.outputs.suffix }}"
+          MODE="${{ steps.branch-check.outputs.mode }}"
+
           echo "📊 Merged Prices Data:"
-          echo "https://storage.googleapis.com/prun-site-alpha-bucket/prices.csv"
+          echo "https://storage.googleapis.com/prun-site-alpha-bucket/prices${SUFFIX}.csv"
+          echo ""
+          echo "🏭 Dynamic Cost Recipes:"
+          echo "https://storage.googleapis.com/prun-site-alpha-bucket/recipes${SUFFIX}.csv"
+          echo ""
+          echo "🏢 Building Costs:"
+          echo "https://storage.googleapis.com/prun-site-alpha-bucket/building-costs${SUFFIX}.csv"
+          echo ""
+          echo "👷 Worker Type Costs:"
+          echo "https://storage.googleapis.com/prun-site-alpha-bucket/worker-type-costs-calculated${SUFFIX}.csv"
+
+          if [ "$MODE" != "PRODUCTION" ]; then
+            echo ""
+            echo "⚠️  TEST MODE - Production files NOT modified"
+          fi
 
       - name: Summary
         run: |
+          SUFFIX="${{ steps.branch-check.outputs.suffix }}"
+          MODE="${{ steps.branch-check.outputs.mode }}"
+
           echo "## Upload Summary" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
-          echo "✅ Merged prices data uploaded to Google Cloud Storage" >> $GITHUB_STEP_SUMMARY
+
+          if [ "$MODE" = "PRODUCTION" ]; then
+            echo "✅ **PRODUCTION**: Merged prices data and dynamic cost recipes uploaded to Google Cloud Storage" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "⚠️  **TEST MODE**: Files uploaded with \`${SUFFIX}\` suffix (production files NOT modified)" >> $GITHUB_STEP_SUMMARY
+          fi
+
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "### Details" >> $GITHUB_STEP_SUMMARY
-          echo "- Source 1: FNAR (rest.fnar.net/csv/prices)" >> $GITHUB_STEP_SUMMARY
-          echo "- Source 2: PrunPlanner (api.prunplanner.org/csv/exchange)" >> $GITHUB_STEP_SUMMARY
+          echo "- Mode: **$MODE**" >> $GITHUB_STEP_SUMMARY
+          echo "- Branch: \`${{ github.ref }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "- Price Source 1: FNAR (rest.fnar.net/csv/prices)" >> $GITHUB_STEP_SUMMARY
+          echo "- Price Source 2: PrunPlanner (api.prunplanner.org/csv/exchange)" >> $GITHUB_STEP_SUMMARY
+          echo "- Recipes: Dynamic costs calculated from workforce/build requirements + current prices" >> $GITHUB_STEP_SUMMARY
           echo "- Cache duration: 30 minutes" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
-          echo "### Public URL" >> $GITHUB_STEP_SUMMARY
-          echo "- https://storage.googleapis.com/prun-site-alpha-bucket/prices.csv" >> $GITHUB_STEP_SUMMARY
+          echo "### Public URLs" >> $GITHUB_STEP_SUMMARY
+          echo "- Prices: https://storage.googleapis.com/prun-site-alpha-bucket/prices${SUFFIX}.csv" >> $GITHUB_STEP_SUMMARY
+          echo "- Recipes: https://storage.googleapis.com/prun-site-alpha-bucket/recipes${SUFFIX}.csv" >> $GITHUB_STEP_SUMMARY
+          echo "- Building Costs: https://storage.googleapis.com/prun-site-alpha-bucket/building-costs${SUFFIX}.csv" >> $GITHUB_STEP_SUMMARY
+          echo "- Worker Type Costs: https://storage.googleapis.com/prun-site-alpha-bucket/worker-type-costs-calculated${SUFFIX}.csv" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "### File Stats" >> $GITHUB_STEP_SUMMARY
           if [ -f public/data/prices-merged.csv ]; then
-            ROWS=$(wc -l < public/data/prices-merged.csv)
-            SIZE=$(du -h public/data/prices-merged.csv | cut -f1)
-            echo "- Rows: $ROWS" >> $GITHUB_STEP_SUMMARY
-            echo "- Size: $SIZE" >> $GITHUB_STEP_SUMMARY
+            PRICE_ROWS=$(wc -l < public/data/prices-merged.csv)
+            PRICE_SIZE=$(du -h public/data/prices-merged.csv | cut -f1)
+            echo "- Prices: $PRICE_ROWS rows, $PRICE_SIZE" >> $GITHUB_STEP_SUMMARY
+          fi
+          if [ -f public/data/recipes-dynamic.csv ]; then
+            RECIPE_ROWS=$(wc -l < public/data/recipes-dynamic.csv)
+            RECIPE_SIZE=$(du -h public/data/recipes-dynamic.csv | cut -f1)
+            echo "- Recipes: $RECIPE_ROWS rows, $RECIPE_SIZE" >> $GITHUB_STEP_SUMMARY
+          fi
+          if [ -f public/data/building-costs.csv ]; then
+            BUILDING_ROWS=$(wc -l < public/data/building-costs.csv)
+            BUILDING_SIZE=$(du -h public/data/building-costs.csv | cut -f1)
+            echo "- Building Costs: $BUILDING_ROWS rows, $BUILDING_SIZE" >> $GITHUB_STEP_SUMMARY
+          fi
+          if [ -f public/data/worker-type-costs-calculated.csv ]; then
+            WORKER_ROWS=$(wc -l < public/data/worker-type-costs-calculated.csv)
+            WORKER_SIZE=$(du -h public/data/worker-type-costs-calculated.csv | cut -f1)
+            echo "- Worker Type Costs: $WORKER_ROWS rows, $WORKER_SIZE" >> $GITHUB_STEP_SUMMARY
           fi

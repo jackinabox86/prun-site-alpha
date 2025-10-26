@@ -3,6 +3,7 @@
   "scripts": {
     "dev": "next dev --turbopack",
     "build": "next build",
+    "calculate-costs": "tsx scripts/calculate-dynamic-costs.ts",
     "generate-best-recipes": "tsx scripts/generate-best-recipes.ts",
     "merge-prices": "tsx scripts/merge-prices.ts",
     "start": "next start"
@@ -20,6 +21,7 @@
     "@types/node": "^20.11.30",
     "@types/react": "^18.3.5",
     "@types/react-dom": "^18.3.0",
+    "dotenv": "^17.2.3",
     "tsx": "^4.20.6",
     "typescript": "^5.6.0"
   }
