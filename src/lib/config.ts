@@ -23,7 +23,8 @@ function getFileSuffix(): string {
 
 /**
  * GCS data sources - requires environment variables to be set
- * Automatically uses -test suffix for preview deployments
+ * Automatically uses -test suffix for recipes/prices in preview deployments
+ * Best recipes always uses production file (no -test version generated)
  * Throws explicit errors if environment variables are missing
  */
 export const GCS_DATA_SOURCES = {
@@ -49,8 +50,8 @@ export const GCS_DATA_SOURCES = {
     if (!baseUrl) {
       throw new Error("GCS_BEST_RECIPES_URL environment variable is not set. Required for GCS mode.");
     }
-    const suffix = getFileSuffix();
-    return suffix ? baseUrl.replace('.json', `${suffix}.json`) : baseUrl;
+    // Best recipes always uses production file (no -test version)
+    return baseUrl;
   },
 } as const;
 
