@@ -1,4 +1,4 @@
 ProductionBuilding,FactorAmount,Worker1Type,Worker1Qty,Worker2Type,Worker2Qty,Worker3Type,Worker3Qty,Worker4Type,Worker4Qty,Worker5Type,Worker5Qty
-AAF,1,Pioneer,50,Settler,30,Technician,10,,,,
-AML,1,Settler,40,Technician,20,Engineer,5,,,,
-APF,1,Pioneer,60,Settler,25,Technician,8,,,,
+AAF,1,PIONEER,50,SETTLER,30,TECHNICIAN,10,,,,
+AML,1,SETTLER,40,TECHNICIAN,20,ENGINEER,5,,,,
+APF,1,PIONEER,60,SETTLER,25,TECHNICIAN,8,,,,

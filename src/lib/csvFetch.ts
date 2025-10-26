@@ -7,7 +7,7 @@ const csvCache = new Map<string, Array<Record<string, any>>>();
 
 export async function fetchCsv(url: string): Promise<Array<Record<string, any>>> {
   if (!url) {
-    throw new Error("CSV URL is empty. Please set BLOB_*_URL environment variables.");
+    throw new Error("CSV URL is empty. Please set GCS_*_URL environment variables.");
   }
 
   // Check cache first
@@ -25,7 +25,7 @@ export async function fetchCsv(url: string): Promise<Array<Record<string, any>>>
     }
     text = readFileSync(filePath, 'utf-8');
   } else {
-    // Fetch from Vercel Blob (or any URL)
+    // Fetch from remote URL (GCS or other)
     const res = await fetch(url, { cache: "no-store" });
     if (!res.ok) {
       throw new Error(`CSV fetch failed: ${res.status} ${res.statusText} for URL: ${url}`);

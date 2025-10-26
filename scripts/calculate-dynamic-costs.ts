@@ -2,14 +2,31 @@ import { parse } from "csv-parse/sync";
 import { stringify } from "csv-stringify/sync";
 import { writeFileSync } from "fs";
 
-// GCS URLs - provided via environment variables
-const GCS_RECIPES_URL = process.env.GCS_RECIPES_URL || "https://storage.googleapis.com/prun-site-alpha-bucket/recipes.csv";
-const GCS_PRICES_URL = process.env.GCS_PRICES_URL || "https://storage.googleapis.com/prun-site-alpha-bucket/prices.csv";
-const GCS_WORKER_TYPE_COSTS_URL = process.env.GCS_WORKER_TYPE_COSTS_URL || "https://storage.googleapis.com/prun-site-alpha-bucket/worker-type-costs.csv";
-const GCS_PRODUCTION_WORKER_REQ_URL = process.env.GCS_PRODUCTION_WORKER_REQ_URL || "https://storage.googleapis.com/prun-site-alpha-bucket/production-worker-requirements.csv";
-const GCS_BUILD_URL = process.env.GCS_BUILD_URL || "https://storage.googleapis.com/prun-site-alpha-bucket/build-requirements.csv";
-const GCS_HABITATION_COSTS_URL = process.env.GCS_HABITATION_COSTS_URL || "https://storage.googleapis.com/prun-site-alpha-bucket/habitation-building-costs.csv";
-const GCS_PRODUCTION_HAB_REQ_URL = process.env.GCS_PRODUCTION_HAB_REQ_URL || "https://storage.googleapis.com/prun-site-alpha-bucket/production-habitation-requirements.csv";
+// GCS URLs - provided via environment variables (required, no fallbacks)
+const GCS_RECIPES_URL = process.env.GCS_RECIPES_URL;
+const GCS_PRICES_URL = process.env.GCS_PRICES_URL;
+const GCS_WORKER_TYPE_COSTS_URL = process.env.GCS_WORKER_TYPE_COSTS_URL;
+const GCS_PRODUCTION_WORKER_REQ_URL = process.env.GCS_PRODUCTION_WORKER_REQ_URL;
+const GCS_BUILD_URL = process.env.GCS_BUILD_URL;
+const GCS_HABITATION_COSTS_URL = process.env.GCS_HABITATION_COSTS_URL;
+const GCS_PRODUCTION_HAB_REQ_URL = process.env.GCS_PRODUCTION_HAB_REQ_URL;
+
+// Validate required environment variables
+const requiredEnvVars = {
+  GCS_RECIPES_URL,
+  GCS_PRICES_URL,
+  GCS_WORKER_TYPE_COSTS_URL,
+  GCS_PRODUCTION_WORKER_REQ_URL,
+  GCS_BUILD_URL,
+  GCS_HABITATION_COSTS_URL,
+  GCS_PRODUCTION_HAB_REQ_URL,
+};
+
+for (const [key, value] of Object.entries(requiredEnvVars)) {
+  if (!value) {
+    throw new Error(`${key} environment variable is required but not set`);
+  }
+}
 
 interface RecipeRow {
   Building: string;

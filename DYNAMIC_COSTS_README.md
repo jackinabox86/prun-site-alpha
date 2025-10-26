@@ -68,7 +68,7 @@ WfCst-UNV, Deprec-UNV, AllBuildCst-UNV,
 ### Input Files (on GCS)
 
 1. **worker-type-costs.csv** - Daily material requirements per worker type
-   - Location: `gs://prun-site-alpha-bucket/worker-type-costs.csv`
+   - Location: `gs://prun-site-alpha-bucket/static/worker-type-costs.csv`
    - Structure: WorkerType, Input1MAT, Input1CNT, ..., Input10MAT, Input10CNT
    - Defines daily consumables for each worker type (Pioneer, Settler, Technician, Engineer, Scientist)
    - Update: Manually when game changes (rarely)
@@ -82,7 +82,7 @@ WfCst-UNV, Deprec-UNV, AllBuildCst-UNV,
    ```
 
 2. **production-worker-requirements.csv** - Worker type requirements per production building
-   - Location: `gs://prun-site-alpha-bucket/production-worker-requirements.csv`
+   - Location: `gs://prun-site-alpha-bucket/static/production-worker-requirements.csv`
    - Structure: ProductionBuilding, FactorAmount, Worker1Type, Worker1Qty, ..., Worker5Type, Worker5Qty
    - Maps production buildings to worker types and quantities
    - **FactorAmount**: Divisor applied to total worker costs (e.g., 100 if workers serve 100 buildings)
@@ -98,7 +98,7 @@ WfCst-UNV, Deprec-UNV, AllBuildCst-UNV,
    - **Calculation**: Daily workforce cost = [Σ(worker type cost × quantity)] / FactorAmount
 
 3. **build-requirements.csv** - Construction materials per production building
-   - Location: `gs://prun-site-alpha-bucket/build-requirements.csv`
+   - Location: `gs://prun-site-alpha-bucket/static/build-requirements.csv`
    - Structure: Building, BuildingType, Input1MAT, Input1CNT, ..., Input10MAT, Input10CNT
    - BuildingType: "PRODUCTION" (only production buildings)
    - Contains only PRODUCTION building materials (no HABITATION rows)
@@ -112,7 +112,7 @@ WfCst-UNV, Deprec-UNV, AllBuildCst-UNV,
    ```
 
 4. **habitation-building-costs.csv** - Construction materials per habitation building type
-   - Location: `gs://prun-site-alpha-bucket/habitation-building-costs.csv`
+   - Location: `gs://prun-site-alpha-bucket/static/habitation-building-costs.csv`
    - Structure: HabitationType, Input1MAT, Input1CNT, ..., Input10MAT, Input10CNT
    - Lists materials needed to construct ONE building of each habitation type
    - Update: Manually when game changes (rarely)
@@ -128,7 +128,7 @@ WfCst-UNV, Deprec-UNV, AllBuildCst-UNV,
    ```
 
 5. **production-habitation-requirements.csv** - Habitation needs per production building
-   - Location: `gs://prun-site-alpha-bucket/production-habitation-requirements.csv`
+   - Location: `gs://prun-site-alpha-bucket/static/production-habitation-requirements.csv`
    - Structure: ProductionBuilding, FactorAmount, Hab1Type, Hab1Qty, Hab2Type, Hab2Qty, ..., Hab5Type, Hab5Qty
    - Maps each production building to required habitation buildings (quantities can be fractional)
    - **FactorAmount**: Divisor applied to total habitation costs (e.g., 100 if habitations serve 100 production buildings)
