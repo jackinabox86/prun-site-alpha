@@ -16,8 +16,15 @@ export const LOCAL_DATA_SOURCES = {
 function getFileSuffix(): string {
   // In production (main branch), use no suffix
   // In preview deployments (other branches), use -test suffix
-  const isProduction = process.env.VERCEL_ENV === 'production' ||
-                       process.env.VERCEL_GIT_COMMIT_REF === 'main';
+
+  // Check Vercel environment
+  const isVercelProduction = process.env.VERCEL_ENV === 'production' ||
+                             process.env.VERCEL_GIT_COMMIT_REF === 'main';
+
+  // Check GitHub Actions environment
+  const isGitHubMain = process.env.GITHUB_REF === 'refs/heads/main';
+
+  const isProduction = isVercelProduction || isGitHubMain;
   return isProduction ? '' : '-test';
 }
 
