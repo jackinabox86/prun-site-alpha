@@ -300,7 +300,7 @@ export default function ReportClient() {
 
                       <div>
                         <span
-                          data-tooltip="Placeholder text for Base profit/day"
+                          data-tooltip="Placeholder text for building profit/day"
                           style={{
                             position: "relative",
                             cursor: "help",
@@ -309,7 +309,7 @@ export default function ReportClient() {
                         >
                           ⓘ
                         </span>
-                        <strong>Base profit/day:</strong> {money(report.best.baseProfitPerDay)}
+                        <strong>Building Profit/Day:</strong> {money(report.best.baseProfitPerDay)}
                       </div>
                       <div>
                         <span
