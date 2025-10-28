@@ -68,7 +68,7 @@ export default function Top20Table({ options, exchange, priceType }: { options: 
               <th style={{ padding: "10px", border: "1px solid #dee2e6", textAlign: "center" }}>Ticker</th>
               <th style={{ padding: "10px", border: "1px solid #dee2e6", textAlign: "center" }}>Recipe ID</th>
               <th style={{ padding: "10px", border: "1px solid #dee2e6", textAlign: "center" }}>Scenario</th>
-              <th style={{ padding: "10px", border: "1px solid #dee2e6", textAlign: "center" }}>Base Profit/Day</th>
+              <th style={{ padding: "10px", border: "1px solid #dee2e6", textAlign: "center" }}>Building Profit/Day</th>
               <th style={{ padding: "10px", border: "1px solid #dee2e6", textAlign: "center" }}>Total Area/Day</th>
               <th style={{ padding: "10px", border: "1px solid #dee2e6", textAlign: "center" }}>ROI (narrow)</th>
               <th style={{ padding: "10px", border: "1px solid #dee2e6", textAlign: "center" }}>ROI (broad)</th>
