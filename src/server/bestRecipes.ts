@@ -232,8 +232,12 @@ function getTickersInDependencyOrder(recipeSheet: RecipeSheet): string[] {
  * Refresh best recipe IDs for all tickers in dependency order
  * This is the core logic from the Apps Script refreshBestRecipeIDs function
  * @param priceSource - "local" for local prices, "gcs" for GCS prices (default: "local")
+ * @param exchange - Exchange to analyze (default: "ANT")
  */
-export async function refreshBestRecipeIDs(priceSource: "local" | "gcs" = "local"): Promise<BestRecipeResult[]> {
+export async function refreshBestRecipeIDs(
+  priceSource: "local" | "gcs" = "local",
+  exchange: Exchange = "ANT"
+): Promise<BestRecipeResult[]> {
   // Clear caches
   clearScenarioCache();
 
@@ -277,7 +281,7 @@ export async function refreshBestRecipeIDs(priceSource: "local" | "gcs" = "local
         ticker,
         recipeMap,
         pricesMap,
-        "ANT",
+        exchange,
         "bid",
         bestMapBuilding, // Pass the building best map
         0,
@@ -323,7 +327,7 @@ export async function refreshBestRecipeIDs(priceSource: "local" | "gcs" = "local
         .slice(0, 3);
 
       // Calculate "buy all inputs" P/A using simple helper function
-      const buyAllProfitPA = calculateBuyAllProfitPA(ticker, recipeMap, pricesMap, "ANT", "bid");
+      const buyAllProfitPA = calculateBuyAllProfitPA(ticker, recipeMap, pricesMap, exchange, "bid");
 
       // Cache normalized best plus top 3 display scenarios (mimics setScenarioCacheForTicker)
       bestMapBuilding[ticker] = {
