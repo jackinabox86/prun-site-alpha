@@ -58,12 +58,18 @@ export function convertToEnhancedBestMap(results: BestRecipeResult[]): EnhancedB
 
 /**
  * Get exchange-specific column names for cost fields
+ * For UNV, appends price type suffix (7 for pp7, 30 for pp30)
  */
-function getCostColumnNames(exchange: Exchange) {
+function getCostColumnNames(exchange: Exchange, priceType: PriceType) {
+  // For UNV, append price type suffix since UNV has separate columns for PP7 and PP30
+  const suffix = exchange === "UNV"
+    ? (priceType === "pp7" ? "7" : "30")
+    : "";
+
   return {
-    wfCst: `WfCst-${exchange}`,
-    deprec: `Deprec-${exchange}`,
-    allBuildCst: `AllBuildCst-${exchange}`
+    wfCst: `WfCst-${exchange}${suffix}`,
+    deprec: `Deprec-${exchange}${suffix}`,
+    allBuildCst: `AllBuildCst-${exchange}${suffix}`
   };
 }
 
@@ -82,7 +88,7 @@ function calculateBuyAllProfitPA(
   const rows = recipeMap.map[ticker] || [];
   if (!rows.length) return 0;
 
-  const costCols = getCostColumnNames(exchange);
+  const costCols = getCostColumnNames(exchange, priceType);
   const idx = {
     recipeId: headers.indexOf("RecipeID"),
     wf: headers.indexOf(costCols.wfCst),

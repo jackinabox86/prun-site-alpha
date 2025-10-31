@@ -49,9 +49,13 @@ interface RecipeRow {
   "WfCst-NCC": string | number;
   "Deprec-NCC": string | number;
   "AllBuildCst-NCC": string | number;
-  "WfCst-UNV": string | number;
-  "Deprec-UNV": string | number;
-  "AllBuildCst-UNV": string | number;
+  // UNV has separate columns for PP7 and PP30
+  "WfCst-UNV7": string | number;
+  "Deprec-UNV7": string | number;
+  "AllBuildCst-UNV7": string | number;
+  "WfCst-UNV30": string | number;
+  "Deprec-UNV30": string | number;
+  "AllBuildCst-UNV30": string | number;
   [key: string]: any;
 }
 
@@ -133,17 +137,33 @@ const EXCHANGE_PREFIXES: Record<Exchange, string> = {
   UNV: "UNV"
 };
 
+type PriceType = "ask" | "pp7" | "pp30";
+
 /**
  * Find price for a ticker on a specific exchange
- * Always uses AskPrice for consistency (buying materials)
+ * - For ANT/CIS/ICA/NCC: Always uses AskPrice (buying materials)
+ * - For UNV: Uses PP7 or PP30 based on priceType parameter
  */
-function findPrice(ticker: string, pricesMap: Map<string, PriceRow>, exchange: Exchange): number | null {
+function findPrice(
+  ticker: string,
+  pricesMap: Map<string, PriceRow>,
+  exchange: Exchange,
+  priceType: PriceType = "ask"
+): number | null {
   const priceRow = pricesMap.get(ticker);
   if (!priceRow) return null;
 
   const prefix = EXCHANGE_PREFIXES[exchange];
-  const askPriceKey = `${prefix}-AskPrice`;
-  const price = Number(priceRow[askPriceKey as keyof PriceRow]);
+
+  // For UNV, use PP7 or PP30 instead of AskPrice
+  let priceKey: string;
+  if (exchange === "UNV") {
+    priceKey = priceType === "pp7" ? `${prefix}-PP7` : `${prefix}-PP30`;
+  } else {
+    priceKey = `${prefix}-AskPrice`;
+  }
+
+  const price = Number(priceRow[priceKey as keyof PriceRow]);
 
   return (price && price > 0) ? price : null;
 }
@@ -154,7 +174,8 @@ function findPrice(ticker: string, pricesMap: Map<string, PriceRow>, exchange: E
 function calculateMaterialCost(
   requirements: WorkerTypeCost | BuildRequirement | HabitationBuildingCost,
   pricesMap: Map<string, PriceRow>,
-  exchange: Exchange
+  exchange: Exchange,
+  priceType: PriceType = "ask"
 ): number {
   let totalCost = 0;
 
@@ -167,9 +188,10 @@ function calculateMaterialCost(
     const count = Number(requirements[cntKey]);
 
     if (material && count > 0) {
-      const price = findPrice(material, pricesMap, exchange);
+      const price = findPrice(material, pricesMap, exchange, priceType);
       if (price === null) {
-        console.warn(`  Warning: No ${exchange} price found for ${material}, skipping`);
+        const priceTypeLabel = exchange === "UNV" ? priceType.toUpperCase() : "AskPrice";
+        console.warn(`  Warning: No ${exchange} ${priceTypeLabel} price found for ${material}, skipping`);
         continue;
       }
       totalCost += price * count;
@@ -273,6 +295,10 @@ async function main() {
 
   const EXCHANGES: Exchange[] = ["ANT", "CIS", "ICA", "NCC", "UNV"];
 
+  // For UNV, we calculate costs twice: once with PP7, once with PP30
+  type ExchangeVariant = Exchange | "UNV7" | "UNV30";
+  const EXCHANGE_VARIANTS: ExchangeVariant[] = ["ANT", "CIS", "ICA", "NCC", "UNV7", "UNV30"];
+
   // ========================================
   // STEP 1: Calculate ALL building costs per exchange
   // ========================================
@@ -280,7 +306,7 @@ async function main() {
 
   interface BuildingCostData {
     buildingType: "PRODUCTION" | "HABITATION";
-    costs: Record<Exchange, number>;
+    costs: Partial<Record<ExchangeVariant, number>>;
   }
 
   const buildingCostsMap = new Map<string, BuildingCostData>();
@@ -295,21 +321,34 @@ async function main() {
 
   for (const building of productionBuildings) {
     const buildReqs = buildMap.get(building) || [];
-    const costs: Record<Exchange, number> = {
-      ANT: 0, CIS: 0, ICA: 0, NCC: 0, UNV: 0
-    };
+    const costs: Partial<Record<ExchangeVariant, number>> = {};
 
-    for (const exchange of EXCHANGES) {
+    for (const variant of EXCHANGE_VARIANTS) {
       let totalBuildCost = 0;
+
+      // Determine exchange and price type for this variant
+      let exchange: Exchange;
+      let priceType: PriceType = "ask";
+
+      if (variant === "UNV7") {
+        exchange = "UNV";
+        priceType = "pp7";
+      } else if (variant === "UNV30") {
+        exchange = "UNV";
+        priceType = "pp30";
+      } else {
+        exchange = variant as Exchange;
+        priceType = "ask";
+      }
 
       // Only sum PRODUCTION rows (ignore HABITATION rows if they exist - will be handled separately)
       for (const buildReq of buildReqs) {
         if (buildReq.BuildingType === "PRODUCTION") {
-          totalBuildCost += calculateMaterialCost(buildReq, pricesMap, exchange);
+          totalBuildCost += calculateMaterialCost(buildReq, pricesMap, exchange, priceType);
         }
       }
 
-      costs[exchange] = totalBuildCost;
+      costs[variant] = totalBuildCost;
     }
 
     buildingCostsMap.set(building, {
@@ -318,20 +357,33 @@ async function main() {
     });
 
     console.log(`Production building ${building}:`);
-    for (const exchange of EXCHANGES) {
-      console.log(`  ${exchange}: ${costs[exchange].toFixed(2)}`);
+    for (const variant of EXCHANGE_VARIANTS) {
+      console.log(`  ${variant}: ${costs[variant]?.toFixed(2) || '0.00'}`);
     }
   }
 
   // Calculate habitation building costs
   for (const habRow of habitationCostRows) {
     const habType = habRow.HabitationType;
-    const costs: Record<Exchange, number> = {
-      ANT: 0, CIS: 0, ICA: 0, NCC: 0, UNV: 0
-    };
+    const costs: Partial<Record<ExchangeVariant, number>> = {};
 
-    for (const exchange of EXCHANGES) {
-      costs[exchange] = calculateMaterialCost(habRow, pricesMap, exchange);
+    for (const variant of EXCHANGE_VARIANTS) {
+      // Determine exchange and price type for this variant
+      let exchange: Exchange;
+      let priceType: PriceType = "ask";
+
+      if (variant === "UNV7") {
+        exchange = "UNV";
+        priceType = "pp7";
+      } else if (variant === "UNV30") {
+        exchange = "UNV";
+        priceType = "pp30";
+      } else {
+        exchange = variant as Exchange;
+        priceType = "ask";
+      }
+
+      costs[variant] = calculateMaterialCost(habRow, pricesMap, exchange, priceType);
     }
 
     buildingCostsMap.set(habType, {
@@ -340,8 +392,8 @@ async function main() {
     });
 
     console.log(`Habitation building ${habType}:`);
-    for (const exchange of EXCHANGES) {
-      console.log(`  ${exchange}: ${costs[exchange].toFixed(2)}`);
+    for (const variant of EXCHANGE_VARIANTS) {
+      console.log(`  ${variant}: ${costs[variant]?.toFixed(2) || '0.00'}`);
     }
   }
 
@@ -349,26 +401,39 @@ async function main() {
   console.log("\nCalculating worker type costs (daily)...\n");
 
   interface WorkerTypeCostData {
-    costs: Record<Exchange, number>;
+    costs: Partial<Record<ExchangeVariant, number>>;
   }
 
   const workerTypeCostsCalculatedMap = new Map<string, WorkerTypeCostData>();
 
   for (const workerRow of workerTypeCostRows) {
     const workerType = workerRow.WorkerType;
-    const costs: Record<Exchange, number> = {
-      ANT: 0, CIS: 0, ICA: 0, NCC: 0, UNV: 0
-    };
+    const costs: Partial<Record<ExchangeVariant, number>> = {};
 
-    for (const exchange of EXCHANGES) {
-      costs[exchange] = calculateMaterialCost(workerRow, pricesMap, exchange);
+    for (const variant of EXCHANGE_VARIANTS) {
+      // Determine exchange and price type for this variant
+      let exchange: Exchange;
+      let priceType: PriceType = "ask";
+
+      if (variant === "UNV7") {
+        exchange = "UNV";
+        priceType = "pp7";
+      } else if (variant === "UNV30") {
+        exchange = "UNV";
+        priceType = "pp30";
+      } else {
+        exchange = variant as Exchange;
+        priceType = "ask";
+      }
+
+      costs[variant] = calculateMaterialCost(workerRow, pricesMap, exchange, priceType);
     }
 
     workerTypeCostsCalculatedMap.set(workerType, { costs });
 
     console.log(`Worker type ${workerType}:`);
-    for (const exchange of EXCHANGES) {
-      console.log(`  ${exchange}: ${costs[exchange].toFixed(2)}`);
+    for (const variant of EXCHANGE_VARIANTS) {
+      console.log(`  ${variant}: ${costs[variant]?.toFixed(2) || '0.00'}`);
     }
   }
 
@@ -381,18 +446,20 @@ async function main() {
     "CIS-Cost": string;
     "ICA-Cost": string;
     "NCC-Cost": string;
-    "UNV-Cost": string;
+    "UNV7-Cost": string;
+    "UNV30-Cost": string;
   }
 
   const workerTypeCostCalculatedRows: WorkerTypeCostCalculatedRow[] = [];
   for (const [workerType, data] of workerTypeCostsCalculatedMap.entries()) {
     workerTypeCostCalculatedRows.push({
       WorkerType: workerType,
-      "ANT-Cost": data.costs.ANT.toFixed(2),
-      "CIS-Cost": data.costs.CIS.toFixed(2),
-      "ICA-Cost": data.costs.ICA.toFixed(2),
-      "NCC-Cost": data.costs.NCC.toFixed(2),
-      "UNV-Cost": data.costs.UNV.toFixed(2),
+      "ANT-Cost": (data.costs.ANT || 0).toFixed(2),
+      "CIS-Cost": (data.costs.CIS || 0).toFixed(2),
+      "ICA-Cost": (data.costs.ICA || 0).toFixed(2),
+      "NCC-Cost": (data.costs.NCC || 0).toFixed(2),
+      "UNV7-Cost": (data.costs.UNV7 || 0).toFixed(2),
+      "UNV30-Cost": (data.costs.UNV30 || 0).toFixed(2),
     });
   }
 
@@ -411,7 +478,8 @@ async function main() {
     "CIS-Cost": string;
     "ICA-Cost": string;
     "NCC-Cost": string;
-    "UNV-Cost": string;
+    "UNV7-Cost": string;
+    "UNV30-Cost": string;
   }
 
   const buildingCostRows: BuildingCostRow[] = [];
@@ -419,11 +487,12 @@ async function main() {
     buildingCostRows.push({
       Building: building,
       BuildingType: data.buildingType,
-      "ANT-Cost": data.costs.ANT.toFixed(2),
-      "CIS-Cost": data.costs.CIS.toFixed(2),
-      "ICA-Cost": data.costs.ICA.toFixed(2),
-      "NCC-Cost": data.costs.NCC.toFixed(2),
-      "UNV-Cost": data.costs.UNV.toFixed(2),
+      "ANT-Cost": (data.costs.ANT || 0).toFixed(2),
+      "CIS-Cost": (data.costs.CIS || 0).toFixed(2),
+      "ICA-Cost": (data.costs.ICA || 0).toFixed(2),
+      "NCC-Cost": (data.costs.NCC || 0).toFixed(2),
+      "UNV7-Cost": (data.costs.UNV7 || 0).toFixed(2),
+      "UNV30-Cost": (data.costs.UNV30 || 0).toFixed(2),
     });
   }
 
@@ -453,16 +522,12 @@ async function main() {
       const productionBuildingData = buildingCostsMap.get(building);
       const habitationReq = productionHabReqMap.get(building);
 
-      // Calculate costs for each exchange
-      const costsByExchange: Record<Exchange, { wfCost: number; buildCost: number; deprec: number }> = {
-        ANT: { wfCost: 0, buildCost: 0, deprec: 0 },
-        CIS: { wfCost: 0, buildCost: 0, deprec: 0 },
-        ICA: { wfCost: 0, buildCost: 0, deprec: 0 },
-        NCC: { wfCost: 0, buildCost: 0, deprec: 0 },
-        UNV: { wfCost: 0, buildCost: 0, deprec: 0 }
-      };
+      // Calculate costs for each exchange variant (including UNV7 and UNV30)
+      const costsByVariant: Partial<Record<ExchangeVariant, { wfCost: number; buildCost: number; deprec: number }>> = {};
 
-      for (const exchange of EXCHANGES) {
+      for (const variant of EXCHANGE_VARIANTS) {
+        // Map variant to actual exchange
+        const exchange: Exchange = (variant === "UNV7" || variant === "UNV30") ? "UNV" : variant as Exchange;
         // Calculate workforce cost using worker types
         let dailyWorkforceCost = 0;
         if (workerReq) {
@@ -478,7 +543,7 @@ async function main() {
             if (workerType && workerQty > 0) {
               const workerData = workerTypeCostsCalculatedMap.get(workerType);
               if (workerData) {
-                const workerUnitCost = workerData.costs[exchange];
+                const workerUnitCost = workerData.costs[variant] || 0;
                 totalWorkerCost += workerUnitCost * workerQty;
               } else {
                 console.warn(`  Warning: Worker type ${workerType} not found in worker costs map`);
@@ -500,7 +565,7 @@ async function main() {
 
         // Get production building cost from pre-calculated map
         if (productionBuildingData) {
-          productionBuildCost = productionBuildingData.costs[exchange];
+          productionBuildCost = productionBuildingData.costs[variant] || 0;
         }
 
         // Calculate habitation cost by summing required habitation buildings
@@ -517,7 +582,7 @@ async function main() {
             if (habType && habQty > 0) {
               const habData = buildingCostsMap.get(habType);
               if (habData) {
-                const habUnitCost = habData.costs[exchange];
+                const habUnitCost = habData.costs[variant] || 0;
                 habitationBuildCost += habUnitCost * habQty;
               } else {
                 console.warn(`  Warning: Habitation type ${habType} not found in building costs map`);
@@ -536,31 +601,32 @@ async function main() {
           dailyDepreciation = productionBuildCost / 180;
         }
 
-        costsByExchange[exchange] = {
+        costsByVariant[variant] = {
           wfCost: dailyWorkforceCost,
           buildCost: totalBuildCost,
           deprec: dailyDepreciation
         };
 
-        console.log(`  ${exchange}: WF=${dailyWorkforceCost.toFixed(2)}, Build=${totalBuildCost.toFixed(2)} (Prod=${productionBuildCost.toFixed(2)}, Hab=${habitationBuildCost.toFixed(2)}), Deprec=${dailyDepreciation.toFixed(2)}`);
+        console.log(`  ${variant}: WF=${dailyWorkforceCost.toFixed(2)}, Build=${totalBuildCost.toFixed(2)} (Prod=${productionBuildCost.toFixed(2)}, Hab=${habitationBuildCost.toFixed(2)}), Deprec=${dailyDepreciation.toFixed(2)}`);
       }
 
-      // Update all recipes for this building with exchange-specific costs
+      // Update all recipes for this building with exchange-variant-specific costs
       for (const r of recipeRows) {
         if (r.Building === building) {
           const runs = Number(r["Runs P/D"]) || 1;
 
-          for (const exchange of EXCHANGES) {
-            const costs = costsByExchange[exchange];
+          for (const variant of EXCHANGE_VARIANTS) {
+            const costs = costsByVariant[variant];
+            if (!costs) continue;
 
             // WfCst = daily workforce cost ÷ runs per day (per batch)
-            r[`WfCst-${exchange}`] = (costs.wfCost / runs).toFixed(2);
+            r[`WfCst-${variant}`] = (costs.wfCost / runs).toFixed(2);
 
             // Deprec = daily depreciation ÷ runs per day (per batch)
-            r[`Deprec-${exchange}`] = (costs.deprec / runs).toFixed(2);
+            r[`Deprec-${variant}`] = (costs.deprec / runs).toFixed(2);
 
             // AllBuildCst = total build cost (NOT divided - one-time total)
-            r[`AllBuildCst-${exchange}`] = costs.buildCost.toFixed(2);
+            r[`AllBuildCst-${variant}`] = costs.buildCost.toFixed(2);
           }
 
           updatedCount++;
@@ -587,9 +653,9 @@ async function main() {
   if (sampleRecipe) {
     console.log(`Sample recipe (${sampleRecipe.Ticker} in ${sampleRecipe.Building}):`);
     console.log(`  Runs P/D: ${sampleRecipe["Runs P/D"]}`);
-    console.log(`\n  Exchange-specific costs:`);
-    for (const exchange of EXCHANGES) {
-      console.log(`    ${exchange}: WfCst=${sampleRecipe[`WfCst-${exchange}`]}, Deprec=${sampleRecipe[`Deprec-${exchange}`]}, BuildCst=${sampleRecipe[`AllBuildCst-${exchange}`]}`);
+    console.log(`\n  Exchange-variant-specific costs:`);
+    for (const variant of EXCHANGE_VARIANTS) {
+      console.log(`    ${variant}: WfCst=${sampleRecipe[`WfCst-${variant}`]}, Deprec=${sampleRecipe[`Deprec-${variant}`]}, BuildCst=${sampleRecipe[`AllBuildCst-${variant}`]}`);
     }
   }
 
