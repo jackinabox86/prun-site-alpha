@@ -7,6 +7,14 @@ export const LOCAL_DATA_SOURCES = {
   prices: "public/data/prices-legacy.csv",
   bestRecipes: "public/data/best-recipes-315.json",
   bestRecipesMeta: "public/data/best-recipes-meta-315.json",
+  /**
+   * Get best recipes path for a specific exchange
+   * @param exchange - The exchange to get best recipes for (ANT, CIS, ICA, NCC, UNV)
+   * @returns Path for exchange-specific best recipes JSON
+   */
+  getBestRecipesForExchange(exchange: string): string {
+    return `public/data/best-recipes-${exchange}.json`;
+  },
 } as const;
 
 /**
@@ -59,6 +67,19 @@ export const GCS_DATA_SOURCES = {
     }
     // Best recipes always uses production file (no -test version)
     return baseUrl;
+  },
+  /**
+   * Get best recipes URL for a specific exchange
+   * @param exchange - The exchange to get best recipes for (ANT, CIS, ICA, NCC, UNV)
+   * @returns URL for exchange-specific best recipes JSON
+   */
+  getBestRecipesForExchange(exchange: string): string {
+    const baseUrl = process.env.GCS_BEST_RECIPES_URL;
+    if (!baseUrl) {
+      throw new Error("GCS_BEST_RECIPES_URL environment variable is not set. Required for GCS mode.");
+    }
+    // Replace .json with -EXCHANGE.json
+    return baseUrl.replace('.json', `-${exchange}.json`);
   },
 } as const;
 

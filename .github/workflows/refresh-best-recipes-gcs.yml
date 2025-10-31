@@ -2,7 +2,8 @@ name: Refresh Best Recipes (Google Cloud Storage)
 
 on:
   schedule:
-    # Run every hour at minute 10 (10 minutes after prices refresh at :00 and :30)
+    # Run every hour at minute 10
+    # Note: To run every 30 minutes, change to: '10,40 * * * *'
     - cron: '10 * * * *'
 
   # Allow manual trigger from GitHub UI
@@ -50,41 +51,66 @@ jobs:
 
       - name: Upload to Google Cloud Storage
         run: |
-          # Upload main data file
+          # Upload exchange-specific data files
+          for exchange in ANT CIS ICA NCC UNV; do
+            echo "Uploading best-recipes-${exchange}.json..."
+            gsutil -h "Cache-Control:public, max-age=300" \
+                   -h "Content-Type:application/json" \
+                   cp public/data/best-recipes-${exchange}.json \
+                   gs://prun-site-alpha-bucket/best-recipes-${exchange}.json
+
+            echo "Uploading best-recipes-meta-${exchange}.json..."
+            gsutil -h "Cache-Control:public, max-age=300" \
+                   -h "Content-Type:application/json" \
+                   cp public/data/best-recipes-meta-${exchange}.json \
+                   gs://prun-site-alpha-bucket/best-recipes-meta-${exchange}.json
+          done
+
+          # Upload default file (ANT) for backwards compatibility
+          echo "Uploading default best-recipes.json (ANT)..."
           gsutil -h "Cache-Control:public, max-age=300" \
                  -h "Content-Type:application/json" \
                  cp public/data/best-recipes.json \
                  gs://prun-site-alpha-bucket/best-recipes.json
 
-          # Upload metadata
           gsutil -h "Cache-Control:public, max-age=300" \
                  -h "Content-Type:application/json" \
                  cp public/data/best-recipes-meta.json \
                  gs://prun-site-alpha-bucket/best-recipes-meta.json
 
-          echo "✅ Files uploaded to GCS"
+          echo "✅ All files uploaded to GCS"
 
       - name: Get public URLs
         run: |
-          echo "📦 Best Recipes Data:"
-          echo "https://storage.googleapis.com/prun-site-alpha-bucket/best-recipes.json"
+          echo "📦 Best Recipes Data (by exchange):"
+          for exchange in ANT CIS ICA NCC UNV; do
+            echo "  ${exchange}: https://storage.googleapis.com/prun-site-alpha-bucket/best-recipes-${exchange}.json"
+          done
           echo ""
-          echo "📊 Metadata:"
-          echo "https://storage.googleapis.com/prun-site-alpha-bucket/best-recipes-meta.json"
+          echo "📦 Default (ANT): https://storage.googleapis.com/prun-site-alpha-bucket/best-recipes.json"
 
       - name: Summary
         run: |
           echo "## Upload Summary" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
-          echo "✅ Best recipes data uploaded to Google Cloud Storage" >> $GITHUB_STEP_SUMMARY
+          echo "✅ Best recipes data uploaded to Google Cloud Storage for all exchanges" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
-          if [ -f public/data/best-recipes-meta.json ]; then
-            echo "### Metadata" >> $GITHUB_STEP_SUMMARY
-            echo "\`\`\`json" >> $GITHUB_STEP_SUMMARY
-            cat public/data/best-recipes-meta.json >> $GITHUB_STEP_SUMMARY
-            echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
-          fi
+
+          echo "### Exchanges Generated" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
+          for exchange in ANT CIS ICA NCC UNV; do
+            if [ -f public/data/best-recipes-meta-${exchange}.json ]; then
+              echo "#### ${exchange}" >> $GITHUB_STEP_SUMMARY
+              echo "\`\`\`json" >> $GITHUB_STEP_SUMMARY
+              cat public/data/best-recipes-meta-${exchange}.json >> $GITHUB_STEP_SUMMARY
+              echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
+              echo "" >> $GITHUB_STEP_SUMMARY
+            fi
+          done
+
           echo "### Public URLs" >> $GITHUB_STEP_SUMMARY
-          echo "- Data: https://storage.googleapis.com/prun-site-alpha-bucket/best-recipes.json" >> $GITHUB_STEP_SUMMARY
-          echo "- Meta: https://storage.googleapis.com/prun-site-alpha-bucket/best-recipes-meta.json" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          for exchange in ANT CIS ICA NCC UNV; do
+            echo "- **${exchange}**: https://storage.googleapis.com/prun-site-alpha-bucket/best-recipes-${exchange}.json" >> $GITHUB_STEP_SUMMARY
+          done
+          echo "- **Default (ANT)**: https://storage.googleapis.com/prun-site-alpha-bucket/best-recipes.json" >> $GITHUB_STEP_SUMMARY

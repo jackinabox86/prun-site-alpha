@@ -1,8 +1,9 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { scenarioDisplayName } from "@/core/scenario";
 import { tickerFilterGroups } from "@/lib/tickerFilters";
+import type { Exchange } from "@/types";
 
 interface BestRecipeResult {
   ticker: string;
@@ -16,8 +17,11 @@ interface ApiResponse {
   success: boolean;
   data?: BestRecipeResult[];
   count?: number;
+  exchange?: Exchange;
   error?: string;
 }
+
+const EXCHANGES: Exchange[] = ["ANT", "CIS", "ICA", "NCC", "UNV"];
 
 export default function BestRecipesClient() {
   const [loading, setLoading] = useState(false);
@@ -27,16 +31,32 @@ export default function BestRecipesClient() {
   const [sortDirection, setSortDirection] = useState<"asc" | "desc">("asc");
   const [filterText, setFilterText] = useState("");
   const [selectedFilterGroupId, setSelectedFilterGroupId] = useState<string>("all");
+  const [exchange, setExchange] = useState<Exchange>("ANT");
+
+  // Read exchange from URL params on mount
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const exchangeParam = params.get("exchange")?.toUpperCase();
+    if (exchangeParam && EXCHANGES.includes(exchangeParam as Exchange)) {
+      setExchange(exchangeParam as Exchange);
+    }
+  }, []);
 
   const loadData = async () => {
     setLoading(true);
     setError(null);
     try {
+      // Update URL with current exchange
+      const url = new URL(window.location.href);
+      url.searchParams.set("exchange", exchange);
+      window.history.replaceState({}, "", url);
+
       // Add a longer timeout for this computation-heavy request
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), 300000); // 5 min timeout
 
-      const res = await fetch("/api/best-recipes", {
+      const qs = new URLSearchParams({ exchange });
+      const res = await fetch(`/api/best-recipes?${qs.toString()}`, {
         cache: "no-store",
         signal: controller.signal
       });
@@ -123,10 +143,56 @@ export default function BestRecipesClient() {
       fontFamily: "-apple-system, BlinkMacSystemFont, Segoe UI, Roboto, Helvetica Neue, Arial, sans-serif"
     }}>
       <div style={{ maxWidth: 1200, margin: "0 auto" }}>
-        <h1 style={{ marginBottom: 16 }}>Best Recipe IDs</h1>
+        <h1 style={{ marginBottom: 16 }}>Best Recipe IDs - {exchange}</h1>
+
+        {/* Exchange Navigation Links */}
+        <div style={{
+          display: "flex",
+          gap: 12,
+          marginBottom: 16,
+          padding: 16,
+          backgroundColor: "#f8f9fa",
+          borderRadius: 6,
+          border: "1px solid #dee2e6"
+        }}>
+          <span style={{ fontWeight: 600, marginRight: 8 }}>Exchange:</span>
+          {EXCHANGES.map((ex) => (
+            <a
+              key={ex}
+              href={`?exchange=${ex}`}
+              onClick={(e) => {
+                e.preventDefault();
+                setExchange(ex);
+              }}
+              style={{
+                padding: "8px 16px",
+                fontWeight: exchange === ex ? 600 : 400,
+                backgroundColor: exchange === ex ? "#007bff" : "white",
+                color: exchange === ex ? "white" : "#007bff",
+                border: `1px solid ${exchange === ex ? "#007bff" : "#ccc"}`,
+                borderRadius: 4,
+                textDecoration: "none",
+                cursor: "pointer",
+                transition: "all 0.2s"
+              }}
+              onMouseEnter={(e) => {
+                if (exchange !== ex) {
+                  e.currentTarget.style.backgroundColor = "#e7f3ff";
+                }
+              }}
+              onMouseLeave={(e) => {
+                if (exchange !== ex) {
+                  e.currentTarget.style.backgroundColor = "white";
+                }
+              }}
+            >
+              {ex}
+            </a>
+          ))}
+        </div>
 
         <p style={{ margin: "8px 0 16px", color: "#555", maxWidth: 900 }}>
-          This page displays the best production recipe for each ticker, calculated in dependency order.
+          This page displays the best production recipe for each ticker on the {exchange} exchange, calculated in dependency order.
           Each ticker shows its optimal recipe ID, scenario, profit per area (P/A), and the P/A if all inputs are bought (Buy All P/A).
           This data is generated dynamically from the current recipes and prices data.
         </p>
