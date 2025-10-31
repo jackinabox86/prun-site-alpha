@@ -85,12 +85,17 @@ class CachedBestRecipes {
     }
 
     if (priceSource === "gcs") {
+      // Get the actual URL that will be fetched for better error messages
+      const { GCS_DATA_SOURCES } = await import("@/lib/config");
+      const attemptedUrl = GCS_DATA_SOURCES.getBestRecipesForExchange(exchange);
+
       const gcsData = await this.loadFromGCS(exchange);
       if (!gcsData) {
         throw new Error(
           `Failed to load GCS best recipes for ${exchange}. ` +
+          `Attempted to fetch: ${attemptedUrl}. ` +
           "Check that GCS_BEST_RECIPES_URL environment variable is set and the GCS bucket is accessible. " +
-          `URL should point to: https://storage.googleapis.com/prun-site-alpha-bucket/best-recipes-${exchange}.json`
+          "Verify the file exists and is publicly readable."
         );
       }
       const bestMap = convertToBestMap(gcsData.results);
@@ -117,7 +122,8 @@ class CachedBestRecipes {
       });
 
       if (!response.ok) {
-        console.log(`GCS fetch failed: ${response.status} ${response.statusText}`);
+        console.error(`GCS fetch failed for ${exchange}: ${response.status} ${response.statusText}`);
+        console.error(`URL attempted: ${url}`);
         return null;
       }
 
