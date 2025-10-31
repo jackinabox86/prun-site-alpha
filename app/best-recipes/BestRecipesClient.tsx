@@ -1,7 +1,8 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { scenarioDisplayName } from "@/core/scenario";
+import { tickerFilterGroups } from "@/lib/tickerFilters";
 
 interface BestRecipeResult {
   ticker: string;
@@ -25,6 +26,7 @@ export default function BestRecipesClient() {
   const [sortColumn, setSortColumn] = useState<keyof BestRecipeResult>("ticker");
   const [sortDirection, setSortDirection] = useState<"asc" | "desc">("asc");
   const [filterText, setFilterText] = useState("");
+  const [selectedFilterGroupId, setSelectedFilterGroupId] = useState<string>("all");
 
   const loadData = async () => {
     setLoading(true);
@@ -79,10 +81,24 @@ export default function BestRecipesClient() {
   };
 
   // Filter and sort data
-  const filteredData = data.filter((row) =>
-    Object.values(row).some((val) =>
-      String(val).toLowerCase().includes(filterText.toLowerCase())
-    )
+  // First, apply ticker group filter
+  const selectedGroup = tickerFilterGroups.find(g => g.id === selectedFilterGroupId);
+  const groupFilteredData = selectedGroup?.tickers
+    ? data.filter((row) => selectedGroup.tickers!.includes(row.ticker))
+    : data; // If tickers is null (All), show all data
+
+  // Then, apply text search within the group-filtered results (ticker name only)
+  // Support exact match when wrapped in quotes: "C" matches only C, not CRU
+  const trimmedFilter = filterText.trim();
+  const isExactMatch = trimmedFilter.startsWith('"') && trimmedFilter.endsWith('"') && trimmedFilter.length > 1;
+  const searchTerm = isExactMatch
+    ? trimmedFilter.slice(1, -1) // Remove quotes
+    : trimmedFilter;
+
+  const filteredData = groupFilteredData.filter((row) =>
+    isExactMatch
+      ? row.ticker.toLowerCase() === searchTerm.toLowerCase()
+      : row.ticker.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
   const sortedData = [...filteredData].sort((a, b) => {
@@ -150,7 +166,7 @@ export default function BestRecipesClient() {
           {data.length > 0 && (
             <input
               type="text"
-              placeholder="Filter results..."
+              placeholder='Filter by ticker name (use "quotes" for exact match)'
               value={filterText}
               onChange={(e) => setFilterText(e.target.value)}
               style={{
@@ -164,6 +180,49 @@ export default function BestRecipesClient() {
             />
           )}
         </div>
+
+        {/* Ticker Group Filters */}
+        {data.length > 0 && (
+          <div style={{
+            display: "flex",
+            gap: 8,
+            marginBottom: 16,
+            flexWrap: "wrap",
+            alignItems: "center"
+          }}>
+            <span style={{ fontWeight: 600, marginRight: 4 }}>Filter by:</span>
+            {tickerFilterGroups.map((group) => (
+              <button
+                key={group.id}
+                onClick={() => setSelectedFilterGroupId(group.id)}
+                style={{
+                  padding: "6px 16px",
+                  fontFamily: "inherit",
+                  fontSize: 14,
+                  fontWeight: selectedFilterGroupId === group.id ? 600 : 400,
+                  backgroundColor: selectedFilterGroupId === group.id ? "#007bff" : "#f8f9fa",
+                  color: selectedFilterGroupId === group.id ? "white" : "#333",
+                  border: selectedFilterGroupId === group.id ? "1px solid #007bff" : "1px solid #ccc",
+                  borderRadius: 4,
+                  cursor: "pointer",
+                  transition: "all 0.2s"
+                }}
+                onMouseEnter={(e) => {
+                  if (selectedFilterGroupId !== group.id) {
+                    e.currentTarget.style.backgroundColor = "#e9ecef";
+                  }
+                }}
+                onMouseLeave={(e) => {
+                  if (selectedFilterGroupId !== group.id) {
+                    e.currentTarget.style.backgroundColor = "#f8f9fa";
+                  }
+                }}
+              >
+                {group.label}
+              </button>
+            ))}
+          </div>
+        )}
 
         {error && (
           <div style={{
@@ -187,7 +246,9 @@ export default function BestRecipesClient() {
             padding: 16
           }}>
             <p style={{ margin: 0, fontSize: 14 }}>
-              <strong>Total Results:</strong> {sortedData.length} / {data.length} tickers
+              <strong>Showing:</strong> {sortedData.length} ticker{sortedData.length !== 1 ? 's' : ''}
+              {selectedFilterGroupId !== 'all' && ` (from ${groupFilteredData.length} in ${selectedGroup?.label})`}
+              {data.length > sortedData.length && ` out of ${data.length} total`}
             </p>
           </div>
         )}

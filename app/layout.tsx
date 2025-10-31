@@ -19,6 +19,9 @@ export default function RootLayout({
             <a href="/best-recipes" style={{ textDecoration: "none", color: "#007bff", fontWeight: 600 }}>
               Best Recipes
             </a>
+            <a href="/xit-converter" style={{ textDecoration: "none", color: "#007bff", fontWeight: 600 }}>
+              XIT Act Converter
+            </a>
           </div>
         </nav>
         {children}
