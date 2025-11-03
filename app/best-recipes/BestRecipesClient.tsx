@@ -21,6 +21,16 @@ interface ApiResponse {
   error?: string;
 }
 
+// Display names for exchange selection (UNV split into UNV7/UNV30)
+const EXCHANGE_DISPLAYS = [
+  { display: "ANT", value: "ANT" as Exchange },
+  { display: "CIS", value: "CIS" as Exchange },
+  { display: "ICA", value: "ICA" as Exchange },
+  { display: "NCC", value: "NCC" as Exchange },
+  { display: "UNV7", value: "UNV7" as any },
+  { display: "UNV30", value: "UNV30" as any },
+];
+
 const EXCHANGES: Exchange[] = ["ANT", "CIS", "ICA", "NCC", "UNV"];
 
 export default function BestRecipesClient() {
@@ -31,14 +41,18 @@ export default function BestRecipesClient() {
   const [sortDirection, setSortDirection] = useState<"asc" | "desc">("asc");
   const [filterText, setFilterText] = useState("");
   const [selectedFilterGroupId, setSelectedFilterGroupId] = useState<string>("all");
-  const [exchange, setExchange] = useState<Exchange>("ANT");
+  const [exchange, setExchange] = useState<string>("ANT");
 
   // Read exchange from URL params on mount
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const exchangeParam = params.get("exchange")?.toUpperCase();
-    if (exchangeParam && EXCHANGES.includes(exchangeParam as Exchange)) {
-      setExchange(exchangeParam as Exchange);
+    if (exchangeParam) {
+      // Check if it's a valid display value
+      const validDisplay = EXCHANGE_DISPLAYS.find(ex => ex.display === exchangeParam);
+      if (validDisplay) {
+        setExchange(validDisplay.display);
+      }
     }
   }, []);
 
@@ -156,37 +170,37 @@ export default function BestRecipesClient() {
           border: "1px solid #dee2e6"
         }}>
           <span style={{ fontWeight: 600, marginRight: 8 }}>Exchange:</span>
-          {EXCHANGES.map((ex) => (
+          {EXCHANGE_DISPLAYS.map((exConfig) => (
             <a
-              key={ex}
-              href={`?exchange=${ex}`}
+              key={exConfig.display}
+              href={`?exchange=${exConfig.display}`}
               onClick={(e) => {
                 e.preventDefault();
-                setExchange(ex);
+                setExchange(exConfig.display);
               }}
               style={{
                 padding: "8px 16px",
-                fontWeight: exchange === ex ? 600 : 400,
-                backgroundColor: exchange === ex ? "#007bff" : "white",
-                color: exchange === ex ? "white" : "#007bff",
-                border: `1px solid ${exchange === ex ? "#007bff" : "#ccc"}`,
+                fontWeight: exchange === exConfig.display ? 600 : 400,
+                backgroundColor: exchange === exConfig.display ? "#007bff" : "white",
+                color: exchange === exConfig.display ? "white" : "#007bff",
+                border: `1px solid ${exchange === exConfig.display ? "#007bff" : "#ccc"}`,
                 borderRadius: 4,
                 textDecoration: "none",
                 cursor: "pointer",
                 transition: "all 0.2s"
               }}
               onMouseEnter={(e) => {
-                if (exchange !== ex) {
+                if (exchange !== exConfig.display) {
                   e.currentTarget.style.backgroundColor = "#e7f3ff";
                 }
               }}
               onMouseLeave={(e) => {
-                if (exchange !== ex) {
+                if (exchange !== exConfig.display) {
                   e.currentTarget.style.backgroundColor = "white";
                 }
               }}
             >
-              {ex}
+              {exConfig.display}
             </a>
           ))}
         </div>
