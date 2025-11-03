@@ -85,7 +85,7 @@ export default function CondensedOptionsTable({ options, exchange, priceType }: 
                 >
                   <td style={{ padding: "8px", border: "1px solid #dee2e6", textAlign: "center" }}>
                     {index === 0 ? (
-                      <span style={{ color: "#6b7280", fontSize: "12px" }}>See Above</span>
+                      <span style={{ color: "#6b7280", fontSize: "12px" }}>See Top</span>
                     ) : (
                       <button
                         onClick={() => toggleRow(index)}
