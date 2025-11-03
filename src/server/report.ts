@@ -202,7 +202,7 @@ export async function buildReport(opts: {
     }
   }
 
-  // Convert to array and create metrics for top display scenarios
+  // Convert to array and create metrics for top display scenarios (limit to 20)
   const topDisplayScenarios: Array<WithMetrics<typeof ranked[number]["o"]>> = Array.from(displayScenarioMap.values()).map(({ o, r }) => {
     const roi = computeRoiNarrow(o);
     const baseProfitPerDay = o.baseProfitPerDay ?? 0;
@@ -226,7 +226,7 @@ export async function buildReport(opts: {
       inputPaybackDays7Narrow: inputPaybackNarrow,
       inputPaybackDays7Broad: inputPaybackBroad,
     };
-  }).sort((a, b) => (b.totalProfitPA ?? 0) - (a.totalProfitPA ?? 0)); // Sort by profit P/A descending
+  }).sort((a, b) => (b.totalProfitPA ?? 0) - (a.totalProfitPA ?? 0)).slice(0, 20); // Sort by profit P/A descending and limit to 20
 
   return {
     schemaVersion: 3,

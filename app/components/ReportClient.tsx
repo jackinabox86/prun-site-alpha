@@ -480,7 +480,7 @@ export default function ReportClient() {
             )}
             <h2>Best Options - Condensed</h2>
             <p style={{ margin: "8px 0 16px", color: "#555", maxWidth: 760 }}>
-              Best performing option for each unique display scenario. Display scenarios show only the buy/make decisions for direct inputs, not their sub-components.
+              Best performing option for each unique display scenario (up to 20). Display scenarios show only the buy/make decisions for direct inputs, not their sub-components.
             </p>
             <CondensedOptionsTable options={report.topDisplayScenarios} exchange={report.exchange} priceType={report.priceType} />
 
