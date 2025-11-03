@@ -89,7 +89,7 @@ function calculateBuyAllProfitPA(
   const rows = recipeMap.map[ticker] || [];
   if (!rows.length) return 0;
 
-  const costCols = getCostColumnNames(exchange, priceType);
+  const costCols = getCostColumnNames(exchange, sellPriceType);
   const idx = {
     recipeId: headers.indexOf("RecipeID"),
     wf: headers.indexOf(costCols.wfCst),
