@@ -52,7 +52,7 @@ jobs:
       - name: Upload to Google Cloud Storage
         run: |
           # Upload exchange-specific data files
-          for exchange in ANT CIS ICA NCC UNV; do
+          for exchange in ANT CIS ICA NCC UNV7 UNV30; do
             echo "Uploading best-recipes-${exchange}.json..."
             gsutil -h "Cache-Control:public, max-age=300" \
                    -h "Content-Type:application/json" \
@@ -83,7 +83,7 @@ jobs:
       - name: Get public URLs
         run: |
           echo "📦 Best Recipes Data (by exchange):"
-          for exchange in ANT CIS ICA NCC UNV; do
+          for exchange in ANT CIS ICA NCC UNV7 UNV30; do
             echo "  ${exchange}: https://storage.googleapis.com/prun-site-alpha-bucket/best-recipes-${exchange}.json"
           done
           echo ""
@@ -98,7 +98,7 @@ jobs:
 
           echo "### Exchanges Generated" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
-          for exchange in ANT CIS ICA NCC UNV; do
+          for exchange in ANT CIS ICA NCC UNV7 UNV30; do
             if [ -f public/data/best-recipes-meta-${exchange}.json ]; then
               echo "#### ${exchange}" >> $GITHUB_STEP_SUMMARY
               echo "\`\`\`json" >> $GITHUB_STEP_SUMMARY
@@ -110,7 +110,7 @@ jobs:
 
           echo "### Public URLs" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
-          for exchange in ANT CIS ICA NCC UNV; do
+          for exchange in ANT CIS ICA NCC UNV7 UNV30; do
             echo "- **${exchange}**: https://storage.googleapis.com/prun-site-alpha-bucket/best-recipes-${exchange}.json" >> $GITHUB_STEP_SUMMARY
           done
           echo "- **Default (ANT)**: https://storage.googleapis.com/prun-site-alpha-bucket/best-recipes.json" >> $GITHUB_STEP_SUMMARY

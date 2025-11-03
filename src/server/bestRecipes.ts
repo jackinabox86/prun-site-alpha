@@ -82,7 +82,8 @@ function calculateBuyAllProfitPA(
   recipeMap: any,
   pricesMap: any,
   exchange: Exchange,
-  priceType: PriceType
+  sellPriceType: PriceType,
+  buyPriceType: PriceType
 ): number | null {
   const headers = recipeMap.headers;
   const rows = recipeMap.map[ticker] || [];
@@ -116,13 +117,13 @@ function calculateBuyAllProfitPA(
       if (matIndex !== -1 && row[matIndex]) {
         const inputTicker = String(row[matIndex]);
         const inputAmount = Number(row[cntIndex] ?? 0);
-        const ask = findPrice(inputTicker, pricesMap, exchange, "ask");
-        if (ask == null) {
+        const buyPrice = findPrice(inputTicker, pricesMap, exchange, buyPriceType);
+        if (buyPrice == null) {
           // No market price available for this input - can't buy it
           hasAllPrices = false;
           break;
         }
-        totalInputCost += inputAmount * ask;
+        totalInputCost += inputAmount * buyPrice;
       }
     }
 
@@ -137,7 +138,7 @@ function calculateBuyAllProfitPA(
       if (matIndex !== -1 && row[matIndex]) {
         const outTicker = String(row[matIndex]);
         const outAmount = Number(row[cntIndex] ?? 0);
-        const outPrice = findPrice(outTicker, pricesMap, exchange, priceType);
+        const outPrice = findPrice(outTicker, pricesMap, exchange, sellPriceType);
         if (outPrice) {
           totalOutputValue += outAmount * outPrice;
         }
@@ -239,10 +240,14 @@ function getTickersInDependencyOrder(recipeSheet: RecipeSheet): string[] {
  * This is the core logic from the Apps Script refreshBestRecipeIDs function
  * @param priceSource - "local" for local prices, "gcs" for GCS prices (default: "local")
  * @param exchange - Exchange to analyze (default: "ANT")
+ * @param buyPriceType - Price type for buying inputs (default: "ask")
+ * @param sellPriceType - Price type for selling outputs (default: "bid")
  */
 export async function refreshBestRecipeIDs(
   priceSource: "local" | "gcs" = "local",
-  exchange: Exchange = "ANT"
+  exchange: Exchange = "ANT",
+  buyPriceType: PriceType = "ask",
+  sellPriceType: PriceType = "bid"
 ): Promise<BestRecipeResult[]> {
   // Clear caches
   clearScenarioCache();
@@ -280,7 +285,7 @@ export async function refreshBestRecipeIDs(
   let processed = 0;
   for (const ticker of orderedTickers) {
     try {
-      // Use "bid" price mode consistently (as in the original script)
+      // Use sellPriceType for valuing outputs (default "bid" for standard exchanges)
       // Use exploreAllChildScenarios=false to rely on bestMapBuilding for children
       // This prevents exponential explosion while building bottom-up
       const options = findAllMakeOptions(
@@ -288,7 +293,7 @@ export async function refreshBestRecipeIDs(
         recipeMap,
         pricesMap,
         exchange,
-        "bid",
+        sellPriceType,
         bestMapBuilding, // Pass the building best map
         0,
         false, // exploreAllChildScenarios - false for performance (use cached best children)
@@ -333,7 +338,7 @@ export async function refreshBestRecipeIDs(
         .slice(0, 3);
 
       // Calculate "buy all inputs" P/A using simple helper function
-      const buyAllProfitPA = calculateBuyAllProfitPA(ticker, recipeMap, pricesMap, exchange, "bid");
+      const buyAllProfitPA = calculateBuyAllProfitPA(ticker, recipeMap, pricesMap, exchange, sellPriceType, buyPriceType);
 
       // Cache normalized best plus top 3 display scenarios (mimics setScenarioCacheForTicker)
       bestMapBuilding[ticker] = {

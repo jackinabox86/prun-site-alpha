@@ -77,6 +77,22 @@ export async function buildReport(opts: {
   // Check if the ticker has a price for the selected price type
   const price = exchangePrices[priceType];
   if (!price) {
+    // Special case: UNV exchange doesn't have bid/ask prices, only pp7/pp30
+    if (exchange === "UNV" && (priceType === "bid" || priceType === "ask")) {
+      return {
+        schemaVersion: 3,
+        ticker,
+        exchange,
+        priceType,
+        totalOptions: 0,
+        bestPA: null,
+        bestScenario: "",
+        best: null,
+        top20: [],
+        error: `Must sell at pp7 or pp30 if using UNV exchange.`,
+      };
+    }
+
     return {
       schemaVersion: 3,
       ticker,
