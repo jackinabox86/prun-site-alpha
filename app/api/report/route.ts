@@ -10,7 +10,7 @@ export const revalidate = 0;
 export async function GET(req: Request) {
   try {
     const url = new URL(req.url);
-    const ticker = (url.searchParams.get("ticker") ?? "PCB").toUpperCase();
+    const ticker = (url.searchParams.get("ticker") ?? "CBS").toUpperCase();
 
     // Support new exchange + priceType parameters
     const exchange = (url.searchParams.get("exchange") ?? "ANT") as Exchange;

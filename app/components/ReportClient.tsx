@@ -23,7 +23,7 @@ type ApiReport = {
 
 export default function ReportClient() {
   const [tickers, setTickers] = useState<string[]>([]);
-  const [tickerInput, setTickerInput] = useState<string>("REP");
+  const [tickerInput, setTickerInput] = useState<string>("CBS");
   const [exchange, setExchange] = useState<Exchange>("ANT");
   const [priceType, setPriceType] = useState<PriceType>("bid");
   const [priceSource, setPriceSource] = useState<"local" | "gcs">("gcs");
