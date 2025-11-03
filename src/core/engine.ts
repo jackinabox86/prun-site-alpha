@@ -43,8 +43,22 @@ function getCostColumnNames(exchange: Exchange, priceType: PriceType) {
 const BEST_MEMO = new Map<string, MakeOption>();
 const ALL_SCENARIOS_MEMO = new Map<string, MakeOption[]>();
 
-const memoKey = (exchange: Exchange, priceType: PriceType, ticker: string) =>
-  `${exchange}::${priceType}::${ticker}`;
+const memoKey = (
+  exchange: Exchange,
+  priceType: PriceType,
+  ticker: string,
+  forceMake?: Set<string>,
+  forceBuy?: Set<string>
+) => {
+  // Serialize force constraints into the cache key
+  const forceMakeStr = forceMake && forceMake.size > 0
+    ? Array.from(forceMake).sort().join(',')
+    : '';
+  const forceBuyStr = forceBuy && forceBuy.size > 0
+    ? Array.from(forceBuy).sort().join(',')
+    : '';
+  return `${exchange}::${priceType}::${ticker}::${forceMakeStr}::${forceBuyStr}`;
+};
 
 /** Clear all caches - call this between different analyses if needed */
 export function clearScenarioCache() {
@@ -495,7 +509,7 @@ function bestOptionForTicker(
   forceMake?: Set<string>,
   forceBuy?: Set<string>
 ): MakeOption | null {
-  const mkey = memoKey(exchange, priceType, materialTicker);
+  const mkey = memoKey(exchange, priceType, materialTicker, forceMake, forceBuy);
   if (BEST_MEMO.has(mkey)) return BEST_MEMO.get(mkey)!;
 
   // guard against cycles
@@ -807,7 +821,7 @@ export function findAllMakeOptions(
   if (depth > 0) {
     if (exploreAllChildScenarios) {
       // Check full exploration cache
-      const cacheKey = memoKey(exchange, priceType, materialTicker);
+      const cacheKey = memoKey(exchange, priceType, materialTicker, forceMake, forceBuy);
       if (ALL_SCENARIOS_MEMO.has(cacheKey)) {
         return ALL_SCENARIOS_MEMO.get(cacheKey)!;
       }
@@ -1136,7 +1150,7 @@ export function findAllMakeOptions(
 
   // Cache AFTER all rows processed, OUTSIDE the loop
   if (depth > 0 && results.length > 0 && exploreAllChildScenarios) {
-    const cacheKey = memoKey(exchange, priceType, materialTicker);
+    const cacheKey = memoKey(exchange, priceType, materialTicker, forceMake, forceBuy);
     ALL_SCENARIOS_MEMO.set(cacheKey, results);
   }
 
