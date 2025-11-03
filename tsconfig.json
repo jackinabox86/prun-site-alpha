@@ -12,18 +12,34 @@
     "moduleResolution": "Bundler",
     "resolveJsonModule": true,
     "esModuleInterop": true,
-    "jsx": "preserve",
+    "jsx": "react-jsx",
     "forceConsistentCasingInFileNames": true,
     "baseUrl": ".",
     "paths": {
-      "@/*": ["./*"],
-      "@core/*": ["src/core/*"],
-      "@mocks/*": ["src/mocks/*"],
-      "@/core/*": ["src/core/*"],
-      "@/lib/*": ["src/lib/*"],
-      "@/types": ["src/types"],
-      "@/server/*": ["src/server/*"],
-      "@/components/*": ["app/components/*"]   // <— add this line
+      "@/*": [
+        "./*"
+      ],
+      "@core/*": [
+        "src/core/*"
+      ],
+      "@mocks/*": [
+        "src/mocks/*"
+      ],
+      "@/core/*": [
+        "src/core/*"
+      ],
+      "@/lib/*": [
+        "src/lib/*"
+      ],
+      "@/types": [
+        "src/types"
+      ],
+      "@/server/*": [
+        "src/server/*"
+      ],
+      "@/components/*": [
+        "app/components/*"
+      ] // <— add this line
     },
     "allowJs": true,
     "skipLibCheck": true,
@@ -39,7 +55,8 @@
     "**/*.ts",
     "**/*.tsx",
     "next-env.d.ts",
-    ".next/types/**/*.ts"
+    ".next/types/**/*.ts",
+    ".next/dev/types/**/*.ts"
   ],
   "exclude": [
     "node_modules"
