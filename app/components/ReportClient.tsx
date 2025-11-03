@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import type { PriceMode, Exchange, PriceType } from "@/types";
 import BestScenarioSankey from "./BestScenarioSankey";
 import Top20Table from "./Top20Table";
+import CondensedOptionsTable from "./CondensedOptionsTable";
 import { scenarioDisplayName } from "@/core/scenario";
 
 type ApiReport = {
@@ -17,6 +18,7 @@ type ApiReport = {
   bestPA: number | null;
   best: any;
   top20: any[];
+  topDisplayScenarios: any[];
 };
 
 export default function ReportClient() {
@@ -476,9 +478,15 @@ export default function ReportClient() {
                 </span>
               </div>
             )}
-            <h2>Top Options</h2>
+            <h2>Best Options - Condensed</h2>
             <p style={{ margin: "8px 0 16px", color: "#555", maxWidth: 760 }}>
-              List of up to 20 other production scenarios ranked by profit per area.
+              Best performing option for each unique display scenario. Display scenarios show only the buy/make decisions for direct inputs, not their sub-components.
+            </p>
+            <CondensedOptionsTable options={report.topDisplayScenarios} exchange={report.exchange} priceType={report.priceType} />
+
+            <h2 style={{ marginTop: 32 }}>Best Options - Expanded</h2>
+            <p style={{ margin: "8px 0 16px", color: "#555", maxWidth: 760 }}>
+              List of up to 20 other production scenarios ranked by profit per area, including multiple full scenarios per display scenario.
             </p>
             <Top20Table options={report.top20} exchange={report.exchange} priceType={report.priceType} />
           </section>
