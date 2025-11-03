@@ -29,7 +29,9 @@ export async function buildReport(opts: {
   const { ticker, exchange, priceType, priceSource = "local" } = opts;
 
   // Get cached best recipes matching the price source
-  const { bestMap } = await cachedBestRecipes.getBestRecipes(priceSource);
+  // Use exchange-specific best recipes, except UNV always uses ANT
+  const bestRecipesExchange = exchange === "UNV" ? "ANT" : exchange;
+  const { bestMap } = await cachedBestRecipes.getBestRecipes(priceSource, bestRecipesExchange);
 
   // Determine which data sources to use based on priceSource
   const dataSources = priceSource === "gcs" ? GCS_DATA_SOURCES : LOCAL_DATA_SOURCES;

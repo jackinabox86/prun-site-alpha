@@ -12,6 +12,7 @@ export interface BestRecipeResult {
   scenario: string;
   profitPA: number;
   buyAllProfitPA: number | null; // Profit P/A if all inputs are bought instead of made, null if inputs missing
+  building?: string | null; // Building type that produces this ticker
   top3DisplayScenarios?: Array<{ displayScenario: string; scenario: string; profitPA: number }>; // Top 3 simple scenarios for higher-stage analysis
 }
 
@@ -340,6 +341,13 @@ export async function refreshBestRecipeIDs(
       // Calculate "buy all inputs" P/A using simple helper function
       const buyAllProfitPA = calculateBuyAllProfitPA(ticker, recipeMap, pricesMap, exchange, sellPriceType, buyPriceType);
 
+      // Extract building info from recipe data
+      const buildingIndex = recipeMap.headers.indexOf("Building");
+      const tickerRows = recipeMap.map[ticker] || [];
+      const building = buildingIndex !== -1 && tickerRows.length > 0
+        ? String(tickerRows[0][buildingIndex] || "")
+        : null;
+
       // Cache normalized best plus top 3 display scenarios (mimics setScenarioCacheForTicker)
       bestMapBuilding[ticker] = {
         recipeId: null, // Normalized as in the original script
@@ -354,6 +362,7 @@ export async function refreshBestRecipeIDs(
         scenario: best.scenario || "",
         profitPA: best.totalProfitPA || 0,
         buyAllProfitPA,
+        building,
         top3DisplayScenarios,
       });
 

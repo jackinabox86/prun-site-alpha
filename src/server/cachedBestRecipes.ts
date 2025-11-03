@@ -15,18 +15,18 @@ class CachedBestRecipes {
   private cache: Map<string, { results: BestRecipeResult[]; bestMap: BestMap }> = new Map();
   private initPromises: Map<string, Promise<void>> = new Map();
 
-  private getCacheKey(priceSource: "local" | "gcs", exchange: Exchange): string {
+  private getCacheKey(priceSource: "local" | "gcs", exchange: string): string {
     return `${priceSource}-${exchange}`;
   }
 
   /**
    * Get or load the best recipes and bestMap
    * @param priceSource - "local" for legacy static files, "gcs" for live GCS data (required)
-   * @param exchange - Exchange to load (default: "ANT")
+   * @param exchange - Exchange to load (default: "ANT") - can also be "UNV7" or "UNV30"
    */
   async getBestRecipes(
     priceSource: "local" | "gcs",
-    exchange: Exchange = "ANT"
+    exchange: string = "ANT"
   ): Promise<{ results: BestRecipeResult[]; bestMap: BestMap }> {
     if (!priceSource) {
       throw new Error("priceSource is required - must be 'local' or 'gcs'");
@@ -67,7 +67,7 @@ class CachedBestRecipes {
     return cached;
   }
 
-  private async initialize(priceSource: "local" | "gcs", exchange: Exchange): Promise<void> {
+  private async initialize(priceSource: "local" | "gcs", exchange: string): Promise<void> {
     const cacheKey = this.getCacheKey(priceSource, exchange);
 
     if (priceSource === "local") {
@@ -111,7 +111,7 @@ class CachedBestRecipes {
    * Try to load best recipes from Google Cloud Storage
    * Returns data and timestamp if successful, null otherwise
    */
-  private async loadFromGCS(exchange: Exchange): Promise<{ results: BestRecipeResult[]; generatedAt: string } | null> {
+  private async loadFromGCS(exchange: string): Promise<{ results: BestRecipeResult[]; generatedAt: string } | null> {
     try {
       const { GCS_DATA_SOURCES } = await import("@/lib/config");
 
@@ -170,7 +170,7 @@ class CachedBestRecipes {
    * Try to load best recipes from pre-generated static JSON file
    * Returns data and timestamp if successful, null otherwise
    */
-  private async loadFromStaticFile(exchange: Exchange): Promise<{ results: BestRecipeResult[]; generatedAt: string } | null> {
+  private async loadFromStaticFile(exchange: string): Promise<{ results: BestRecipeResult[]; generatedAt: string } | null> {
     try {
       const { LOCAL_DATA_SOURCES } = await import("@/lib/config");
 
@@ -209,7 +209,7 @@ class CachedBestRecipes {
    * Clear the cache and force reload on next access
    * @param exchange - Optional exchange to clear. If not provided, clears all exchanges.
    */
-  clearCache(exchange?: Exchange): void {
+  clearCache(exchange?: string): void {
     if (exchange) {
       // Clear specific exchange for both sources
       const localKey = this.getCacheKey("local", exchange);
@@ -228,7 +228,7 @@ class CachedBestRecipes {
   /**
    * Check if cache is populated for a given source and exchange
    */
-  isCached(priceSource: "local" | "gcs", exchange: Exchange = "ANT"): boolean {
+  isCached(priceSource: "local" | "gcs", exchange: string = "ANT"): boolean {
     const cacheKey = this.getCacheKey(priceSource, exchange);
     return this.cache.has(cacheKey);
   }

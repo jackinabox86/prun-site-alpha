@@ -9,6 +9,7 @@ export const revalidate = 0;
 export const maxDuration = 300; // Allow up to 5 minutes for computation
 
 const VALID_EXCHANGES: Exchange[] = ["ANT", "CIS", "ICA", "NCC", "UNV"];
+const VALID_EXCHANGE_DISPLAYS = ["ANT", "CIS", "ICA", "NCC", "UNV7", "UNV30"];
 
 export async function GET(request: Request) {
   try {
@@ -17,9 +18,9 @@ export async function GET(request: Request) {
     const priceSource = (searchParams.get("priceSource") || "gcs") as "local" | "gcs";
     const exchangeParam = searchParams.get("exchange")?.toUpperCase() || "ANT";
 
-    // Validate exchange parameter
-    const exchange = VALID_EXCHANGES.includes(exchangeParam as Exchange)
-      ? (exchangeParam as Exchange)
+    // Validate exchange parameter - accept UNV7 and UNV30 as special cases
+    const exchange = VALID_EXCHANGE_DISPLAYS.includes(exchangeParam)
+      ? exchangeParam
       : "ANT";
 
     if (clearCache) {
