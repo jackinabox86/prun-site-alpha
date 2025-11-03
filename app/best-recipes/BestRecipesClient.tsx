@@ -22,17 +22,15 @@ interface ApiResponse {
   error?: string;
 }
 
-// Display names for exchange selection (UNV split into UNV7/UNV30)
+// Display names for exchange selection
 const EXCHANGE_DISPLAYS = [
   { display: "ANT", value: "ANT" as Exchange },
   { display: "CIS", value: "CIS" as Exchange },
   { display: "ICA", value: "ICA" as Exchange },
   { display: "NCC", value: "NCC" as Exchange },
-  { display: "UNV7", value: "UNV7" as any },
-  { display: "UNV30", value: "UNV30" as any },
 ];
 
-const EXCHANGES: Exchange[] = ["ANT", "CIS", "ICA", "NCC", "UNV"];
+const EXCHANGES: Exchange[] = ["ANT", "CIS", "ICA", "NCC"];
 
 export default function BestRecipesClient() {
   const [loading, setLoading] = useState(false);
