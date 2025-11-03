@@ -43,8 +43,22 @@ function getCostColumnNames(exchange: Exchange, priceType: PriceType) {
 const BEST_MEMO = new Map<string, MakeOption>();
 const ALL_SCENARIOS_MEMO = new Map<string, MakeOption[]>();
 
-const memoKey = (exchange: Exchange, priceType: PriceType, ticker: string) =>
-  `${exchange}::${priceType}::${ticker}`;
+const memoKey = (
+  exchange: Exchange,
+  priceType: PriceType,
+  ticker: string,
+  forceMake?: Set<string>,
+  forceBuy?: Set<string>
+) => {
+  // Serialize force constraints into the cache key
+  const forceMakeStr = forceMake && forceMake.size > 0
+    ? Array.from(forceMake).sort().join(',')
+    : '';
+  const forceBuyStr = forceBuy && forceBuy.size > 0
+    ? Array.from(forceBuy).sort().join(',')
+    : '';
+  return `${exchange}::${priceType}::${ticker}::${forceMakeStr}::${forceBuyStr}`;
+};
 
 /** Clear all caches - call this between different analyses if needed */
 export function clearScenarioCache() {
@@ -165,17 +179,19 @@ function topDisplayScenarioOptionsForTicker(
   priceType: PriceType,
   bestMap: any, // Enhanced BestMap with top3DisplayScenarios
   honorRecipeIdFilter: boolean,
-  seen: Set<string> = new Set()
+  seen: Set<string> = new Set(),
+  forceMake?: Set<string>,
+  forceBuy?: Set<string>
 ): MakeOption[] {
   const bestEntry = bestMap?.[materialTicker];
   if (!bestEntry || !bestEntry.top3DisplayScenarios || bestEntry.top3DisplayScenarios.length === 0) {
     // Fallback to single best option
-    const best = bestOptionForTicker(materialTicker, recipeMap, priceMap, exchange, priceType, bestMap, honorRecipeIdFilter, seen);
+    const best = bestOptionForTicker(materialTicker, recipeMap, priceMap, exchange, priceType, bestMap, honorRecipeIdFilter, seen, forceMake, forceBuy);
     return best ? [best] : [];
   }
 
   // Build all options for this ticker and match against stored display scenarios
-  const allOptions = buildAllOptionsForTicker(materialTicker, recipeMap, priceMap, exchange, priceType, bestMap, honorRecipeIdFilter, seen);
+  const allOptions = buildAllOptionsForTicker(materialTicker, recipeMap, priceMap, exchange, priceType, bestMap, honorRecipeIdFilter, seen, forceMake, forceBuy);
 
   // Match options to the stored top 3 display scenarios
   const matchedOptions: MakeOption[] = [];
@@ -205,7 +221,9 @@ function buildAllOptionsForTicker(
   priceType: PriceType,
   bestMap: any,
   honorRecipeIdFilter: boolean,
-  seen: Set<string>
+  seen: Set<string>,
+  forceMake?: Set<string>,
+  forceBuy?: Set<string>
 ): MakeOption[] {
   const headers = recipeMap.headers;
   const rows = recipeMap.map[materialTicker] || [];
@@ -269,7 +287,9 @@ function buildAllOptionsForTicker(
           priceType,
           bestMap,
           honorRecipeIdFilter,
-          seen
+          seen,
+          forceMake,
+          forceBuy
         );
         inputs.push({ ticker: inputTicker, amount: inputAmount, buyCost, childBest });
       }
@@ -331,8 +351,12 @@ function buildAllOptionsForTicker(
     for (const input of inputs) {
       const branched: Scn[] = [];
 
-      // BUY branch
-      if (input.buyCost != null) {
+      // Check force constraints
+      const isForcedMake = forceMake && forceMake.has(input.ticker);
+      const isForcedBuy = forceBuy && forceBuy.has(input.ticker);
+
+      // BUY branch (skip if forced to make)
+      if (input.buyCost != null && !isForcedMake) {
         for (const scn of scenarios) {
           const fullName = composeScenario(scn.scenarioName, {
             type: "BUY",
@@ -360,8 +384,8 @@ function buildAllOptionsForTicker(
         }
       }
 
-      // MAKE branch (single best child only, if available)
-      if (input.childBest) {
+      // MAKE branch (single best child only, if available) (skip if forced to buy)
+      if (input.childBest && !isForcedBuy) {
         for (const scn of scenarios) {
           const mo = input.childBest;
           const fullName = composeScenario(scn.scenarioName, {
@@ -481,9 +505,11 @@ function bestOptionForTicker(
   priceType: PriceType,
   bestMap: BestMap,
   honorRecipeIdFilter: boolean,
-  seen: Set<string> = new Set()
+  seen: Set<string> = new Set(),
+  forceMake?: Set<string>,
+  forceBuy?: Set<string>
 ): MakeOption | null {
-  const mkey = memoKey(exchange, priceType, materialTicker);
+  const mkey = memoKey(exchange, priceType, materialTicker, forceMake, forceBuy);
   if (BEST_MEMO.has(mkey)) return BEST_MEMO.get(mkey)!;
 
   // guard against cycles
@@ -558,7 +584,9 @@ function bestOptionForTicker(
           priceType,
           bestMap,
           honorRecipeIdFilter,
-          nextSeen
+          nextSeen,
+          forceMake,
+          forceBuy
         );
         inputs.push({ ticker: inputTicker, amount: inputAmount, buyCost, childBest });
       }
@@ -620,8 +648,12 @@ function bestOptionForTicker(
     for (const input of inputs) {
       const branched: Scn[] = [];
 
-      // BUY branch
-      if (input.buyCost != null) {
+      // Check force constraints
+      const isForcedMake = forceMake && forceMake.has(input.ticker);
+      const isForcedBuy = forceBuy && forceBuy.has(input.ticker);
+
+      // BUY branch (skip if forced to make)
+      if (input.buyCost != null && !isForcedMake) {
         for (const scn of scenarios) {
           const fullName = composeScenario(scn.scenarioName, {
             type: "BUY",
@@ -650,8 +682,8 @@ function bestOptionForTicker(
         }
       }
 
-      // MAKE branch (single best child only, if available)
-      if (input.childBest) {
+      // MAKE branch (single best child only, if available) (skip if forced to buy)
+      if (input.childBest && !isForcedBuy) {
         for (const scn of scenarios) {
           const mo = input.childBest;
           const fullName = composeScenario(scn.scenarioName, {
@@ -781,13 +813,15 @@ export function findAllMakeOptions(
   bestMap: BestMap,
   depth = 0,
   exploreAllChildScenarios = false,
-  honorRecipeIdFilter = false
+  honorRecipeIdFilter = false,
+  forceMake?: Set<string>,
+  forceBuy?: Set<string>
 ): MakeOption[] {
   // Optimized cache checking for children
   if (depth > 0) {
     if (exploreAllChildScenarios) {
       // Check full exploration cache
-      const cacheKey = memoKey(exchange, priceType, materialTicker);
+      const cacheKey = memoKey(exchange, priceType, materialTicker, forceMake, forceBuy);
       if (ALL_SCENARIOS_MEMO.has(cacheKey)) {
         return ALL_SCENARIOS_MEMO.get(cacheKey)!;
       }
@@ -803,7 +837,10 @@ export function findAllMakeOptions(
           exchange,
           priceType,
           bestMap,
-          honorRecipeIdFilter
+          honorRecipeIdFilter,
+          undefined,
+          forceMake,
+          forceBuy
         );
       } else {
         // Fallback to single best (has its own BEST_MEMO cache)
@@ -814,7 +851,10 @@ export function findAllMakeOptions(
           exchange,
           priceType,
           bestMap,
-          honorRecipeIdFilter
+          honorRecipeIdFilter,
+          undefined,
+          forceMake,
+          forceBuy
         );
         return best ? [best] : [];
       }
@@ -901,7 +941,9 @@ export function findAllMakeOptions(
           bestMap,
           depth + 1,
           depth <= 2 && exploreAllChildScenarios,
-          honorRecipeIdFilter
+          honorRecipeIdFilter,
+          forceMake,
+          forceBuy
         );
 
         // Apply intelligent pruning based on depth
@@ -977,8 +1019,12 @@ export function findAllMakeOptions(
     for (const input of inputs) {
       const branched: Scn[] = [];
 
-      // BUY branch
-      if (input.buyCost != null) {
+      // Check force constraints
+      const isForcedMake = forceMake && forceMake.has(input.ticker);
+      const isForcedBuy = forceBuy && forceBuy.has(input.ticker);
+
+      // BUY branch (skip if forced to make)
+      if (input.buyCost != null && !isForcedMake) {
         for (const scn of scenarios) {
           const fullName = composeScenario(scn.scenarioName, {
             type: "BUY",
@@ -1007,8 +1053,8 @@ export function findAllMakeOptions(
         }
       }
 
-      // MAKE branch - iterate over ALL child options
-      if (input.childOptions && input.childOptions.length > 0) {
+      // MAKE branch - iterate over ALL child options (skip if forced to buy)
+      if (input.childOptions && input.childOptions.length > 0 && !isForcedBuy) {
         for (const childOpt of input.childOptions) {
           for (const scn of scenarios) {
             const fullName = composeScenario(scn.scenarioName, {
@@ -1104,7 +1150,7 @@ export function findAllMakeOptions(
 
   // Cache AFTER all rows processed, OUTSIDE the loop
   if (depth > 0 && results.length > 0 && exploreAllChildScenarios) {
-    const cacheKey = memoKey(exchange, priceType, materialTicker);
+    const cacheKey = memoKey(exchange, priceType, materialTicker, forceMake, forceBuy);
     ALL_SCENARIOS_MEMO.set(cacheKey, results);
   }
 

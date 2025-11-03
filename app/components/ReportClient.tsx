@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import type { PriceMode, Exchange, PriceType } from "@/types";
 import BestScenarioSankey from "./BestScenarioSankey";
 import Top20Table from "./Top20Table";
+import CondensedOptionsTable from "./CondensedOptionsTable";
 import { scenarioDisplayName } from "@/core/scenario";
 
 type ApiReport = {
@@ -17,6 +18,7 @@ type ApiReport = {
   bestPA: number | null;
   best: any;
   top20: any[];
+  topDisplayScenarios: any[];
 };
 
 export default function ReportClient() {
@@ -26,6 +28,8 @@ export default function ReportClient() {
   const [priceType, setPriceType] = useState<PriceType>("bid");
   const [priceSource, setPriceSource] = useState<"local" | "gcs">("gcs");
   const [urlParamsChecked, setUrlParamsChecked] = useState(false);
+  const [forceMake, setForceMake] = useState<string>("");
+  const [forceBuy, setForceBuy] = useState<string>("");
 
   const [loading, setLoading] = useState(false);
   const [report, setReport] = useState<ApiReport | null>(null);
@@ -59,12 +63,22 @@ export default function ReportClient() {
     setLoading(true);
     setError(null);
     try {
-      const qs = new URLSearchParams({
+      const params: Record<string, string> = {
         ticker: tickerInput.trim().toUpperCase(),
         exchange,
         priceType,
         priceSource,
-      });
+      };
+
+      // Only include forceMake and forceBuy if they're not empty
+      if (forceMake.trim()) {
+        params.forceMake = forceMake.trim();
+      }
+      if (forceBuy.trim()) {
+        params.forceBuy = forceBuy.trim();
+      }
+
+      const qs = new URLSearchParams(params);
       const res = await fetch(`/api/report?${qs.toString()}`, { cache: "no-store" });
       const json = await res.json();
       if (!res.ok || json?.ok === false) {
@@ -234,6 +248,44 @@ export default function ReportClient() {
         <div style={{ fontSize: 20, paddingBottom: 6 }}>
           {exchange === "ANT" ? "😊" : "😢"}
         </div>
+        </div>
+
+        {/* Force Make/Buy Controls */}
+        <div
+          style={{
+            display: "grid",
+            gap: 20,
+            gridTemplateColumns: "1fr 1fr",
+            alignItems: "end",
+            maxWidth: 900,
+            marginTop: 16,
+          }}
+        >
+          <div>
+            <label style={{ display: "block", fontSize: 14, marginBottom: 4 }}>
+              Force Make (comma-separated tickers)
+            </label>
+            <input
+              type="text"
+              value={forceMake}
+              onChange={(e) => setForceMake(e.target.value)}
+              placeholder="e.g., C, H2O, PE"
+              style={{ width: "100%", padding: "8px 10px", fontFamily: "inherit" }}
+            />
+          </div>
+
+          <div>
+            <label style={{ display: "block", fontSize: 14, marginBottom: 4 }}>
+              Force Buy (comma-separated tickers)
+            </label>
+            <input
+              type="text"
+              value={forceBuy}
+              onChange={(e) => setForceBuy(e.target.value)}
+              placeholder="e.g., H, O, FE"
+              style={{ width: "100%", padding: "8px 10px", fontFamily: "inherit" }}
+            />
+          </div>
         </div>
       </div>
 
@@ -476,9 +528,15 @@ export default function ReportClient() {
                 </span>
               </div>
             )}
-            <h2>Top Options</h2>
+            <h2>Best Options - Condensed</h2>
             <p style={{ margin: "8px 0 16px", color: "#555", maxWidth: 760 }}>
-              List of up to 20 other production scenarios ranked by profit per area.
+              Best performing option for each unique display scenario (up to 20). Display scenarios show only the buy/make decisions for direct inputs, not their sub-components.
+            </p>
+            <CondensedOptionsTable options={report.topDisplayScenarios} exchange={report.exchange} priceType={report.priceType} />
+
+            <h2 style={{ marginTop: 32 }}>Best Options - Expanded</h2>
+            <p style={{ margin: "8px 0 16px", color: "#555", maxWidth: 760 }}>
+              List of up to 20 other production scenarios ranked by profit per area, including multiple full scenarios per display scenario.
             </p>
             <Top20Table options={report.top20} exchange={report.exchange} priceType={report.priceType} />
           </section>

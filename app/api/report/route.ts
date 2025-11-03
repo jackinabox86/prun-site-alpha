@@ -17,7 +17,11 @@ export async function GET(req: Request) {
     const priceType = (url.searchParams.get("priceType") ?? "bid") as PriceType;
     const priceSource = (url.searchParams.get("priceSource") ?? "local") as "local" | "gcs";
 
-    const report = await buildReport({ ticker, exchange, priceType, priceSource });
+    // Extract force make/buy constraints
+    const forceMake = url.searchParams.get("forceMake") || undefined;
+    const forceBuy = url.searchParams.get("forceBuy") || undefined;
+
+    const report = await buildReport({ ticker, exchange, priceType, priceSource, forceMake, forceBuy });
     const status = (report as any)?.ok === false ? 500 : 200;
     return NextResponse.json(report, { status });
   } catch (err: any) {

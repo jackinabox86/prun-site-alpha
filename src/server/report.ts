@@ -5,6 +5,7 @@ import { computeRoiNarrow, computeRoiBroad } from "@/core/roi";
 import { computeInputPayback } from "@/core/inputPayback";
 import { cachedBestRecipes } from "@/server/cachedBestRecipes";
 import { LOCAL_DATA_SOURCES, GCS_DATA_SOURCES } from "@/lib/config";
+import { scenarioDisplayName } from "@/core/scenario";
 import type { PriceMode, Exchange, PriceType } from "@/types";
 
 const honorRecipeIdFilter = false;  // Set to false to explore all recipe variants
@@ -25,8 +26,18 @@ export async function buildReport(opts: {
   exchange: Exchange;
   priceType: PriceType;
   priceSource?: "local" | "gcs";
+  forceMake?: string;
+  forceBuy?: string;
 }) {
-  const { ticker, exchange, priceType, priceSource = "local" } = opts;
+  const { ticker, exchange, priceType, priceSource = "local", forceMake, forceBuy } = opts;
+
+  // Parse force constraints into sets
+  const forceMakeSet = forceMake
+    ? new Set(forceMake.split(',').map(t => t.trim().toUpperCase()).filter(t => t.length > 0))
+    : undefined;
+  const forceBuySet = forceBuy
+    ? new Set(forceBuy.split(',').map(t => t.trim().toUpperCase()).filter(t => t.length > 0))
+    : undefined;
 
   // Get cached best recipes matching the price source
   // Use exchange-specific best recipes, except UNV always uses ANT
@@ -109,7 +120,7 @@ export async function buildReport(opts: {
     };
   }
 
-  const options = findAllMakeOptions(ticker, recipeMap, pricesMap, exchange, priceType, bestMap, 0, true, honorRecipeIdFilter);
+  const options = findAllMakeOptions(ticker, recipeMap, pricesMap, exchange, priceType, bestMap, 0, true, honorRecipeIdFilter, forceMakeSet, forceBuySet);
   if (!options.length) {
     return {
       schemaVersion: 3,
@@ -189,6 +200,44 @@ export async function buildReport(opts: {
     };
   });
 
+  // Group by display scenario and keep best option for each
+  const displayScenarioMap = new Map<string, { o: typeof ranked[number]["o"]; r: typeof ranked[number]["r"] }>();
+  for (const item of ranked) {
+    const displayScenario = scenarioDisplayName(item.o.scenario || "");
+    const profitPA = item.r.subtreeProfitPerArea ?? 0;
+
+    if (!displayScenarioMap.has(displayScenario) ||
+        profitPA > (displayScenarioMap.get(displayScenario)!.r.subtreeProfitPerArea ?? 0)) {
+      displayScenarioMap.set(displayScenario, item);
+    }
+  }
+
+  // Convert to array and create metrics for top display scenarios (limit to 20)
+  const topDisplayScenarios: Array<WithMetrics<typeof ranked[number]["o"]>> = Array.from(displayScenarioMap.values()).map(({ o, r }) => {
+    const roi = computeRoiNarrow(o);
+    const baseProfitPerDay = o.baseProfitPerDay ?? 0;
+    const totalBuildCost = r.subtreeBuildCost ?? 0;
+    const roiBroad = computeRoiBroad(totalBuildCost, baseProfitPerDay);
+
+    // Input buffer payback: narrow = self only, broad = entire tree
+    const inputBuffer7Narrow = o.inputBuffer7 ?? 0;
+    const inputBuffer7Broad = r.subtreeInputBuffer7 ?? 0;
+    const inputPaybackNarrow = baseProfitPerDay > 0 ? inputBuffer7Narrow / baseProfitPerDay : null;
+    const inputPaybackBroad = baseProfitPerDay > 0 ? inputBuffer7Broad / baseProfitPerDay : null;
+
+    return {
+      ...o,
+      totalProfitPA: r.subtreeProfitPerArea ?? 0,
+      totalAreaPerDay: r.subtreeAreaPerDay ?? 0,
+      totalBuildCost: totalBuildCost,
+      totalInputBuffer7: r.subtreeInputBuffer7 ?? 0,
+      roiNarrowDays: roi.narrowDays ?? null,
+      roiBroadDays: roiBroad.broadDays ?? null,
+      inputPaybackDays7Narrow: inputPaybackNarrow,
+      inputPaybackDays7Broad: inputPaybackBroad,
+    };
+  }).sort((a, b) => (b.totalProfitPA ?? 0) - (a.totalProfitPA ?? 0)).slice(0, 20); // Sort by profit P/A descending and limit to 20
+
   return {
     schemaVersion: 3,
     ticker,
@@ -199,5 +248,6 @@ export async function buildReport(opts: {
     bestScenario: best.o.scenario ?? "",
     best: bestRaw,
     top20,
+    topDisplayScenarios,
   };
 }
