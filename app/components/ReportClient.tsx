@@ -28,6 +28,8 @@ export default function ReportClient() {
   const [priceType, setPriceType] = useState<PriceType>("bid");
   const [priceSource, setPriceSource] = useState<"local" | "gcs">("gcs");
   const [urlParamsChecked, setUrlParamsChecked] = useState(false);
+  const [forceMake, setForceMake] = useState<string>("");
+  const [forceBuy, setForceBuy] = useState<string>("");
 
   const [loading, setLoading] = useState(false);
   const [report, setReport] = useState<ApiReport | null>(null);
@@ -61,12 +63,22 @@ export default function ReportClient() {
     setLoading(true);
     setError(null);
     try {
-      const qs = new URLSearchParams({
+      const params: Record<string, string> = {
         ticker: tickerInput.trim().toUpperCase(),
         exchange,
         priceType,
         priceSource,
-      });
+      };
+
+      // Only include forceMake and forceBuy if they're not empty
+      if (forceMake.trim()) {
+        params.forceMake = forceMake.trim();
+      }
+      if (forceBuy.trim()) {
+        params.forceBuy = forceBuy.trim();
+      }
+
+      const qs = new URLSearchParams(params);
       const res = await fetch(`/api/report?${qs.toString()}`, { cache: "no-store" });
       const json = await res.json();
       if (!res.ok || json?.ok === false) {
@@ -236,6 +248,44 @@ export default function ReportClient() {
         <div style={{ fontSize: 20, paddingBottom: 6 }}>
           {exchange === "ANT" ? "😊" : "😢"}
         </div>
+        </div>
+
+        {/* Force Make/Buy Controls */}
+        <div
+          style={{
+            display: "grid",
+            gap: 20,
+            gridTemplateColumns: "1fr 1fr",
+            alignItems: "end",
+            maxWidth: 900,
+            marginTop: 16,
+          }}
+        >
+          <div>
+            <label style={{ display: "block", fontSize: 14, marginBottom: 4 }}>
+              Force Make (comma-separated tickers)
+            </label>
+            <input
+              type="text"
+              value={forceMake}
+              onChange={(e) => setForceMake(e.target.value)}
+              placeholder="e.g., C, H2O, PE"
+              style={{ width: "100%", padding: "8px 10px", fontFamily: "inherit" }}
+            />
+          </div>
+
+          <div>
+            <label style={{ display: "block", fontSize: 14, marginBottom: 4 }}>
+              Force Buy (comma-separated tickers)
+            </label>
+            <input
+              type="text"
+              value={forceBuy}
+              onChange={(e) => setForceBuy(e.target.value)}
+              placeholder="e.g., H, O, FE"
+              style={{ width: "100%", padding: "8px 10px", fontFamily: "inherit" }}
+            />
+          </div>
         </div>
       </div>
 

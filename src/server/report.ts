@@ -26,8 +26,18 @@ export async function buildReport(opts: {
   exchange: Exchange;
   priceType: PriceType;
   priceSource?: "local" | "gcs";
+  forceMake?: string;
+  forceBuy?: string;
 }) {
-  const { ticker, exchange, priceType, priceSource = "local" } = opts;
+  const { ticker, exchange, priceType, priceSource = "local", forceMake, forceBuy } = opts;
+
+  // Parse force constraints into sets
+  const forceMakeSet = forceMake
+    ? new Set(forceMake.split(',').map(t => t.trim().toUpperCase()).filter(t => t.length > 0))
+    : undefined;
+  const forceBuySet = forceBuy
+    ? new Set(forceBuy.split(',').map(t => t.trim().toUpperCase()).filter(t => t.length > 0))
+    : undefined;
 
   // Get cached best recipes matching the price source
   // Use exchange-specific best recipes, except UNV always uses ANT
@@ -110,7 +120,7 @@ export async function buildReport(opts: {
     };
   }
 
-  const options = findAllMakeOptions(ticker, recipeMap, pricesMap, exchange, priceType, bestMap, 0, true, honorRecipeIdFilter);
+  const options = findAllMakeOptions(ticker, recipeMap, pricesMap, exchange, priceType, bestMap, 0, true, honorRecipeIdFilter, forceMakeSet, forceBuySet);
   if (!options.length) {
     return {
       schemaVersion: 3,
