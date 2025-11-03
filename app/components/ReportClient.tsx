@@ -168,7 +168,7 @@ export default function ReportClient() {
           style={{
             display: "grid",
             gap: 20,
-            gridTemplateColumns: "60px 50px 52px 70px 120px 500px",
+            gridTemplateColumns: "60px 50px 52px 120px 500px",
             alignItems: "end",
             maxWidth: 900,
           }}
@@ -220,20 +220,6 @@ export default function ReportClient() {
             <option value="bid">Bid</option>
             <option value="pp7">PP7</option>
             <option value="pp30">PP30</option>
-          </select>
-        </div>
-
-        <div>
-          <label style={{ display: "block", fontSize: 14,  marginBottom: 4, textAlign: "center" }}>
-            Source
-          </label>
-          <select
-            value={priceSource}
-            onChange={(e) => setPriceSource(e.target.value as "local" | "gcs")}
-            style={{ padding: "8px 10px", fontWeight: 600, fontFamily: "inherit" }}
-          >
-            <option value="local">Local</option>
-            <option value="gcs">GCS</option>
           </select>
         </div>
 
@@ -497,6 +483,31 @@ export default function ReportClient() {
             <Top20Table options={report.top20} exchange={report.exchange} priceType={report.priceType} />
           </section>
         )}
+      </div>
+
+      {/* Source selector - bottom right corner */}
+      <div style={{
+        position: "fixed",
+        bottom: "20px",
+        right: "20px",
+        backgroundColor: "white",
+        border: "1px solid #ccc",
+        borderRadius: "6px",
+        padding: "12px",
+        boxShadow: "0 2px 8px rgba(0,0,0,0.1)",
+        zIndex: 1000
+      }}>
+        <label style={{ display: "block", fontSize: 12, marginBottom: 4, color: "#666" }}>
+          Source
+        </label>
+        <select
+          value={priceSource}
+          onChange={(e) => setPriceSource(e.target.value as "local" | "gcs")}
+          style={{ padding: "6px 8px", fontSize: 13, fontWeight: 600, fontFamily: "inherit" }}
+        >
+          <option value="local">Local</option>
+          <option value="gcs">GCS</option>
+        </select>
       </div>
     </main>
     </>
