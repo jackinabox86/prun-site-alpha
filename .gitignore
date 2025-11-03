@@ -41,3 +41,4 @@ next-env.d.ts
 
 # generated data files
 public/data/prices-merged.csv
+pnpm-lock.yaml
