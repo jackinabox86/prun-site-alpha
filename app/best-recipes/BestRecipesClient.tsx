@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { scenarioDisplayName } from "@/core/scenario";
 import { tickerFilterGroups } from "@/lib/tickerFilters";
 import type { Exchange } from "@/types";
@@ -11,6 +11,7 @@ interface BestRecipeResult {
   scenario: string;
   profitPA: number;
   buyAllProfitPA: number | null;
+  building?: string | null;
 }
 
 interface ApiResponse {
@@ -41,6 +42,7 @@ export default function BestRecipesClient() {
   const [sortDirection, setSortDirection] = useState<"asc" | "desc">("asc");
   const [filterText, setFilterText] = useState("");
   const [selectedFilterGroupId, setSelectedFilterGroupId] = useState<string>("all");
+  const [selectedBuilding, setSelectedBuilding] = useState<string>("all");
   const [exchange, setExchange] = useState<string>("ANT");
 
   // Read exchange from URL params on mount
@@ -114,6 +116,15 @@ export default function BestRecipesClient() {
     }
   };
 
+  // Extract unique buildings for dropdown
+  const uniqueBuildings = useMemo(() => {
+    const buildings = new Set<string>();
+    data.forEach((row) => {
+      if (row.building) buildings.add(row.building);
+    });
+    return ["all", ...Array.from(buildings).sort()];
+  }, [data]);
+
   // Filter and sort data
   // First, apply ticker group filter
   const selectedGroup = tickerFilterGroups.find(g => g.id === selectedFilterGroupId);
@@ -121,7 +132,12 @@ export default function BestRecipesClient() {
     ? data.filter((row) => selectedGroup.tickers!.includes(row.ticker))
     : data; // If tickers is null (All), show all data
 
-  // Then, apply text search within the group-filtered results (ticker name only)
+  // Second, apply building filter
+  const buildingFilteredData = selectedBuilding === "all"
+    ? groupFilteredData
+    : groupFilteredData.filter((row) => row.building === selectedBuilding);
+
+  // Then, apply text search within the filtered results (ticker name only)
   // Support exact match when wrapped in quotes: "C" matches only C, not CRU
   const trimmedFilter = filterText.trim();
   const isExactMatch = trimmedFilter.startsWith('"') && trimmedFilter.endsWith('"') && trimmedFilter.length > 1;
@@ -129,7 +145,7 @@ export default function BestRecipesClient() {
     ? trimmedFilter.slice(1, -1) // Remove quotes
     : trimmedFilter;
 
-  const filteredData = groupFilteredData.filter((row) =>
+  const filteredData = buildingFilteredData.filter((row) =>
     isExactMatch
       ? row.ticker.toLowerCase() === searchTerm.toLowerCase()
       : row.ticker.toLowerCase().includes(searchTerm.toLowerCase())
@@ -259,6 +275,27 @@ export default function BestRecipesClient() {
               }}
             />
           )}
+
+          {data.length > 0 && uniqueBuildings.length > 1 && (
+            <select
+              value={selectedBuilding}
+              onChange={(e) => setSelectedBuilding(e.target.value)}
+              style={{
+                padding: "8px 12px",
+                fontFamily: "inherit",
+                border: "1px solid #ccc",
+                borderRadius: 4,
+                minWidth: 150,
+                cursor: "pointer"
+              }}
+            >
+              {uniqueBuildings.map((building) => (
+                <option key={building} value={building}>
+                  {building === "all" ? "All Buildings" : building}
+                </option>
+              ))}
+            </select>
+          )}
         </div>
 
         {/* Ticker Group Filters */}
@@ -327,6 +364,7 @@ export default function BestRecipesClient() {
           }}>
             <p style={{ margin: 0, fontSize: 14 }}>
               <strong>Showing:</strong> {sortedData.length} ticker{sortedData.length !== 1 ? 's' : ''}
+              {selectedBuilding !== 'all' && ` (building: ${selectedBuilding})`}
               {selectedFilterGroupId !== 'all' && ` (from ${groupFilteredData.length} in ${selectedGroup?.label})`}
               {data.length > sortedData.length && ` out of ${data.length} total`}
             </p>
