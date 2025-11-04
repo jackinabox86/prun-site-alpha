@@ -168,27 +168,28 @@ export default function ReportClient() {
           </button>
         </div>
                     {!readmeHidden && <p style={{ margin: "8px 0 16px", color: "#555", maxWidth: 900 }}>
-                      This tool determines and displays the highest profit per area per day production scenario for one building producing the selected ticker 
-                      (not a full base). A production scenario is the buy/make decision for each input in a ticker's full production chain.
+                      This tool determines and displays the highest profit per area per day production scenario for one 
+                      building producing the selected ticker (not a full base). 
+                      A production scenario is the buy/make decision for each input in a ticker's full production chain.
                       This model uses FIO data (refreshed hourly) for its calculations on optimal buy/make decisions.
-                      Importantly, it also displays the same profit per area per day metric for each made input independently to avoid unintended opportunity costs.
                     </p>}
                     {!readmeHidden && <p style={{ margin: "8px 0 16px", color: "#555", maxWidth: 900 }}>
+                      Users may force certain inputs to be made or bought, as well as force or exclude specific recipe IDs using the controls below.
+                      This can help explore alternative production scenarios or work around supply constraints.
                       Below the main analysis is a condensed ranked table of other profitable production scenarios for the selected ticker, 
-                      which can be expanded to show a sankey chart.  The table is condensed to show only unique high-level scenarios (buy/make decisions for direct inputs only).  
+                      which can be expanded to show a sankey chart.  The table is condensed to show only unique high-level scenarios 
+                      (buy/make decisions for direct inputs only).  
                       An additional expanded table shows the top 20 full scenarios without filtering by high-level input distinctions.  
                     </p>}
                     {!readmeHidden && <p style={{ margin: "8px 0 16px", color: "#555", maxWidth: 900 }}>
-                      Each ticker on the sankey chain has a node and tooltip with additional info on its profitability.
+                      Each ticker on the sankey chain has a node and tooltip with additional info on its own profitability to enable users to 
+                      avoid unintended opportunity costs [that daily profitability is based on the specific production scenario for that node;
+                      more profitable scenarios may exist if a given input is itself examined].
                       The flows between nodes are sized according to the relative proportion of an inputs value to the parent's total cost;
                       tickers with broader flows can be prioritized when optimizing for profitability.
                       Full credit to Taiyi for the Sankey inspiration.                    
                     </p>}
-                    {!readmeHidden && <p style={{ margin: "8px 0 16px", color: "#555", maxWidth: 900 }}>
-                      Users may force certain inputs to be made or bought, as well as force or exclude specific recipe IDs using the controls below.
-                      This can help explore alternative production scenarios or work around supply constraints.  Frequently one may 
-                    </p>}
-      </div>
+                                              </div>
 
       <div style={{ padding: "0 24px", margin: "0 auto", maxWidth: 900 }}>
         <div
