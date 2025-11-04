@@ -151,13 +151,13 @@ export default function ReportClient() {
       {/* Header Section */}
       <div className="terminal-box" style={{ marginBottom: "2rem" }}>
         <div style={{ display: "flex", alignItems: "center", gap: "1rem", marginBottom: "1rem" }}>
-          <h1 className="terminal-header" style={{ flex: 1, margin: 0, fontSize: "1.2rem" }}>
+          <h1 className="terminal-header" style={{ flex: 1, margin: 0, fontSize: "1.2rem", paddingBottom: 0, borderBottom: "none" }}>
             TICKER ANALYSIS // BEST PROFIT PER AREA SCENARIO
           </h1>
           <button
             onClick={() => setReadmeHidden(!readmeHidden)}
             className="terminal-button"
-            style={{ fontSize: "0.75rem" }}
+            style={{ fontSize: "0.75rem", padding: "0.5rem 1rem" }}
           >
             {readmeHidden ? "[+] Expand" : "[-] Hide"} Readme
           </button>
@@ -218,16 +218,16 @@ export default function ReportClient() {
             {showTickerDropdown && filteredTickers.length > 0 && (
               <div style={{
                 position: "absolute",
-                top: "100%",
+                top: "calc(100% + 1px)",
                 left: 0,
-                right: 0,
-                maxHeight: "200px",
+                minWidth: "200px",
+                maxHeight: "300px",
                 overflowY: "auto",
                 background: "var(--color-bg-elevated)",
                 border: "1px solid var(--color-accent-primary)",
-                borderTop: "none",
-                zIndex: 1000,
-                boxShadow: "var(--glow-md)"
+                borderRadius: "2px",
+                zIndex: 9999,
+                boxShadow: "0 4px 12px rgba(0, 0, 0, 0.5), var(--glow-md)"
               }}>
                 {filteredTickers.map((t) => (
                   <div
@@ -583,7 +583,7 @@ VEG_2 - HYF: 16xH2O-1xNS=>6xVEG`}
                 <div style={{ fontSize: "0.75rem", color: "var(--color-text-muted)", textTransform: "uppercase", marginBottom: "0.25rem", fontFamily: "var(--font-mono)" }}>
                   Options Evaluated
                 </div>
-                <div style={{ fontSize: "1.5rem", fontFamily: "var(--font-mono)", color: "var(--color-text-primary)" }}>
+                <div style={{ fontSize: "1.5rem", fontFamily: "var(--font-mono)", color: "var(--color-text-primary)", fontWeight: "bold" }}>
                   {report.totalOptions.toLocaleString()}
                 </div>
               </div>
