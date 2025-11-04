@@ -197,7 +197,8 @@ export default function BestRecipesClient() {
           padding: 16,
           backgroundColor: "#f8f9fa",
           borderRadius: 6,
-          border: "1px solid #dee2e6"
+          border: "1px solid #dee2e6",
+          alignItems: "center"
         }}>
           <span style={{ fontWeight: 600, marginRight: 8 }}>Exchange:</span>
           {EXCHANGE_DISPLAYS.map((exConfig) => (
@@ -243,7 +244,8 @@ export default function BestRecipesClient() {
           padding: 16,
           backgroundColor: "#f8f9fa",
           borderRadius: 6,
-          border: "1px solid #dee2e6"
+          border: "1px solid #dee2e6",
+          alignItems: "center"
         }}>
           <span style={{ fontWeight: 600, marginRight: 8 }}>Sell At:</span>
           {SELL_AT_OPTIONS.map((option) => (
@@ -257,9 +259,9 @@ export default function BestRecipesClient() {
               style={{
                 padding: "8px 16px",
                 fontWeight: sellAt === option.value ? 600 : 400,
-                backgroundColor: sellAt === option.value ? "#28a745" : "white",
-                color: sellAt === option.value ? "white" : "#28a745",
-                border: `1px solid ${sellAt === option.value ? "#28a745" : "#ccc"}`,
+                backgroundColor: sellAt === option.value ? "#059669" : "white",
+                color: sellAt === option.value ? "white" : "#059669",
+                border: `1px solid ${sellAt === option.value ? "#059669" : "#ccc"}`,
                 borderRadius: 4,
                 textDecoration: "none",
                 cursor: "pointer",
@@ -267,7 +269,7 @@ export default function BestRecipesClient() {
               }}
               onMouseEnter={(e) => {
                 if (sellAt !== option.value) {
-                  e.currentTarget.style.backgroundColor = "#e8f5e9";
+                  e.currentTarget.style.backgroundColor = "#e0f2f1";
                 }
               }}
               onMouseLeave={(e) => {
@@ -282,10 +284,11 @@ export default function BestRecipesClient() {
         </div>
 
         <p style={{ margin: "8px 0 16px", color: "#555", maxWidth: 900 }}>
-          This page displays the best production recipe for each ticker on the {exchange} exchange, calculated in dependency order.
-          Inputs are always purchased at <strong>Ask</strong> price, and outputs are sold at <strong>{sellAt.toUpperCase()}</strong> price.
+          This tool determines the best production recipe for each ticker on the {exchange} exchange, calculated in dependency order using streamlined pruning; 
+          results may differ slightly from a full analysis done on the main page.
+          Inputs are always purchased at <strong>Ask</strong> price, and outputs are sold at the price type chosen by the user.
           Each ticker shows its optimal recipe ID, scenario, profit per area (P/A), and the P/A if all inputs are bought (Buy All P/A).
-          This data is generated dynamically from the current recipes and prices data.
+          This data is generated dynamically each hour from current prices data from FIO.
         </p>
 
         {loading && (
@@ -297,8 +300,7 @@ export default function BestRecipesClient() {
             color: "#856404",
             marginBottom: 16
           }}>
-            <strong>Processing...</strong> Calculating best recipes for all tickers.
-            This may take 1-3 minutes depending on the number of tickers.
+            <strong>Processing...</strong> 
           </div>
         )}
 
