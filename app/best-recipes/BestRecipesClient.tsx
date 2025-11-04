@@ -317,7 +317,7 @@ export default function BestRecipesClient() {
               cursor: loading ? "not-allowed" : "pointer"
             }}
           >
-            {loading ? "Generating..." : "Generate Best Recipes"}
+            {loading ? "Loading..." : "Generate Best Recipes"}
           </button>
 
           {data.length > 0 && (
