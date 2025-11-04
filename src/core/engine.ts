@@ -243,6 +243,7 @@ function buildAllOptionsForTicker(
 
   const costCols = getCostColumnNames(exchange, priceType);
   const idx = {
+    building: headers.indexOf("Building"),
     recipeId: headers.indexOf("RecipeID"),
     wf: headers.indexOf(costCols.wfCst),
     dep: headers.indexOf(costCols.deprec),
@@ -301,6 +302,7 @@ function buildAllOptionsForTicker(
 
   for (const row of rowsToUse) {
     const recipeId = idx.recipeId !== -1 ? String(row[idx.recipeId] ?? "") : null;
+    const building = idx.building !== -1 ? String(row[idx.building] ?? "") : null;
     const runsPerDay = Math.max(1, Number(row[idx.runs] ?? 0) || 1);
     const area = Math.max(1, Number(row[idx.area] ?? 0) || 1);
     const areaPerOutCell = Number(row[idx.areaPerOut] ?? 0);
@@ -501,6 +503,7 @@ function buildAllOptionsForTicker(
         recipeId,
         ticker: materialTicker,
         scenario: scn.scenarioName,
+        building,
         baseProfit,
         profit: finalProfit,
         cogmPerOutput,
@@ -575,6 +578,7 @@ function bestOptionForTicker(
 
   const costCols = getCostColumnNames(exchange, priceType);
   const idx = {
+    building: headers.indexOf("Building"),
     recipeId: headers.indexOf("RecipeID"),
     wf: headers.indexOf(costCols.wfCst),
     dep: headers.indexOf(costCols.deprec),
@@ -636,6 +640,8 @@ function bestOptionForTicker(
   for (const row of rowsToUse) {
     const recipeId =
       idx.recipeId !== -1 ? String(row[idx.recipeId] ?? "") : null;
+    const building =
+      idx.building !== -1 ? String(row[idx.building] ?? "") : null;
 
     const runsPerDay = Math.max(1, Number(row[idx.runs] ?? 0) || 1);
     const area = Math.max(1, Number(row[idx.area] ?? 0) || 1);
@@ -840,6 +846,7 @@ function bestOptionForTicker(
         recipeId,
         ticker: materialTicker,
         scenario: scn.scenarioName,
+        building,
         baseProfit,
         profit: finalProfit,
         cogmPerOutput,
@@ -963,6 +970,7 @@ export function findAllMakeOptions(
   const rows = recipeMap.map[materialTicker] || [];
 
   const costCols = getCostColumnNames(exchange, priceType);
+  const buildingIndex = headers.indexOf("Building");
   const recipeIdIndex = headers.indexOf("RecipeID");
   const workforceCostIndex = headers.indexOf(costCols.wfCst);
   const depreciationCostIndex = headers.indexOf(costCols.deprec);
@@ -1021,6 +1029,8 @@ export function findAllMakeOptions(
   for (const row of rowsToProcess) {
     const recipeId =
       recipeIdIndex !== -1 ? String(row[recipeIdIndex] ?? "") : null;
+    const building =
+      buildingIndex !== -1 ? String(row[buildingIndex] ?? "") : null;
 
     const runsPerDayVal =
       runsPerDayIndex !== -1 ? Number(row[runsPerDayIndex] ?? 0) : 0;
@@ -1256,6 +1266,7 @@ export function findAllMakeOptions(
         recipeId,
         ticker: materialTicker,
         scenario: scn.scenarioName,
+        building,
         baseProfit,
         profit: finalProfit,
         cogmPerOutput,

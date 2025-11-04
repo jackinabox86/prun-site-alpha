@@ -24,6 +24,7 @@ type ApiMakeOption = {
   recipeId: string | null;
   ticker: string;
   scenario: string;
+  building?: string | null;
   runsPerDay: number;
   output1Amount: number;
   selfAreaPerDay: number | null;
@@ -142,6 +143,7 @@ const BestScenarioSankey = memo(function BestScenarioSankey({
     const rootLabel = `<b>${best.ticker}</b><br>[₳${fmtPA(rootProfitPA)} P/A]`;
     const rootHover = [
       `<b>${best.ticker}</b>`,
+      best.building ? `BUI: ${best.building}` : null,
       `Profit/d: ${fmtWholeNumber(best.baseProfitPerDay)}`,
       `Adj. Profit/d: ${fmtWholeNumber(best.profitPerDay)}`,
       `Area/day: ${fmtROI(best.totalAreaPerDay ?? best.fullSelfAreaPerDay)}`,
@@ -203,6 +205,7 @@ const BestScenarioSankey = memo(function BestScenarioSankey({
         const childLabel = `<b>Make ${child.recipeId || child.ticker}</b><br>[₳${fmtPA(childProfitPA)} P/A]`;
         const childHover = [
           `<b>Make ${child.recipeId || child.ticker}</b>`,
+          child.building ? `BUI: ${child.building}` : null,
           inp.childScenario ? `Scen: ${scenarioDisplayName(inp.childScenario)}` : null,
           `COGM: ${money(cogm)}`,
           `Base profit/day: ${money(child.baseProfitPerDay)}`,
