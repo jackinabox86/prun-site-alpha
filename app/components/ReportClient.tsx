@@ -34,6 +34,7 @@ export default function ReportClient() {
   const [excludeRecipe, setExcludeRecipe] = useState<string>("");
   const [showRecipeList, setShowRecipeList] = useState(false);
   const [analysisCollapsed, setAnalysisCollapsed] = useState(false);
+  const [systemControlsCollapsed, setSystemControlsCollapsed] = useState(true);
   const [showTickerDropdown, setShowTickerDropdown] = useState(false);
 
   const [loading, setLoading] = useState(false);
@@ -151,7 +152,7 @@ export default function ReportClient() {
       {/* Header Section */}
       <div className="terminal-box" style={{ marginBottom: "2rem" }}>
         <div style={{ display: "flex", alignItems: "center", gap: "1rem", marginBottom: "1rem" }}>
-          <h1 className="terminal-header" style={{ flex: 1, margin: 0, fontSize: "1.2rem", paddingBottom: 0, borderBottom: "none" }}>
+          <h1 className="terminal-header" style={{ flex: 1, margin: 0, fontSize: "1.2rem", paddingBottom: 0, borderBottom: "none", fontWeight: "normal" }}>
             TICKER ANALYSIS // BEST PROFIT PER AREA SCENARIO
           </h1>
           <button
@@ -190,14 +191,28 @@ export default function ReportClient() {
 
       {/* Controls Section */}
       <div className="terminal-box" style={{ marginBottom: "2rem" }}>
-        <div className="terminal-header">System Controls</div>
+        <div
+          onClick={() => setSystemControlsCollapsed(!systemControlsCollapsed)}
+          style={{
+            cursor: "pointer",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+            marginBottom: systemControlsCollapsed ? "0" : "1rem"
+          }}
+        >
+          <div className="terminal-header" style={{ margin: 0, paddingBottom: 0, borderBottom: "none" }}>System Controls</div>
+          <span className="text-accent text-mono" style={{ fontSize: "0.875rem" }}>
+            {systemControlsCollapsed ? "[+] ADVANCED" : "[-] COLLAPSE"}
+          </span>
+        </div>
 
         <div style={{
           display: "grid",
           gap: "1rem",
           gridTemplateColumns: "80px 80px 80px 140px 1fr",
           alignItems: "end",
-          marginBottom: "1.5rem"
+          marginBottom: systemControlsCollapsed ? "0" : "1.5rem"
         }}>
           <div style={{ position: "relative" }}>
             <label style={{ display: "block", fontSize: "0.75rem", marginBottom: "0.5rem", color: "var(--color-accent-primary)", textTransform: "uppercase" }}>
@@ -311,6 +326,7 @@ export default function ReportClient() {
           </div>
         </div>
 
+        {!systemControlsCollapsed && (<>
         {/* Force Make/Buy Controls */}
         <div style={{
           display: "grid",
@@ -513,6 +529,7 @@ VEG_2 - HYF: 16xH2O-1xNS=>6xVEG`}
             </div>
           )}
         </div>
+        </>)}
       </div>
 
       {/* Error Display */}
