@@ -91,114 +91,158 @@ export default function XitConverterClient() {
   };
 
   return (
-    <div
-      style={{
-        padding: "24px",
-        maxWidth: "1200px",
-        margin: "0 auto",
-        fontFamily: "-apple-system, BlinkMacSystemFont, Segoe UI, Roboto, Helvetica Neue, Arial, sans-serif",
-      }}
-    >
-      <h1 style={{ fontSize: "32px", fontWeight: 700, marginBottom: "24px" }}>
-        XIT Act Converter
-      </h1>
+    <>
+      {/* Header Section */}
+      <div className="terminal-box" style={{ marginBottom: "2rem" }}>
+        <h1 className="terminal-header" style={{ margin: 0, fontSize: "1.2rem" }}>
+          XIT ACT CONVERTER // PRUN_CARGO_TRANSFER_PARSER
+        </h1>
+        <p style={{ marginTop: "1rem", marginBottom: 0, color: "var(--color-text-secondary)", fontSize: "0.875rem", lineHeight: "1.6" }}>
+          This utility parses cargo transfer ACTION logs from Prosperous Universe and converts them into XIT-compatible JSON format.
+          Paste your ACTION lines below, convert, and copy the JSON output to import into XIT.
+          <span className="text-mono" style={{ display: "block", marginTop: "0.5rem", fontSize: "0.75rem", color: "var(--color-text-muted)" }}>
+            Format: ACTION: Transfer [quantity] [ticker] from [origin] to [destination]
+          </span>
+        </p>
+      </div>
 
-      <div style={{ marginBottom: "24px" }}>
+      {/* Input Section */}
+      <div className="terminal-box" style={{ marginBottom: "2rem" }}>
+        <div className="terminal-header" style={{ marginBottom: "1rem" }}>Input Data Stream</div>
         <label
           htmlFor="input-text"
           style={{
             display: "block",
-            fontWeight: 600,
-            marginBottom: "8px",
-            fontSize: "16px",
+            fontFamily: "var(--font-mono)",
+            fontSize: "0.75rem",
+            color: "var(--color-accent-primary)",
+            marginBottom: "0.5rem",
+            textTransform: "uppercase"
           }}
         >
-          Input (Paste ACTION lines):
+          Paste ACTION Lines:
         </label>
         <textarea
           id="input-text"
           value={inputText}
           onChange={(e) => setInputText(e.target.value)}
           placeholder="ACTION: Transfer 104 O from Antares Station Warehouse to 3k Alpha Cargo&#10;ACTION: Transfer 104 H from Antares Station Warehouse to 3k Alpha Cargo&#10;..."
+          className="terminal-input"
           style={{
             width: "100%",
             minHeight: "200px",
-            padding: "12px",
-            fontSize: "14px",
-            fontFamily: "monospace",
-            border: "1px solid #dee2e6",
-            borderRadius: "4px",
+            fontFamily: "var(--font-mono)",
+            fontSize: "0.875rem",
             resize: "vertical",
+            lineHeight: "1.6"
           }}
         />
       </div>
 
-      <div style={{ marginBottom: "24px" }}>
+      {/* Convert Button */}
+      <div style={{ marginBottom: "2rem" }}>
         <button
           onClick={handleConvert}
-          style={{
-            padding: "10px 20px",
-            fontSize: "16px",
-            fontWeight: 600,
-            color: "white",
-            backgroundColor: "#007bff",
-            border: "none",
-            borderRadius: "4px",
-            cursor: "pointer",
-          }}
-          onMouseOver={(e) => (e.currentTarget.style.backgroundColor = "#0056b3")}
-          onMouseOut={(e) => (e.currentTarget.style.backgroundColor = "#007bff")}
+          className="terminal-button"
+          style={{ padding: "0.75rem 2rem", fontSize: "1rem" }}
         >
-          Convert
+          Execute Conversion
         </button>
+        {inputText && (
+          <span style={{
+            marginLeft: "1rem",
+            fontFamily: "var(--font-mono)",
+            fontSize: "0.875rem",
+            color: "var(--color-text-muted)"
+          }}>
+            {inputText.split('\n').filter(line => line.includes('ACTION')).length} actions detected
+          </span>
+        )}
       </div>
 
+      {/* Output Section */}
       {outputJson && (
-        <div style={{ marginBottom: "24px" }}>
+        <div className="terminal-box" style={{ marginBottom: "2rem" }}>
+          <div className="terminal-header" style={{ marginBottom: "1rem" }}>Output JSON Stream</div>
           <label
             htmlFor="output-json"
             style={{
               display: "block",
-              fontWeight: 600,
-              marginBottom: "8px",
-              fontSize: "16px",
+              fontFamily: "var(--font-mono)",
+              fontSize: "0.75rem",
+              color: "var(--color-accent-primary)",
+              marginBottom: "0.5rem",
+              textTransform: "uppercase"
             }}
           >
-            Output JSON (Editable):
+            XIT-Compatible JSON (Editable):
           </label>
           <textarea
             id="output-json"
             value={outputJson}
             onChange={(e) => setOutputJson(e.target.value)}
+            className="terminal-input"
             style={{
               width: "100%",
               minHeight: "300px",
-              padding: "12px",
-              fontSize: "14px",
-              fontFamily: "monospace",
-              border: "1px solid #dee2e6",
-              borderRadius: "4px",
+              fontFamily: "var(--font-mono)",
+              fontSize: "0.875rem",
               resize: "vertical",
+              lineHeight: "1.6",
+              color: "var(--color-success)"
             }}
           />
-          <button
-            onClick={handleCopy}
-            style={{
-              marginTop: "12px",
-              padding: "10px 20px",
-              fontSize: "16px",
-              fontWeight: 600,
-              color: "white",
-              backgroundColor: copySuccess ? "#28a745" : "#6c757d",
-              border: "none",
-              borderRadius: "4px",
-              cursor: "pointer",
-            }}
-          >
-            {copySuccess ? "Copied!" : "Copy to Clipboard"}
-          </button>
+          <div style={{ marginTop: "1rem" }}>
+            <button
+              onClick={handleCopy}
+              className="terminal-button"
+              style={{
+                padding: "0.75rem 1.5rem",
+                background: copySuccess ? "var(--color-success)" : "var(--color-bg-tertiary)",
+                color: copySuccess ? "var(--color-bg-primary)" : "var(--color-accent-primary)",
+                borderColor: copySuccess ? "var(--color-success)" : "var(--color-border-primary)"
+              }}
+            >
+              {copySuccess ? "✓ Copied to Clipboard" : "Copy to Clipboard"}
+            </button>
+            {copySuccess && (
+              <span style={{
+                marginLeft: "1rem",
+                fontFamily: "var(--font-mono)",
+                fontSize: "0.875rem",
+                color: "var(--color-success)"
+              }}>
+                [SUCCESS] Data copied to system clipboard
+              </span>
+            )}
+          </div>
         </div>
       )}
-    </div>
+
+      {/* Help Section */}
+      {!outputJson && !inputText && (
+        <div className="terminal-box" style={{ textAlign: "center", padding: "3rem 1rem" }}>
+          <div style={{ fontFamily: "var(--font-mono)", fontSize: "0.875rem", color: "var(--color-text-muted)" }}>
+            <span className="text-accent" style={{ display: "block", marginBottom: "1rem", fontSize: "1.2rem" }}>
+              [AWAITING INPUT]
+            </span>
+            <div style={{ maxWidth: "600px", margin: "0 auto", textAlign: "left" }}>
+              <p style={{ marginBottom: "0.75rem" }}>
+                <span className="text-accent">1.</span> Copy ACTION logs from your Prosperous Universe cargo transfer
+              </p>
+              <p style={{ marginBottom: "0.75rem" }}>
+                <span className="text-accent">2.</span> Paste the ACTION lines into the input field above
+              </p>
+              <p style={{ marginBottom: "0.75rem" }}>
+                <span className="text-accent">3.</span> Click "Execute Conversion" to generate XIT JSON
+              </p>
+              <p>
+                <span className="text-accent">4.</span> Copy the output and import into XIT
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
+    </>
   );
 }
