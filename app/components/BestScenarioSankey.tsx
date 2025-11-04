@@ -5,6 +5,7 @@ import { useMemo, memo } from "react";
 import PlotlySankey from "./PlotlySankey";
 import type { Exchange, PriceType } from "@/types";
 import { scenarioDisplayName } from "@/core/scenario";
+import { formatCurrency, getCurrencySymbol } from "@/lib/formatting";
 
 // ---- API shapes (must match your report output) ----
 type ApiMadeInputDetail = {
@@ -94,7 +95,7 @@ const BestScenarioSankey = memo(function BestScenarioSankey({
     const fmt = (n: number) =>
       Number.isFinite(n) ? (Math.abs(n) >= 1000 ? n.toLocaleString() : n.toFixed(3)) : "n/a";
     const money = (n: number) =>
-      Number.isFinite(n) ? `₳${n.toLocaleString(undefined, { maximumFractionDigits: 2 })}` : "n/a";
+      formatCurrency(n, exchange ?? "ANT");
     const fmtPA = (n: number) =>
       Number.isFinite(n) ? n.toFixed(1) : "n/a";
     const fmtWholeNumber = (n: number) =>
@@ -140,7 +141,7 @@ const BestScenarioSankey = memo(function BestScenarioSankey({
 
     const rootId = `STAGE::${best.recipeId || best.ticker}::0`;
     const rootProfitPA = best.totalProfitPA ?? 0;
-    const rootLabel = `<b>${best.ticker}</b><br>[₳${fmtPA(rootProfitPA)} P/A]`;
+    const rootLabel = `<b>${best.ticker}</b><br>[${getCurrencySymbol(exchange ?? "ANT")}${fmtPA(rootProfitPA)} P/A]`;
     const rootHover = [
       `<b>${best.ticker}</b>`,
       best.building ? `BUI: ${best.building}` : null,
@@ -202,7 +203,7 @@ const BestScenarioSankey = memo(function BestScenarioSankey({
 
         const childId = `STAGE::${child.recipeId || child.ticker}::${depth + 1}`;
         const childProfitPA = child.totalProfitPA ?? 0;
-        const childLabel = `<b>Make ${child.recipeId || child.ticker}</b><br>[₳${fmtPA(childProfitPA)} P/A]`;
+        const childLabel = `<b>Make ${child.recipeId || child.ticker}</b><br>[${getCurrencySymbol(exchange ?? "ANT")}${fmtPA(childProfitPA)} P/A]`;
         const childHover = [
           `<b>Make ${child.recipeId || child.ticker}</b>`,
           child.building ? `BUI: ${child.building}` : null,
