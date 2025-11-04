@@ -10,10 +10,11 @@ export const LOCAL_DATA_SOURCES = {
   /**
    * Get best recipes path for a specific exchange
    * @param exchange - The exchange to get best recipes for (ANT, CIS, ICA, NCC, UNV)
+   * @param sellAt - The sell price type (bid, ask, pp7) - defaults to 'bid'
    * @returns Path for exchange-specific best recipes JSON
    */
-  getBestRecipesForExchange(exchange: string): string {
-    return `public/data/best-recipes-${exchange}.json`;
+  getBestRecipesForExchange(exchange: string, sellAt: string = 'bid'): string {
+    return `public/data/best-recipes-${exchange}-${sellAt}.json`;
   },
 } as const;
 
@@ -71,15 +72,16 @@ export const GCS_DATA_SOURCES = {
   /**
    * Get best recipes URL for a specific exchange
    * @param exchange - The exchange to get best recipes for (ANT, CIS, ICA, NCC, UNV)
+   * @param sellAt - The sell price type (bid, ask, pp7) - defaults to 'bid'
    * @returns URL for exchange-specific best recipes JSON
    */
-  getBestRecipesForExchange(exchange: string): string {
+  getBestRecipesForExchange(exchange: string, sellAt: string = 'bid'): string {
     const baseUrl = process.env.GCS_BEST_RECIPES_URL;
     if (!baseUrl) {
       throw new Error("GCS_BEST_RECIPES_URL environment variable is not set. Required for GCS mode.");
     }
-    // Replace .json with -EXCHANGE.json
-    return baseUrl.replace('.json', `-${exchange}.json`);
+    // Replace .json with -EXCHANGE-SELLAT.json
+    return baseUrl.replace('.json', `-${exchange}-${sellAt}.json`);
   },
 } as const;
 

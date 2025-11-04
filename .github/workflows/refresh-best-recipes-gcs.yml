@@ -51,23 +51,41 @@ jobs:
 
       - name: Upload to Google Cloud Storage
         run: |
-          # Upload exchange-specific data files
-          for exchange in ANT CIS ICA NCC UNV7 UNV30; do
-            echo "Uploading best-recipes-${exchange}.json..."
-            gsutil -h "Cache-Control:public, max-age=300" \
-                   -h "Content-Type:application/json" \
-                   cp public/data/best-recipes-${exchange}.json \
-                   gs://prun-site-alpha-bucket/best-recipes-${exchange}.json
+          # Upload standard exchange-specific data files (exchange-sellAt combinations)
+          for exchange in ANT CIS ICA NCC; do
+            for sellAt in bid ask pp7; do
+              filename="best-recipes-${exchange}-${sellAt}"
+              echo "Uploading ${filename}.json..."
+              gsutil -h "Cache-Control:public, max-age=300" \
+                     -h "Content-Type:application/json" \
+                     cp public/data/${filename}.json \
+                     gs://prun-site-alpha-bucket/${filename}.json
 
-            echo "Uploading best-recipes-meta-${exchange}.json..."
-            gsutil -h "Cache-Control:public, max-age=300" \
-                   -h "Content-Type:application/json" \
-                   cp public/data/best-recipes-meta-${exchange}.json \
-                   gs://prun-site-alpha-bucket/best-recipes-meta-${exchange}.json
+              echo "Uploading ${filename}-meta.json..."
+              gsutil -h "Cache-Control:public, max-age=300" \
+                     -h "Content-Type:application/json" \
+                     cp public/data/${filename}-meta.json \
+                     gs://prun-site-alpha-bucket/${filename}-meta.json
+            done
           done
 
-          # Upload default file (ANT) for backwards compatibility
-          echo "Uploading default best-recipes.json (ANT)..."
+          # Upload UNV special cases (not displayed in UI, but kept for compatibility)
+          for unv in UNV7 UNV30; do
+            echo "Uploading best-recipes-${unv}.json..."
+            gsutil -h "Cache-Control:public, max-age=300" \
+                   -h "Content-Type:application/json" \
+                   cp public/data/best-recipes-${unv}.json \
+                   gs://prun-site-alpha-bucket/best-recipes-${unv}.json
+
+            echo "Uploading best-recipes-${unv}-meta.json..."
+            gsutil -h "Cache-Control:public, max-age=300" \
+                   -h "Content-Type:application/json" \
+                   cp public/data/best-recipes-${unv}-meta.json \
+                   gs://prun-site-alpha-bucket/best-recipes-${unv}-meta.json
+          done
+
+          # Upload default file (ANT-bid) for backwards compatibility
+          echo "Uploading default best-recipes.json (ANT-bid)..."
           gsutil -h "Cache-Control:public, max-age=300" \
                  -h "Content-Type:application/json" \
                  cp public/data/best-recipes.json \
@@ -82,27 +100,49 @@ jobs:
 
       - name: Get public URLs
         run: |
-          echo "📦 Best Recipes Data (by exchange):"
-          for exchange in ANT CIS ICA NCC UNV7 UNV30; do
-            echo "  ${exchange}: https://storage.googleapis.com/prun-site-alpha-bucket/best-recipes-${exchange}.json"
+          echo "📦 Best Recipes Data (by exchange and sell price):"
+          for exchange in ANT CIS ICA NCC; do
+            for sellAt in bid ask pp7; do
+              echo "  ${exchange}-${sellAt}: https://storage.googleapis.com/prun-site-alpha-bucket/best-recipes-${exchange}-${sellAt}.json"
+            done
           done
           echo ""
-          echo "📦 Default (ANT): https://storage.googleapis.com/prun-site-alpha-bucket/best-recipes.json"
+          echo "📦 UNV Special Cases:"
+          for unv in UNV7 UNV30; do
+            echo "  ${unv}: https://storage.googleapis.com/prun-site-alpha-bucket/best-recipes-${unv}.json"
+          done
+          echo ""
+          echo "📦 Default (ANT-bid): https://storage.googleapis.com/prun-site-alpha-bucket/best-recipes.json"
 
       - name: Summary
         run: |
           echo "## Upload Summary" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
-          echo "✅ Best recipes data uploaded to Google Cloud Storage for all exchanges" >> $GITHUB_STEP_SUMMARY
+          echo "✅ Best recipes data uploaded to Google Cloud Storage for all exchanges and sell price options" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
 
-          echo "### Exchanges Generated" >> $GITHUB_STEP_SUMMARY
+          echo "### Standard Exchanges Generated" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
-          for exchange in ANT CIS ICA NCC UNV7 UNV30; do
-            if [ -f public/data/best-recipes-meta-${exchange}.json ]; then
-              echo "#### ${exchange}" >> $GITHUB_STEP_SUMMARY
+          for exchange in ANT CIS ICA NCC; do
+            for sellAt in bid ask pp7; do
+              filename="best-recipes-${exchange}-${sellAt}-meta"
+              if [ -f public/data/${filename}.json ]; then
+                echo "#### ${exchange}-${sellAt}" >> $GITHUB_STEP_SUMMARY
+                echo "\`\`\`json" >> $GITHUB_STEP_SUMMARY
+                cat public/data/${filename}.json >> $GITHUB_STEP_SUMMARY
+                echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
+                echo "" >> $GITHUB_STEP_SUMMARY
+              fi
+            done
+          done
+
+          echo "### UNV Special Cases" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          for unv in UNV7 UNV30; do
+            if [ -f public/data/best-recipes-${unv}-meta.json ]; then
+              echo "#### ${unv}" >> $GITHUB_STEP_SUMMARY
               echo "\`\`\`json" >> $GITHUB_STEP_SUMMARY
-              cat public/data/best-recipes-meta-${exchange}.json >> $GITHUB_STEP_SUMMARY
+              cat public/data/best-recipes-${unv}-meta.json >> $GITHUB_STEP_SUMMARY
               echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
               echo "" >> $GITHUB_STEP_SUMMARY
             fi
@@ -110,7 +150,16 @@ jobs:
 
           echo "### Public URLs" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
-          for exchange in ANT CIS ICA NCC UNV7 UNV30; do
-            echo "- **${exchange}**: https://storage.googleapis.com/prun-site-alpha-bucket/best-recipes-${exchange}.json" >> $GITHUB_STEP_SUMMARY
+          echo "#### Standard Exchanges" >> $GITHUB_STEP_SUMMARY
+          for exchange in ANT CIS ICA NCC; do
+            for sellAt in bid ask pp7; do
+              echo "- **${exchange}-${sellAt}**: https://storage.googleapis.com/prun-site-alpha-bucket/best-recipes-${exchange}-${sellAt}.json" >> $GITHUB_STEP_SUMMARY
+            done
           done
-          echo "- **Default (ANT)**: https://storage.googleapis.com/prun-site-alpha-bucket/best-recipes.json" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "#### UNV Special Cases" >> $GITHUB_STEP_SUMMARY
+          for unv in UNV7 UNV30; do
+            echo "- **${unv}**: https://storage.googleapis.com/prun-site-alpha-bucket/best-recipes-${unv}.json" >> $GITHUB_STEP_SUMMARY
+          done
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "- **Default (ANT-bid)**: https://storage.googleapis.com/prun-site-alpha-bucket/best-recipes.json" >> $GITHUB_STEP_SUMMARY

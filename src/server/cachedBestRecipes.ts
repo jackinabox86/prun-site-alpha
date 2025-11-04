@@ -7,51 +7,53 @@ import { join } from "path";
 /**
  * Cached best recipes singleton
  * Supports multiple exchanges and data sources (local/GCS)
- * Cache key format: `${priceSource}-${exchange}`
+ * Cache key format: `${priceSource}-${exchange}-${sellAt}`
  * No fallbacks - fails fast if data source is unavailable
  */
 class CachedBestRecipes {
-  // Cache for results and maps, keyed by `${priceSource}-${exchange}`
+  // Cache for results and maps, keyed by `${priceSource}-${exchange}-${sellAt}`
   private cache: Map<string, { results: BestRecipeResult[]; bestMap: BestMap }> = new Map();
   private initPromises: Map<string, Promise<void>> = new Map();
 
-  private getCacheKey(priceSource: "local" | "gcs", exchange: string): string {
-    return `${priceSource}-${exchange}`;
+  private getCacheKey(priceSource: "local" | "gcs", exchange: string, sellAt: string): string {
+    return `${priceSource}-${exchange}-${sellAt}`;
   }
 
   /**
    * Get or load the best recipes and bestMap
    * @param priceSource - "local" for legacy static files, "gcs" for live GCS data (required)
    * @param exchange - Exchange to load (default: "ANT") - can also be "UNV7" or "UNV30"
+   * @param sellAt - The sell price type (bid, ask, pp7) - defaults to 'bid'
    */
   async getBestRecipes(
     priceSource: "local" | "gcs",
-    exchange: string = "ANT"
+    exchange: string = "ANT",
+    sellAt: string = "bid"
   ): Promise<{ results: BestRecipeResult[]; bestMap: BestMap }> {
     if (!priceSource) {
       throw new Error("priceSource is required - must be 'local' or 'gcs'");
     }
 
-    const cacheKey = this.getCacheKey(priceSource, exchange);
+    const cacheKey = this.getCacheKey(priceSource, exchange, sellAt);
 
     // Return cached data if available
     const cached = this.cache.get(cacheKey);
     if (cached) {
-      console.log(`Using cached ${priceSource} best recipes for ${exchange} (${cached.results.length} entries)`);
+      console.log(`Using cached ${priceSource} best recipes for ${exchange} with sellAt=${sellAt} (${cached.results.length} entries)`);
       return cached;
     }
 
     // If already initializing this combination, wait for that to complete
     const existingPromise = this.initPromises.get(cacheKey);
     if (existingPromise) {
-      console.log(`Waiting for ongoing ${priceSource}/${exchange} best recipes load...`);
+      console.log(`Waiting for ongoing ${priceSource}/${exchange}/${sellAt} best recipes load...`);
       await existingPromise;
       // Return the now-cached data
       return this.getCachedData(cacheKey);
     }
 
     // Start new initialization
-    const initPromise = this.initialize(priceSource, exchange);
+    const initPromise = this.initialize(priceSource, exchange, sellAt);
     this.initPromises.set(cacheKey, initPromise);
     await initPromise;
     this.initPromises.delete(cacheKey);
@@ -67,32 +69,32 @@ class CachedBestRecipes {
     return cached;
   }
 
-  private async initialize(priceSource: "local" | "gcs", exchange: string): Promise<void> {
-    const cacheKey = this.getCacheKey(priceSource, exchange);
+  private async initialize(priceSource: "local" | "gcs", exchange: string, sellAt: string): Promise<void> {
+    const cacheKey = this.getCacheKey(priceSource, exchange, sellAt);
 
     if (priceSource === "local") {
-      const localData = await this.loadFromStaticFile(exchange);
+      const localData = await this.loadFromStaticFile(exchange, sellAt);
       if (!localData) {
         throw new Error(
-          `Failed to load local best recipes for ${exchange} from public/data/best-recipes-${exchange}.json. ` +
+          `Failed to load local best recipes for ${exchange} with sellAt=${sellAt} from public/data/best-recipes-${exchange}-${sellAt}.json. ` +
           "File may be missing or corrupted."
         );
       }
       const bestMap = convertToBestMap(localData.results);
       this.cache.set(cacheKey, { results: localData.results, bestMap });
-      console.log(`Loaded local best recipes for ${exchange} (${localData.results.length} entries, generated: ${localData.generatedAt})`);
+      console.log(`Loaded local best recipes for ${exchange} with sellAt=${sellAt} (${localData.results.length} entries, generated: ${localData.generatedAt})`);
       return;
     }
 
     if (priceSource === "gcs") {
       // Get the actual URL that will be fetched for better error messages
       const { GCS_DATA_SOURCES } = await import("@/lib/config");
-      const attemptedUrl = GCS_DATA_SOURCES.getBestRecipesForExchange(exchange);
+      const attemptedUrl = GCS_DATA_SOURCES.getBestRecipesForExchange(exchange, sellAt);
 
-      const gcsData = await this.loadFromGCS(exchange);
+      const gcsData = await this.loadFromGCS(exchange, sellAt);
       if (!gcsData) {
         throw new Error(
-          `Failed to load GCS best recipes for ${exchange}. ` +
+          `Failed to load GCS best recipes for ${exchange} with sellAt=${sellAt}. ` +
           `Attempted to fetch: ${attemptedUrl}. ` +
           "Check that GCS_BEST_RECIPES_URL environment variable is set and the GCS bucket is accessible. " +
           "Verify the file exists and is publicly readable."
@@ -100,7 +102,7 @@ class CachedBestRecipes {
       }
       const bestMap = convertToBestMap(gcsData.results);
       this.cache.set(cacheKey, { results: gcsData.results, bestMap });
-      console.log(`Loaded GCS best recipes for ${exchange} (${gcsData.results.length} entries, generated: ${gcsData.generatedAt})`);
+      console.log(`Loaded GCS best recipes for ${exchange} with sellAt=${sellAt} (${gcsData.results.length} entries, generated: ${gcsData.generatedAt})`);
       return;
     }
 
@@ -111,12 +113,12 @@ class CachedBestRecipes {
    * Try to load best recipes from Google Cloud Storage
    * Returns data and timestamp if successful, null otherwise
    */
-  private async loadFromGCS(exchange: string): Promise<{ results: BestRecipeResult[]; generatedAt: string } | null> {
+  private async loadFromGCS(exchange: string, sellAt: string): Promise<{ results: BestRecipeResult[]; generatedAt: string } | null> {
     try {
       const { GCS_DATA_SOURCES } = await import("@/lib/config");
 
-      const url = GCS_DATA_SOURCES.getBestRecipesForExchange(exchange);
-      console.log(`Fetching best recipes for ${exchange} from GCS: ${url}`);
+      const url = GCS_DATA_SOURCES.getBestRecipesForExchange(exchange, sellAt);
+      console.log(`Fetching best recipes for ${exchange} with sellAt=${sellAt} from GCS: ${url}`);
       const response = await fetch(url, {
         cache: 'no-store', // Always get fresh data
       });
@@ -170,11 +172,11 @@ class CachedBestRecipes {
    * Try to load best recipes from pre-generated static JSON file
    * Returns data and timestamp if successful, null otherwise
    */
-  private async loadFromStaticFile(exchange: string): Promise<{ results: BestRecipeResult[]; generatedAt: string } | null> {
+  private async loadFromStaticFile(exchange: string, sellAt: string): Promise<{ results: BestRecipeResult[]; generatedAt: string } | null> {
     try {
       const { LOCAL_DATA_SOURCES } = await import("@/lib/config");
 
-      const staticFilePath = join(process.cwd(), LOCAL_DATA_SOURCES.getBestRecipesForExchange(exchange));
+      const staticFilePath = join(process.cwd(), LOCAL_DATA_SOURCES.getBestRecipesForExchange(exchange, sellAt));
 
       if (!existsSync(staticFilePath)) {
         console.log(`Static file not found: ${staticFilePath}`);
@@ -211,12 +213,15 @@ class CachedBestRecipes {
    */
   clearCache(exchange?: string): void {
     if (exchange) {
-      // Clear specific exchange for both sources
-      const localKey = this.getCacheKey("local", exchange);
-      const gcsKey = this.getCacheKey("gcs", exchange);
-      this.cache.delete(localKey);
-      this.cache.delete(gcsKey);
-      console.log(`Clearing best recipes cache for ${exchange}`);
+      // Clear specific exchange for both sources and all sellAt options
+      const sellAtOptions = ["bid", "ask", "pp7"];
+      for (const sellAt of sellAtOptions) {
+        const localKey = this.getCacheKey("local", exchange, sellAt);
+        const gcsKey = this.getCacheKey("gcs", exchange, sellAt);
+        this.cache.delete(localKey);
+        this.cache.delete(gcsKey);
+      }
+      console.log(`Clearing best recipes cache for ${exchange} (all sell price options)`);
     } else {
       // Clear all
       console.log("Clearing all best recipes cache");
@@ -226,10 +231,10 @@ class CachedBestRecipes {
   }
 
   /**
-   * Check if cache is populated for a given source and exchange
+   * Check if cache is populated for a given source, exchange, and sellAt
    */
-  isCached(priceSource: "local" | "gcs", exchange: string = "ANT"): boolean {
-    const cacheKey = this.getCacheKey(priceSource, exchange);
+  isCached(priceSource: "local" | "gcs", exchange: string = "ANT", sellAt: string = "bid"): boolean {
+    const cacheKey = this.getCacheKey(priceSource, exchange, sellAt);
     return this.cache.has(cacheKey);
   }
 }

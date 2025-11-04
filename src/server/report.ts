@@ -41,8 +41,9 @@ export async function buildReport(opts: {
 
   // Get cached best recipes matching the price source
   // Use exchange-specific best recipes, except UNV always uses ANT
+  // Always use 'bid' for scenario pruning in main analysis
   const bestRecipesExchange = exchange === "UNV" ? "ANT" : exchange;
-  const { bestMap } = await cachedBestRecipes.getBestRecipes(priceSource, bestRecipesExchange);
+  const { bestMap } = await cachedBestRecipes.getBestRecipes(priceSource, bestRecipesExchange, 'bid');
 
   // Determine which data sources to use based on priceSource
   const dataSources = priceSource === "gcs" ? GCS_DATA_SOURCES : LOCAL_DATA_SOURCES;
