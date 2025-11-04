@@ -140,7 +140,7 @@ const BestScenarioSankey = memo(function BestScenarioSankey({
 
     const rootId = `STAGE::${best.recipeId || best.ticker}::0`;
     const rootProfitPA = best.totalProfitPA ?? 0;
-    const rootLabel = `<b>${best.ticker}</b><br>[₳${fmtPA(rootProfitPA)} P/A]`;
+    const rootLabel = `<b>&nbsp;${best.ticker}</b><br>[₳${fmtPA(rootProfitPA)} P/A]`;
     const rootHover = [
       `<b>${best.ticker}</b>`,
       best.building ? `BUI: ${best.building}` : null,
@@ -174,7 +174,7 @@ const BestScenarioSankey = memo(function BestScenarioSankey({
           const costPerDay = Math.max(0, batchCost * stageRunsPerDay);
 
           const buyNodeId = `BUY::${stage.recipeId || stage.ticker}::${inp.ticker}::${depth + 1}`;
-          const buyLabel = `<b>Buy ${inp.ticker}</b>`;
+          const buyLabel = `<b>Buy&nbsp;${inp.ticker}</b>`;
           const buyHover = [
             `<b>Buy ${inp.ticker}</b>`,
             inp.unitCost != null ? `Price: ${money(inp.unitCost)}` : null,
@@ -202,7 +202,7 @@ const BestScenarioSankey = memo(function BestScenarioSankey({
 
         const childId = `STAGE::${child.recipeId || child.ticker}::${depth + 1}`;
         const childProfitPA = child.totalProfitPA ?? 0;
-        const childLabel = `<b>Make ${child.recipeId || child.ticker}</b><br>[₳${fmtPA(childProfitPA)} P/A]`;
+        const childLabel = `<b>Make&nbsp;${child.recipeId || child.ticker}</b><br>[₳${fmtPA(childProfitPA)} P/A]`;
         const childHover = [
           `<b>Make ${child.recipeId || child.ticker}</b>`,
           child.building ? `BUI: ${child.building}` : null,
@@ -374,6 +374,15 @@ const BestScenarioSankey = memo(function BestScenarioSankey({
           size: 12,
           family: "'Courier New', 'Consolas', 'Monaco', monospace",
           color: "white"
+        },
+        hoverlabel: {
+          font: {
+            family: "'Courier New', 'Consolas', 'Monaco', monospace",
+            size: 13,
+            color: "white"
+          },
+          bgcolor: "#101419",
+          bordercolor: "#ff9500"
         },
         plot_bgcolor: "#0a0e14",
         paper_bgcolor: "#0a0e14",

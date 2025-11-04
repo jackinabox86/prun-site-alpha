@@ -198,7 +198,7 @@ export default function ReportClient() {
             display: "flex",
             alignItems: "center",
             justifyContent: "space-between",
-            marginBottom: systemControlsCollapsed ? "0" : "1rem"
+            marginBottom: "1rem"
           }}
         >
           <div className="terminal-header" style={{ margin: 0, paddingBottom: 0, borderBottom: "none" }}>System Controls</div>
@@ -212,7 +212,7 @@ export default function ReportClient() {
           gap: "1rem",
           gridTemplateColumns: "80px 80px 80px 140px 1fr",
           alignItems: "end",
-          marginBottom: systemControlsCollapsed ? "0" : "1.5rem"
+          marginBottom: systemControlsCollapsed ? "0.5rem" : "1.5rem"
         }}>
           <div style={{ position: "relative" }}>
             <label style={{ display: "block", fontSize: "0.75rem", marginBottom: "0.5rem", color: "var(--color-accent-primary)", textTransform: "uppercase" }}>
@@ -607,6 +607,7 @@ VEG_2 - HYF: 16xH2O-1xNS=>6xVEG`}
             </div>
 
             {!analysisCollapsed && (
+              <>
               <div style={{ display: "grid", gap: "0.5rem", fontSize: "0.875rem", fontFamily: "var(--font-mono)" }}>
                 <div style={{ display: "flex", gap: "0.5rem" }}>
                   <span
@@ -726,12 +727,13 @@ VEG_2 - HYF: 16xH2O-1xNS=>6xVEG`}
                   </div>
                 )}
               </div>
+              </>
             )}
-          </div>
 
-          {/* Sankey Chart */}
-          <div style={{ marginBottom: "2rem" }}>
-            <BestScenarioSankey best={report.best} exchange={report.exchange} priceType={report.priceType} />
+            {/* Sankey Chart - Always visible, even when analysis is collapsed */}
+            <div style={{ marginTop: "1rem" }}>
+              <BestScenarioSankey best={report.best} exchange={report.exchange} priceType={report.priceType} />
+            </div>
           </div>
 
           {/* Tables Section */}
@@ -761,38 +763,6 @@ VEG_2 - HYF: 16xH2O-1xNS=>6xVEG`}
         </div>
       )}
 
-      {/* Source selector - bottom right corner */}
-      <div style={{
-        position: "fixed",
-        bottom: "2rem",
-        right: "2rem",
-        background: "var(--color-bg-elevated)",
-        border: "1px solid var(--color-border-primary)",
-        borderRadius: "4px",
-        padding: "1rem",
-        boxShadow: "var(--glow-md)",
-        zIndex: 1000
-      }}>
-        <label style={{
-          display: "block",
-          fontSize: "0.75rem",
-          marginBottom: "0.5rem",
-          color: "var(--color-accent-primary)",
-          textTransform: "uppercase",
-          fontFamily: "var(--font-mono)"
-        }}>
-          Data Source
-        </label>
-        <select
-          value={priceSource}
-          onChange={(e) => setPriceSource(e.target.value as "local" | "gcs")}
-          className="terminal-select"
-          style={{ width: "100%" }}
-        >
-          <option value="local">Local</option>
-          <option value="gcs">GCS</option>
-        </select>
-      </div>
     </>
   );
 }
