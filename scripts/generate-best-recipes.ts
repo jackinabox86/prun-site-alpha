@@ -73,7 +73,7 @@ async function generateBestRecipes() {
       const outputPath = join(outputDir, `best-recipes-${outputName}.json`);
       writeFileSync(outputPath, JSON.stringify(data, null, 2));
 
-      const metaPath = join(outputDir, `best-recipes-meta-${outputName}.json`);
+      const metaPath = join(outputDir, `best-recipes-${outputName}-meta.json`);
       writeFileSync(metaPath, JSON.stringify({
         outputName,
         exchange,

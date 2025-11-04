@@ -77,11 +77,11 @@ jobs:
                    cp public/data/best-recipes-${unv}.json \
                    gs://prun-site-alpha-bucket/best-recipes-${unv}.json
 
-            echo "Uploading best-recipes-meta-${unv}.json..."
+            echo "Uploading best-recipes-${unv}-meta.json..."
             gsutil -h "Cache-Control:public, max-age=300" \
                    -h "Content-Type:application/json" \
-                   cp public/data/best-recipes-meta-${unv}.json \
-                   gs://prun-site-alpha-bucket/best-recipes-meta-${unv}.json
+                   cp public/data/best-recipes-${unv}-meta.json \
+                   gs://prun-site-alpha-bucket/best-recipes-${unv}-meta.json
           done
 
           # Upload default file (ANT-bid) for backwards compatibility
@@ -125,7 +125,7 @@ jobs:
           echo "" >> $GITHUB_STEP_SUMMARY
           for exchange in ANT CIS ICA NCC; do
             for sellAt in bid ask pp7; do
-              filename="best-recipes-meta-${exchange}-${sellAt}"
+              filename="best-recipes-${exchange}-${sellAt}-meta"
               if [ -f public/data/${filename}.json ]; then
                 echo "#### ${exchange}-${sellAt}" >> $GITHUB_STEP_SUMMARY
                 echo "\`\`\`json" >> $GITHUB_STEP_SUMMARY
@@ -139,10 +139,10 @@ jobs:
           echo "### UNV Special Cases" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           for unv in UNV7 UNV30; do
-            if [ -f public/data/best-recipes-meta-${unv}.json ]; then
+            if [ -f public/data/best-recipes-${unv}-meta.json ]; then
               echo "#### ${unv}" >> $GITHUB_STEP_SUMMARY
               echo "\`\`\`json" >> $GITHUB_STEP_SUMMARY
-              cat public/data/best-recipes-meta-${unv}.json >> $GITHUB_STEP_SUMMARY
+              cat public/data/best-recipes-${unv}-meta.json >> $GITHUB_STEP_SUMMARY
               echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
               echo "" >> $GITHUB_STEP_SUMMARY
             fi
