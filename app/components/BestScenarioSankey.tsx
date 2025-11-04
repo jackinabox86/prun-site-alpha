@@ -372,8 +372,11 @@ const BestScenarioSankey = memo(function BestScenarioSankey({
         margin: { l: 2, r: 2, t: 24, b: 12 },
         font: {
           size: 12,
-          family: "-apple-system, BlinkMacSystemFont, Segoe UI, Roboto, Helvetica Neue, Arial, sans-serif"
+          family: "-apple-system, BlinkMacSystemFont, Segoe UI, Roboto, Helvetica Neue, Arial, sans-serif",
+          color: "white"
         },
+        plot_bgcolor: "black",
+        paper_bgcolor: "black",
         hovermode: "closest",
         height: dynamicHeight,
       },

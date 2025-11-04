@@ -34,6 +34,7 @@ export default function ReportClient() {
   const [excludeRecipe, setExcludeRecipe] = useState<string>("");
   const [showRecipeList, setShowRecipeList] = useState(false);
   const [analysisCollapsed, setAnalysisCollapsed] = useState(false);
+  const [showTickerDropdown, setShowTickerDropdown] = useState(false);
 
   const [loading, setLoading] = useState(false);
   const [report, setReport] = useState<ApiReport | null>(null);
@@ -198,22 +199,67 @@ export default function ReportClient() {
           alignItems: "end",
           marginBottom: "1.5rem"
         }}>
-          <div>
+          <div style={{ position: "relative" }}>
             <label style={{ display: "block", fontSize: "0.75rem", marginBottom: "0.5rem", color: "var(--color-accent-primary)", textTransform: "uppercase" }}>
               Ticker
             </label>
             <input
-              list="ticker-list"
               value={tickerInput}
-              onChange={(e) => setTickerInput(e.target.value)}
+              onChange={(e) => {
+                setTickerInput(e.target.value);
+                setShowTickerDropdown(true);
+              }}
+              onFocus={() => setShowTickerDropdown(true)}
+              onBlur={() => setTimeout(() => setShowTickerDropdown(false), 200)}
               className="terminal-input"
               style={{ width: "100%", textAlign: "center", fontWeight: "bold" }}
+              placeholder="Type ticker..."
             />
-            <datalist id="ticker-list">
-              {filteredTickers.map((t) => (
-                <option key={t} value={t} />
-              ))}
-            </datalist>
+            {showTickerDropdown && filteredTickers.length > 0 && (
+              <div style={{
+                position: "absolute",
+                top: "100%",
+                left: 0,
+                right: 0,
+                maxHeight: "200px",
+                overflowY: "auto",
+                background: "var(--color-bg-elevated)",
+                border: "1px solid var(--color-accent-primary)",
+                borderTop: "none",
+                zIndex: 1000,
+                boxShadow: "var(--glow-md)"
+              }}>
+                {filteredTickers.map((t) => (
+                  <div
+                    key={t}
+                    onMouseDown={(e) => {
+                      e.preventDefault();
+                      setTickerInput(t);
+                      setShowTickerDropdown(false);
+                    }}
+                    style={{
+                      padding: "0.5rem",
+                      cursor: "pointer",
+                      fontFamily: "var(--font-mono)",
+                      fontSize: "0.875rem",
+                      color: "var(--color-text-primary)",
+                      borderBottom: "1px solid var(--color-border-secondary)",
+                      transition: "all 0.2s ease"
+                    }}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.background = "var(--color-accent-primary)";
+                      e.currentTarget.style.color = "var(--color-bg-primary)";
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.background = "transparent";
+                      e.currentTarget.style.color = "var(--color-text-primary)";
+                    }}
+                  >
+                    {t}
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
 
           <div>
@@ -338,7 +384,7 @@ export default function ReportClient() {
         </div>
 
         {/* Recipe List Toggle - Moved to bottom of system controls */}
-        <div style={{ borderTop: "1px solid var(--color-border-secondary)", paddingTop: "1rem" }}>
+        <div style={{ marginTop: "1rem" }}>
           <div
             onClick={() => setShowRecipeList(!showRecipeList)}
             style={{
@@ -518,7 +564,7 @@ VEG_2 - HYF: 16xH2O-1xNS=>6xVEG`}
               borderRadius: "2px"
             }}>
               <div>
-                <div style={{ fontSize: "0.75rem", color: "var(--color-text-muted)", textTransform: "uppercase", marginBottom: "0.25rem" }}>
+                <div style={{ fontSize: "0.75rem", color: "var(--color-text-muted)", textTransform: "uppercase", marginBottom: "0.25rem", fontFamily: "var(--font-mono)" }}>
                   Ticker
                 </div>
                 <div className="text-accent" style={{ fontSize: "1.5rem", fontFamily: "var(--font-mono)", fontWeight: "bold" }}>
@@ -526,7 +572,7 @@ VEG_2 - HYF: 16xH2O-1xNS=>6xVEG`}
                 </div>
               </div>
               <div>
-                <div style={{ fontSize: "0.75rem", color: "var(--color-text-muted)", textTransform: "uppercase", marginBottom: "0.25rem" }}>
+                <div style={{ fontSize: "0.75rem", color: "var(--color-text-muted)", textTransform: "uppercase", marginBottom: "0.25rem", fontFamily: "var(--font-mono)" }}>
                   Best P/A
                 </div>
                 <div className="status-success" style={{ fontSize: "1.5rem", fontFamily: "var(--font-mono)", fontWeight: "bold" }}>
@@ -534,7 +580,7 @@ VEG_2 - HYF: 16xH2O-1xNS=>6xVEG`}
                 </div>
               </div>
               <div>
-                <div style={{ fontSize: "0.75rem", color: "var(--color-text-muted)", textTransform: "uppercase", marginBottom: "0.25rem" }}>
+                <div style={{ fontSize: "0.75rem", color: "var(--color-text-muted)", textTransform: "uppercase", marginBottom: "0.25rem", fontFamily: "var(--font-mono)" }}>
                   Options Evaluated
                 </div>
                 <div style={{ fontSize: "1.5rem", fontFamily: "var(--font-mono)", color: "var(--color-text-primary)" }}>
