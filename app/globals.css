@@ -15,9 +15,9 @@
   --color-text-secondary: #a0a8b5;
   --color-text-muted: #6b7280;
 
-  --color-accent-primary: #00d9ff;
-  --color-accent-secondary: #3d9cdb;
-  --color-accent-tertiary: #1e90ff;
+  --color-accent-primary: #ff9500;
+  --color-accent-secondary: #ff7a00;
+  --color-accent-tertiary: #ffb347;
 
   --color-success: #00ff88;
   --color-warning: #ffaa00;
@@ -25,9 +25,9 @@
   --color-info: #00d9ff;
 
   /* Terminal glow effect */
-  --glow-sm: 0 0 5px rgba(0, 217, 255, 0.3);
-  --glow-md: 0 0 10px rgba(0, 217, 255, 0.4);
-  --glow-lg: 0 0 15px rgba(0, 217, 255, 0.5);
+  --glow-sm: 0 0 5px rgba(255, 149, 0, 0.3);
+  --glow-md: 0 0 10px rgba(255, 149, 0, 0.4);
+  --glow-lg: 0 0 15px rgba(255, 149, 0, 0.5);
 
   /* Font stacks */
   --font-mono: 'Courier New', 'Consolas', 'Monaco', monospace;
@@ -95,7 +95,7 @@ body {
     var(--color-accent-primary),
     transparent
   );
-  opacity: 0.3;
+  opacity: 0.2;
 }
 
 .terminal-box:hover {
@@ -149,7 +149,7 @@ body {
   height: 100%;
   background: linear-gradient(90deg,
     transparent,
-    rgba(0, 217, 255, 0.2),
+    rgba(255, 149, 0, 0.2),
     transparent
   );
   transition: left 0.3s ease;

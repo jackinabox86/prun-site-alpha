@@ -67,12 +67,12 @@ const BestScenarioSankey = memo(function BestScenarioSankey({
     const EXTRA_DRAG_BUFFER_PX = 80;
 
     const palette = {
-      root: "#2563eb",
-      make: "#3b82f6",
-      buy: "#f97316",
+      root: "#ff9500",
+      make: "#ff7a00",
+      buy: "#00ff88",
       border: "#0f172a",
-      linkBuy: "rgba(249,115,22,0.45)",
-      linkMake: "rgba(59,130,246,0.45)",
+      linkBuy: "rgba(0,255,136,0.45)",
+      linkMake: "rgba(255,149,0,0.45)",
     };
 
     const nodeIndexById = new Map<string, number>();

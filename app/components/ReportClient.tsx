@@ -33,6 +33,7 @@ export default function ReportClient() {
   const [forceRecipe, setForceRecipe] = useState<string>("");
   const [excludeRecipe, setExcludeRecipe] = useState<string>("");
   const [showRecipeList, setShowRecipeList] = useState(false);
+  const [analysisCollapsed, setAnalysisCollapsed] = useState(false);
 
   const [loading, setLoading] = useState(false);
   const [report, setReport] = useState<ApiReport | null>(null);
@@ -304,7 +305,8 @@ export default function ReportClient() {
         <div style={{
           display: "grid",
           gap: "1rem",
-          gridTemplateColumns: "1fr 1fr"
+          gridTemplateColumns: "1fr 1fr",
+          marginBottom: "1rem"
         }}>
           <div>
             <label style={{ display: "block", fontSize: "0.75rem", marginBottom: "0.5rem", color: "var(--color-accent-primary)", textTransform: "uppercase" }}>
@@ -334,32 +336,51 @@ export default function ReportClient() {
             />
           </div>
         </div>
-      </div>
 
-      {/* Recipe List Toggle */}
-      <div className="terminal-collapsible" style={{ marginBottom: "2rem" }}>
-        <div
-          className="terminal-collapsible-header"
-          onClick={() => setShowRecipeList(!showRecipeList)}
-        >
-          <span className="text-accent text-mono" style={{ fontSize: "0.875rem" }}>
-            {showRecipeList ? "[-]" : "[+]"} RECIPE DATABASE
-          </span>
-          <span style={{ fontSize: "0.75rem", color: "var(--color-text-muted)" }}>
-            {showRecipeList ? "COLLAPSE" : "EXPAND"}
-          </span>
-        </div>
-        {showRecipeList && (
-          <div className="terminal-collapsible-content">
-            <pre style={{
-              margin: 0,
-              whiteSpace: "pre-wrap",
-              fontFamily: "var(--font-mono)",
-              fontSize: "0.75rem",
-              lineHeight: "1.6",
-              color: "var(--color-text-secondary)"
+        {/* Recipe List Toggle - Moved to bottom of system controls */}
+        <div style={{ borderTop: "1px solid var(--color-border-secondary)", paddingTop: "1rem" }}>
+          <div
+            onClick={() => setShowRecipeList(!showRecipeList)}
+            style={{
+              cursor: "pointer",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "space-between",
+              padding: "0.5rem",
+              background: "var(--color-bg-primary)",
+              border: "1px solid var(--color-border-primary)",
+              borderRadius: "2px",
+              transition: "all 0.2s ease"
+            }}
+            onMouseEnter={(e) => e.currentTarget.style.borderColor = "var(--color-border-glow)"}
+            onMouseLeave={(e) => e.currentTarget.style.borderColor = "var(--color-border-primary)"}
+          >
+            <span className="text-accent text-mono" style={{ fontSize: "0.875rem" }}>
+              {showRecipeList ? "[-]" : "[+]"} RECIPE DATABASE
+            </span>
+            <span style={{ fontSize: "0.75rem", color: "var(--color-text-muted)" }}>
+              {showRecipeList ? "COLLAPSE" : "EXPAND"}
+            </span>
+          </div>
+          {showRecipeList && (
+            <div style={{
+              marginTop: "0.5rem",
+              padding: "1rem",
+              background: "var(--color-bg-primary)",
+              border: "1px solid var(--color-border-secondary)",
+              borderRadius: "2px",
+              maxHeight: "400px",
+              overflowY: "auto"
             }}>
-              {`Only materials with multiple recipes are listed here to provide recipe IDs:
+              <pre style={{
+                margin: 0,
+                whiteSpace: "pre-wrap",
+                fontFamily: "var(--font-mono)",
+                fontSize: "0.75rem",
+                lineHeight: "1.6",
+                color: "var(--color-text-secondary)"
+              }}>
+                {`Only materials with multiple recipes are listed here to provide recipe IDs:
 
 AL_1 - SME: 6xALO-1xC-1xO=>3xAL
 AL_2 - SME: 6xALO-1xC-1xFLX-1xO=>4xAL
@@ -442,9 +463,10 @@ SI_3 - SME: 1xC-1xO-3xSIO=>1xSI
 SI_4 - SME: 1xAL-1xO-4xTS=>1xSI
 VEG_1 - FRM: 3xH2O=>4xVEG
 VEG_2 - HYF: 16xH2O-1xNS=>6xVEG`}
-            </pre>
-          </div>
-        )}
+              </pre>
+            </div>
+          )}
+        </div>
       </div>
 
       {/* Error Display */}
@@ -467,15 +489,29 @@ VEG_2 - HYF: 16xH2O-1xNS=>6xVEG`}
       {/* Results Section */}
       {report && !error && !report.error && report.best && (
         <>
-          {/* Summary Box */}
+          {/* Summary Box - Collapsible */}
           <div className="terminal-box" style={{ marginBottom: "2rem" }}>
-            <div className="terminal-header">Analysis Results</div>
+            <div
+              onClick={() => setAnalysisCollapsed(!analysisCollapsed)}
+              style={{
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "space-between",
+                cursor: "pointer",
+                marginBottom: analysisCollapsed ? 0 : "1rem"
+              }}
+            >
+              <div className="terminal-header" style={{ margin: 0 }}>Analysis Results</div>
+              <span className="text-mono" style={{ fontSize: "0.875rem", color: "var(--color-text-muted)" }}>
+                {analysisCollapsed ? "[+] EXPAND" : "[-] COLLAPSE"}
+              </span>
+            </div>
 
             <div style={{
               display: "grid",
               gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))",
               gap: "1rem",
-              marginBottom: "1.5rem",
+              marginBottom: analysisCollapsed ? 0 : "1rem",
               padding: "1rem",
               background: "var(--color-bg-primary)",
               border: "1px solid var(--color-border-secondary)",
@@ -507,133 +543,127 @@ VEG_2 - HYF: 16xH2O-1xNS=>6xVEG`}
               </div>
             </div>
 
-            <div style={{ display: "grid", gap: "0.75rem", fontSize: "0.875rem", fontFamily: "var(--font-mono)" }}>
-              <div style={{ display: "flex", gap: "0.5rem" }}>
-                <span
-                  data-tooltip="The daily profit generated by a single building producing this ticker in this scenario."
-                  style={{ cursor: "help", color: "var(--color-accent-secondary)" }}
-                >
-                  [i]
-                </span>
-                <span style={{ color: "var(--color-text-secondary)" }}>Building Profit/Day:</span>
-                <span className="text-accent">{money(report.best.baseProfitPerDay)}</span>
-              </div>
-
-              <div style={{ display: "flex", gap: "0.5rem" }}>
-                <span
-                  data-tooltip="Cost of Goods Made for one count of this ticker."
-                  style={{ cursor: "help", color: "var(--color-accent-secondary)" }}
-                >
-                  [i]
-                </span>
-                <span style={{ color: "var(--color-text-secondary)" }}>COGM:</span>
-                <span className="text-accent">{money(report.best.cogmPerOutput)}</span>
-              </div>
-
-              <div style={{ display: "flex", gap: "0.5rem" }}>
-                <span
-                  data-tooltip="The area of the production building and the proportionate area of input production buildings needed for one day's production of this ticker in this scenario."
-                  style={{ cursor: "help", color: "var(--color-accent-secondary)" }}
-                >
-                  [i]
-                </span>
-                <span style={{ color: "var(--color-text-secondary)" }}>Total Area/Day:</span>
-                <span className="text-accent">
-                  {report.best.totalAreaPerDay != null && Number.isFinite(report.best.totalAreaPerDay)
-                    ? report.best.totalAreaPerDay.toFixed(1).replace(/\.0$/, "")
-                    : "n/a"}
-                </span>
-              </div>
-
-              <div style={{ display: "flex", gap: "0.5rem" }}>
-                <span
-                  data-tooltip="The number of orders that the production building will complete each day at full efficiency (160.5%)."
-                  style={{ cursor: "help", color: "var(--color-accent-secondary)" }}
-                >
-                  [i]
-                </span>
-                <span style={{ color: "var(--color-text-secondary)" }}>Orders/day:</span>
-                <span className="text-accent">
-                  {report.best.runsPerDay != null && Number.isFinite(report.best.runsPerDay)
-                    ? report.best.runsPerDay.toFixed(1).replace(/\.0$/, "")
-                    : "n/a"}
-                </span>
-              </div>
-
-              {(report.best.buildCost != null || report.best.roiNarrowDays != null) && (
+            {!analysisCollapsed && (
+              <div style={{ display: "grid", gap: "0.5rem", fontSize: "0.875rem", fontFamily: "var(--font-mono)" }}>
                 <div style={{ display: "flex", gap: "0.5rem" }}>
                   <span
-                    data-tooltip="The build cost for the production building and the proportionate build cost of needed habitation buildings and the core module, as well as the expected time needed to reach a ROI."
+                    data-tooltip="The daily profit generated by a single building producing this ticker in this scenario."
                     style={{ cursor: "help", color: "var(--color-accent-secondary)" }}
                   >
                     [i]
                   </span>
-                  <span style={{ color: "var(--color-text-secondary)" }}>Build Cost - Narrow (ROI):</span>
-                  <span className="text-accent">
-                    {money(report.best.buildCost)} ({Number.isFinite(report.best.roiNarrowDays)
-                      ? report.best.roiNarrowDays.toFixed(1).replace(/\.0$/, "")
-                      : "n/a"} days)
-                  </span>
+                  <span style={{ color: "var(--color-text-secondary)" }}>Building Profit/Day:</span>
+                  <span className="text-accent">{money(report.best.baseProfitPerDay)}</span>
                 </div>
-              )}
-
-              {(report.best.totalBuildCost != null || report.best.roiBroadDays != null) && (
                 <div style={{ display: "flex", gap: "0.5rem" }}>
                   <span
-                    data-tooltip="This figure includes the narrow build cost plus the proportionate build cost of all input production and habitation buildings needed for one day's production of this ticker"
+                    data-tooltip="Cost of Goods Made for one count of this ticker."
                     style={{ cursor: "help", color: "var(--color-accent-secondary)" }}
                   >
                     [i]
                   </span>
-                  <span style={{ color: "var(--color-text-secondary)" }}>Build Cost - Broad (ROI):</span>
-                  <span className="text-accent">
-                    {money(report.best.totalBuildCost)} ({Number.isFinite(report.best.roiBroadDays)
-                      ? report.best.roiBroadDays.toFixed(1).replace(/\.0$/, "")
-                      : "n/a"} days)
-                  </span>
+                  <span style={{ color: "var(--color-text-secondary)" }}>COGM:</span>
+                  <span className="text-accent">{money(report.best.cogmPerOutput)}</span>
                 </div>
-              )}
-
-              {(report.best.inputBuffer7 != null || report.best.inputPaybackDays7Narrow != null) && (
                 <div style={{ display: "flex", gap: "0.5rem" }}>
                   <span
-                    data-tooltip="Total cost of workforce and production inputs needed to keep the production building running for 7 days, as well as the expected time needed to reach a ROI."
+                    data-tooltip="The area of the production building and the proportionate area of input production buildings needed for one day's production of this ticker in this scenario."
                     style={{ cursor: "help", color: "var(--color-accent-secondary)" }}
                   >
                     [i]
                   </span>
-                  <span style={{ color: "var(--color-text-secondary)" }}>Input Buffer 7d - Narrow (Payback):</span>
+                  <span style={{ color: "var(--color-text-secondary)" }}>Total Area/Day:</span>
                   <span className="text-accent">
-                    {money(report.best.inputBuffer7)} ({Number.isFinite(report.best.inputPaybackDays7Narrow)
-                      ? report.best.inputPaybackDays7Narrow.toFixed(1).replace(/\.0$/, "")
-                      : "n/a"} days)
+                    {report.best.totalAreaPerDay != null && Number.isFinite(report.best.totalAreaPerDay)
+                      ? report.best.totalAreaPerDay.toFixed(1).replace(/\.0$/, "")
+                      : "n/a"}
                   </span>
                 </div>
-              )}
-
-              {(report.best.totalInputBuffer7 != null || report.best.inputPaybackDays7Broad != null) && (
                 <div style={{ display: "flex", gap: "0.5rem" }}>
                   <span
-                    data-tooltip="Total cost of workforce and production inputs needed to keep all stages' production buildings running for 7 days, as well as the expected time needed to reach a ROI."
+                    data-tooltip="The number of orders that the production building will complete each day at full efficiency (160.5%)."
                     style={{ cursor: "help", color: "var(--color-accent-secondary)" }}
                   >
                     [i]
                   </span>
-                  <span style={{ color: "var(--color-text-secondary)" }}>Input Buffer 7d - Broad (Payback):</span>
+                  <span style={{ color: "var(--color-text-secondary)" }}>Orders/day:</span>
                   <span className="text-accent">
-                    {money(report.best.totalInputBuffer7)} ({Number.isFinite(report.best.inputPaybackDays7Broad)
-                      ? report.best.inputPaybackDays7Broad.toFixed(1).replace(/\.0$/, "")
-                      : "n/a"} days)
+                    {report.best.runsPerDay != null && Number.isFinite(report.best.runsPerDay)
+                      ? report.best.runsPerDay.toFixed(1).replace(/\.0$/, "")
+                      : "n/a"}
                   </span>
                 </div>
-              )}
-
-              {report.best.scenario && (
-                <div style={{ marginTop: "0.5rem", paddingTop: "0.75rem", borderTop: "1px solid var(--color-border-secondary)", fontStyle: "italic", fontSize: "0.75rem", color: "var(--color-text-muted)" }}>
-                  Full Scenario: {report.best.scenario}
-                </div>
-              )}
-            </div>
+                {(report.best.buildCost != null || report.best.roiNarrowDays != null) && (
+                  <div style={{ display: "flex", gap: "0.5rem" }}>
+                    <span
+                      data-tooltip="The build cost for the production building and the proportionate build cost of needed habitation buildings and the core module, as well as the expected time needed to reach a ROI."
+                      style={{ cursor: "help", color: "var(--color-accent-secondary)" }}
+                    >
+                      [i]
+                    </span>
+                    <span style={{ color: "var(--color-text-secondary)" }}>Build Cost - Narrow (ROI):</span>
+                    <span className="text-accent">
+                      {money(report.best.buildCost)} ({Number.isFinite(report.best.roiNarrowDays)
+                        ? report.best.roiNarrowDays.toFixed(1).replace(/\.0$/, "")
+                        : "n/a"} days)
+                    </span>
+                  </div>
+                )}
+                {(report.best.totalBuildCost != null || report.best.roiBroadDays != null) && (
+                  <div style={{ display: "flex", gap: "0.5rem" }}>
+                    <span
+                      data-tooltip="This figure includes the narrow build cost plus the proportionate build cost of all input production and habitation buildings needed for one day's production of this ticker"
+                      style={{ cursor: "help", color: "var(--color-accent-secondary)" }}
+                    >
+                      [i]
+                    </span>
+                    <span style={{ color: "var(--color-text-secondary)" }}>Build Cost - Broad (ROI):</span>
+                    <span className="text-accent">
+                      {money(report.best.totalBuildCost)} ({Number.isFinite(report.best.roiBroadDays)
+                        ? report.best.roiBroadDays.toFixed(1).replace(/\.0$/, "")
+                        : "n/a"} days)
+                    </span>
+                  </div>
+                )}
+                {(report.best.inputBuffer7 != null || report.best.inputPaybackDays7Narrow != null) && (
+                  <div style={{ display: "flex", gap: "0.5rem" }}>
+                    <span
+                      data-tooltip="Total cost of workforce and production inputs needed to keep the production building running for 7 days, as well as the expected time needed to reach a ROI."
+                      style={{ cursor: "help", color: "var(--color-accent-secondary)" }}
+                    >
+                      [i]
+                    </span>
+                    <span style={{ color: "var(--color-text-secondary)" }}>Input Buffer 7d - Narrow (Payback):</span>
+                    <span className="text-accent">
+                      {money(report.best.inputBuffer7)} ({Number.isFinite(report.best.inputPaybackDays7Narrow)
+                        ? report.best.inputPaybackDays7Narrow.toFixed(1).replace(/\.0$/, "")
+                        : "n/a"} days)
+                    </span>
+                  </div>
+                )}
+                {(report.best.totalInputBuffer7 != null || report.best.inputPaybackDays7Broad != null) && (
+                  <div style={{ display: "flex", gap: "0.5rem" }}>
+                    <span
+                      data-tooltip="Total cost of workforce and production inputs needed to keep all stages' production buildings running for 7 days, as well as the expected time needed to reach a ROI."
+                      style={{ cursor: "help", color: "var(--color-accent-secondary)" }}
+                    >
+                      [i]
+                    </span>
+                    <span style={{ color: "var(--color-text-secondary)" }}>Input Buffer 7d - Broad (Payback):</span>
+                    <span className="text-accent">
+                      {money(report.best.totalInputBuffer7)} ({Number.isFinite(report.best.inputPaybackDays7Broad)
+                        ? report.best.inputPaybackDays7Broad.toFixed(1).replace(/\.0$/, "")
+                        : "n/a"} days)
+                    </span>
+                  </div>
+                )}
+                {report.best.scenario && (
+                  <div style={{ marginTop: "0.5rem", paddingTop: "0.75rem", borderTop: "1px solid var(--color-border-secondary)", fontStyle: "italic", fontSize: "0.75rem", color: "var(--color-text-muted)" }}>
+                    Full Scenario: {report.best.scenario}
+                  </div>
+                )}
+              </div>
+            )}
           </div>
 
           {/* Sankey Chart */}
