@@ -270,16 +270,23 @@ function buildAllOptionsForTicker(
       // Extract ticker from recipe ID (format: TICKER_VARIANT, e.g., C_1, GRN_2)
       const recipeIdTicker = recipeId.split('_')[0];
 
-      // If force recipes are specified, only keep recipes in that set
-      // BUT only apply constraint if this recipe is for the ticker being constrained
+      // If force recipes are specified, check if any are for THIS ticker
       if (forceRecipe && forceRecipe.size > 0) {
-        if (recipeIdTicker === materialTicker && !forceRecipe.has(recipeId)) {
-          return false;
+        // Find all forced recipes that belong to this ticker
+        const forcedRecipesForThisTicker = Array.from(forceRecipe).filter(
+          id => id.split('_')[0] === materialTicker
+        );
+
+        // Only apply whitelist filter if there ARE forced recipes for this ticker
+        if (forcedRecipesForThisTicker.length > 0) {
+          if (!forceRecipe.has(recipeId)) {
+            return false;
+          }
         }
+        // Otherwise, don't filter - allow all recipes for this ticker
       }
 
-      // If exclude recipes are specified, filter them out
-      // BUT only apply constraint if this recipe is for the ticker being constrained
+      // If exclude recipes are specified, filter them out (only for this ticker)
       if (excludeRecipe && excludeRecipe.size > 0) {
         if (recipeIdTicker === materialTicker && excludeRecipe.has(recipeId)) {
           return false;
@@ -596,16 +603,23 @@ function bestOptionForTicker(
       // Extract ticker from recipe ID (format: TICKER_VARIANT, e.g., C_1, GRN_2)
       const recipeIdTicker = recipeId.split('_')[0];
 
-      // If force recipes are specified, only keep recipes in that set
-      // BUT only apply constraint if this recipe is for the ticker being constrained
+      // If force recipes are specified, check if any are for THIS ticker
       if (forceRecipe && forceRecipe.size > 0) {
-        if (recipeIdTicker === materialTicker && !forceRecipe.has(recipeId)) {
-          return false;
+        // Find all forced recipes that belong to this ticker
+        const forcedRecipesForThisTicker = Array.from(forceRecipe).filter(
+          id => id.split('_')[0] === materialTicker
+        );
+
+        // Only apply whitelist filter if there ARE forced recipes for this ticker
+        if (forcedRecipesForThisTicker.length > 0) {
+          if (!forceRecipe.has(recipeId)) {
+            return false;
+          }
         }
+        // Otherwise, don't filter - allow all recipes for this ticker
       }
 
-      // If exclude recipes are specified, filter them out
-      // BUT only apply constraint if this recipe is for the ticker being constrained
+      // If exclude recipes are specified, filter them out (only for this ticker)
       if (excludeRecipe && excludeRecipe.size > 0) {
         if (recipeIdTicker === materialTicker && excludeRecipe.has(recipeId)) {
           return false;
@@ -977,16 +991,23 @@ export function findAllMakeOptions(
       // Extract ticker from recipe ID (format: TICKER_VARIANT, e.g., C_1, GRN_2)
       const recipeIdTicker = recipeId.split('_')[0];
 
-      // If force recipes are specified, only keep recipes in that set
-      // BUT only apply constraint if this recipe is for the ticker being constrained
+      // If force recipes are specified, check if any are for THIS ticker
       if (forceRecipe && forceRecipe.size > 0) {
-        if (recipeIdTicker === materialTicker && !forceRecipe.has(recipeId)) {
-          return false;
+        // Find all forced recipes that belong to this ticker
+        const forcedRecipesForThisTicker = Array.from(forceRecipe).filter(
+          id => id.split('_')[0] === materialTicker
+        );
+
+        // Only apply whitelist filter if there ARE forced recipes for this ticker
+        if (forcedRecipesForThisTicker.length > 0) {
+          if (!forceRecipe.has(recipeId)) {
+            return false;
+          }
         }
+        // Otherwise, don't filter - allow all recipes for this ticker
       }
 
-      // If exclude recipes are specified, filter them out
-      // BUT only apply constraint if this recipe is for the ticker being constrained
+      // If exclude recipes are specified, filter them out (only for this ticker)
       if (excludeRecipe && excludeRecipe.size > 0) {
         if (recipeIdTicker === materialTicker && excludeRecipe.has(recipeId)) {
           return false;
