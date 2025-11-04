@@ -30,6 +30,8 @@ export default function ReportClient() {
   const [urlParamsChecked, setUrlParamsChecked] = useState(false);
   const [forceMake, setForceMake] = useState<string>("");
   const [forceBuy, setForceBuy] = useState<string>("");
+  const [forceRecipe, setForceRecipe] = useState<string>("");
+  const [excludeRecipe, setExcludeRecipe] = useState<string>("");
 
   const [loading, setLoading] = useState(false);
   const [report, setReport] = useState<ApiReport | null>(null);
@@ -76,6 +78,12 @@ export default function ReportClient() {
       }
       if (forceBuy.trim()) {
         params.forceBuy = forceBuy.trim();
+      }
+      if (forceRecipe.trim()) {
+        params.forceRecipe = forceRecipe.trim();
+      }
+      if (excludeRecipe.trim()) {
+        params.excludeRecipe = excludeRecipe.trim();
       }
 
       const qs = new URLSearchParams(params);
@@ -283,6 +291,44 @@ export default function ReportClient() {
               value={forceBuy}
               onChange={(e) => setForceBuy(e.target.value)}
               placeholder="e.g., H, O, FE"
+              style={{ width: "100%", padding: "8px 10px", fontFamily: "inherit" }}
+            />
+          </div>
+        </div>
+
+        {/* Force/Exclude Recipe Controls */}
+        <div
+          style={{
+            display: "grid",
+            gap: 20,
+            gridTemplateColumns: "1fr 1fr",
+            alignItems: "end",
+            maxWidth: 900,
+            marginTop: 16,
+          }}
+        >
+          <div>
+            <label style={{ display: "block", fontSize: 14, marginBottom: 4 }}>
+              Force RecipeID (comma-separated recipe IDs)
+            </label>
+            <input
+              type="text"
+              value={forceRecipe}
+              onChange={(e) => setForceRecipe(e.target.value)}
+              placeholder="e.g., C_5, CL_2, HCP_1"
+              style={{ width: "100%", padding: "8px 10px", fontFamily: "inherit" }}
+            />
+          </div>
+
+          <div>
+            <label style={{ display: "block", fontSize: 14, marginBottom: 4 }}>
+              Exclude RecipeID (comma-separated recipe IDs)
+            </label>
+            <input
+              type="text"
+              value={excludeRecipe}
+              onChange={(e) => setExcludeRecipe(e.target.value)}
+              placeholder="e.g., C_1, CL_3"
               style={{ width: "100%", padding: "8px 10px", fontFamily: "inherit" }}
             />
           </div>
@@ -545,15 +591,12 @@ export default function ReportClient() {
 
       {/* Source selector - bottom right corner */}
       <div style={{
-        position: "fixed",
-        bottom: "20px",
-        right: "20px",
+        float: "right",
         backgroundColor: "white",
         border: "1px solid #ccc",
         borderRadius: "6px",
         padding: "12px",
         boxShadow: "0 2px 8px rgba(0,0,0,0.1)",
-        zIndex: 1000
       }}>
         <label style={{ display: "block", fontSize: 12, marginBottom: 4, color: "#666" }}>
           Source

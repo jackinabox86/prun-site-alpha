@@ -63,6 +63,7 @@ export interface MakeOption {
   recipeId: string | null;
   ticker: string;
   scenario: string;
+  building: string | null;
 
   baseProfit: number;
   profit: number;

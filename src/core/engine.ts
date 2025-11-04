@@ -48,7 +48,9 @@ const memoKey = (
   priceType: PriceType,
   ticker: string,
   forceMake?: Set<string>,
-  forceBuy?: Set<string>
+  forceBuy?: Set<string>,
+  forceRecipe?: Set<string>,
+  excludeRecipe?: Set<string>
 ) => {
   // Serialize force constraints into the cache key
   const forceMakeStr = forceMake && forceMake.size > 0
@@ -57,7 +59,13 @@ const memoKey = (
   const forceBuyStr = forceBuy && forceBuy.size > 0
     ? Array.from(forceBuy).sort().join(',')
     : '';
-  return `${exchange}::${priceType}::${ticker}::${forceMakeStr}::${forceBuyStr}`;
+  const forceRecipeStr = forceRecipe && forceRecipe.size > 0
+    ? Array.from(forceRecipe).sort().join(',')
+    : '';
+  const excludeRecipeStr = excludeRecipe && excludeRecipe.size > 0
+    ? Array.from(excludeRecipe).sort().join(',')
+    : '';
+  return `${exchange}::${priceType}::${ticker}::${forceMakeStr}::${forceBuyStr}::${forceRecipeStr}::${excludeRecipeStr}`;
 };
 
 /** Clear all caches - call this between different analyses if needed */
@@ -181,17 +189,19 @@ function topDisplayScenarioOptionsForTicker(
   honorRecipeIdFilter: boolean,
   seen: Set<string> = new Set(),
   forceMake?: Set<string>,
-  forceBuy?: Set<string>
+  forceBuy?: Set<string>,
+  forceRecipe?: Set<string>,
+  excludeRecipe?: Set<string>
 ): MakeOption[] {
   const bestEntry = bestMap?.[materialTicker];
   if (!bestEntry || !bestEntry.top3DisplayScenarios || bestEntry.top3DisplayScenarios.length === 0) {
     // Fallback to single best option
-    const best = bestOptionForTicker(materialTicker, recipeMap, priceMap, exchange, priceType, bestMap, honorRecipeIdFilter, seen, forceMake, forceBuy);
+    const best = bestOptionForTicker(materialTicker, recipeMap, priceMap, exchange, priceType, bestMap, honorRecipeIdFilter, seen, forceMake, forceBuy, forceRecipe, excludeRecipe);
     return best ? [best] : [];
   }
 
   // Build all options for this ticker and match against stored display scenarios
-  const allOptions = buildAllOptionsForTicker(materialTicker, recipeMap, priceMap, exchange, priceType, bestMap, honorRecipeIdFilter, seen, forceMake, forceBuy);
+  const allOptions = buildAllOptionsForTicker(materialTicker, recipeMap, priceMap, exchange, priceType, bestMap, honorRecipeIdFilter, seen, forceMake, forceBuy, forceRecipe, excludeRecipe);
 
   // Match options to the stored top 3 display scenarios
   const matchedOptions: MakeOption[] = [];
@@ -223,7 +233,9 @@ function buildAllOptionsForTicker(
   honorRecipeIdFilter: boolean,
   seen: Set<string>,
   forceMake?: Set<string>,
-  forceBuy?: Set<string>
+  forceBuy?: Set<string>,
+  forceRecipe?: Set<string>,
+  excludeRecipe?: Set<string>
 ): MakeOption[] {
   const headers = recipeMap.headers;
   const rows = recipeMap.map[materialTicker] || [];
@@ -231,6 +243,7 @@ function buildAllOptionsForTicker(
 
   const costCols = getCostColumnNames(exchange, priceType);
   const idx = {
+    building: headers.indexOf("Building"),
     recipeId: headers.indexOf("RecipeID"),
     wf: headers.indexOf(costCols.wfCst),
     dep: headers.indexOf(costCols.deprec),
@@ -247,12 +260,49 @@ function buildAllOptionsForTicker(
   const rowsToUse0 = (bestId && honorRecipeIdFilter)
     ? rows.filter((r) => String(r[idx.recipeId] ?? "") === bestId)
     : rows;
-  const rowsToUse = rowsToUse0.length ? rowsToUse0 : rows;
+  let rowsToUse = rowsToUse0.length ? rowsToUse0 : rows;
+
+  // Apply recipe constraints (force/exclude)
+  if (forceRecipe || excludeRecipe) {
+    rowsToUse = rowsToUse.filter((r) => {
+      const recipeId = String(r[idx.recipeId] ?? "").toUpperCase();
+      if (!recipeId) return true; // Keep rows without recipe ID
+
+      // Extract ticker from recipe ID (format: TICKER_VARIANT, e.g., C_1, GRN_2)
+      const recipeIdTicker = recipeId.split('_')[0];
+
+      // If force recipes are specified, check if any are for THIS ticker
+      if (forceRecipe && forceRecipe.size > 0) {
+        // Find all forced recipes that belong to this ticker
+        const forcedRecipesForThisTicker = Array.from(forceRecipe).filter(
+          id => id.split('_')[0] === materialTicker
+        );
+
+        // Only apply whitelist filter if there ARE forced recipes for this ticker
+        if (forcedRecipesForThisTicker.length > 0) {
+          if (!forceRecipe.has(recipeId)) {
+            return false;
+          }
+        }
+        // Otherwise, don't filter - allow all recipes for this ticker
+      }
+
+      // If exclude recipes are specified, filter them out (only for this ticker)
+      if (excludeRecipe && excludeRecipe.size > 0) {
+        if (recipeIdTicker === materialTicker && excludeRecipe.has(recipeId)) {
+          return false;
+        }
+      }
+
+      return true;
+    });
+  }
 
   const allOptions: MakeOption[] = [];
 
   for (const row of rowsToUse) {
     const recipeId = idx.recipeId !== -1 ? String(row[idx.recipeId] ?? "") : null;
+    const building = idx.building !== -1 ? String(row[idx.building] ?? "") : null;
     const runsPerDay = Math.max(1, Number(row[idx.runs] ?? 0) || 1);
     const area = Math.max(1, Number(row[idx.area] ?? 0) || 1);
     const areaPerOutCell = Number(row[idx.areaPerOut] ?? 0);
@@ -289,7 +339,9 @@ function buildAllOptionsForTicker(
           honorRecipeIdFilter,
           seen,
           forceMake,
-          forceBuy
+          forceBuy,
+          forceRecipe,
+          excludeRecipe
         );
         inputs.push({ ticker: inputTicker, amount: inputAmount, buyCost, childBest });
       }
@@ -451,6 +503,7 @@ function buildAllOptionsForTicker(
         recipeId,
         ticker: materialTicker,
         scenario: scn.scenarioName,
+        building,
         baseProfit,
         profit: finalProfit,
         cogmPerOutput,
@@ -507,9 +560,11 @@ function bestOptionForTicker(
   honorRecipeIdFilter: boolean,
   seen: Set<string> = new Set(),
   forceMake?: Set<string>,
-  forceBuy?: Set<string>
+  forceBuy?: Set<string>,
+  forceRecipe?: Set<string>,
+  excludeRecipe?: Set<string>
 ): MakeOption | null {
-  const mkey = memoKey(exchange, priceType, materialTicker, forceMake, forceBuy);
+  const mkey = memoKey(exchange, priceType, materialTicker, forceMake, forceBuy, forceRecipe, excludeRecipe);
   if (BEST_MEMO.has(mkey)) return BEST_MEMO.get(mkey)!;
 
   // guard against cycles
@@ -523,6 +578,7 @@ function bestOptionForTicker(
 
   const costCols = getCostColumnNames(exchange, priceType);
   const idx = {
+    building: headers.indexOf("Building"),
     recipeId: headers.indexOf("RecipeID"),
     wf: headers.indexOf(costCols.wfCst),
     dep: headers.indexOf(costCols.deprec),
@@ -540,7 +596,43 @@ function bestOptionForTicker(
   const rowsToUse0 = (bestId && honorRecipeIdFilter)
     ? rows.filter((r) => String(r[idx.recipeId] ?? "") === bestId)
     : rows;
-  const rowsToUse = rowsToUse0.length ? rowsToUse0 : rows;
+  let rowsToUse = rowsToUse0.length ? rowsToUse0 : rows;
+
+  // Apply recipe constraints (force/exclude)
+  if (forceRecipe || excludeRecipe) {
+    rowsToUse = rowsToUse.filter((r) => {
+      const recipeId = String(r[idx.recipeId] ?? "").toUpperCase();
+      if (!recipeId) return true; // Keep rows without recipe ID
+
+      // Extract ticker from recipe ID (format: TICKER_VARIANT, e.g., C_1, GRN_2)
+      const recipeIdTicker = recipeId.split('_')[0];
+
+      // If force recipes are specified, check if any are for THIS ticker
+      if (forceRecipe && forceRecipe.size > 0) {
+        // Find all forced recipes that belong to this ticker
+        const forcedRecipesForThisTicker = Array.from(forceRecipe).filter(
+          id => id.split('_')[0] === materialTicker
+        );
+
+        // Only apply whitelist filter if there ARE forced recipes for this ticker
+        if (forcedRecipesForThisTicker.length > 0) {
+          if (!forceRecipe.has(recipeId)) {
+            return false;
+          }
+        }
+        // Otherwise, don't filter - allow all recipes for this ticker
+      }
+
+      // If exclude recipes are specified, filter them out (only for this ticker)
+      if (excludeRecipe && excludeRecipe.size > 0) {
+        if (recipeIdTicker === materialTicker && excludeRecipe.has(recipeId)) {
+          return false;
+        }
+      }
+
+      return true;
+    });
+  }
 
   let chosenByPA: { opt: MakeOption; pa: number } | null = null;
   let chosenByScenario: MakeOption | null = null;
@@ -548,6 +640,8 @@ function bestOptionForTicker(
   for (const row of rowsToUse) {
     const recipeId =
       idx.recipeId !== -1 ? String(row[idx.recipeId] ?? "") : null;
+    const building =
+      idx.building !== -1 ? String(row[idx.building] ?? "") : null;
 
     const runsPerDay = Math.max(1, Number(row[idx.runs] ?? 0) || 1);
     const area = Math.max(1, Number(row[idx.area] ?? 0) || 1);
@@ -586,7 +680,9 @@ function bestOptionForTicker(
           honorRecipeIdFilter,
           nextSeen,
           forceMake,
-          forceBuy
+          forceBuy,
+          forceRecipe,
+          excludeRecipe
         );
         inputs.push({ ticker: inputTicker, amount: inputAmount, buyCost, childBest });
       }
@@ -750,6 +846,7 @@ function bestOptionForTicker(
         recipeId,
         ticker: materialTicker,
         scenario: scn.scenarioName,
+        building,
         baseProfit,
         profit: finalProfit,
         cogmPerOutput,
@@ -815,13 +912,15 @@ export function findAllMakeOptions(
   exploreAllChildScenarios = false,
   honorRecipeIdFilter = false,
   forceMake?: Set<string>,
-  forceBuy?: Set<string>
+  forceBuy?: Set<string>,
+  forceRecipe?: Set<string>,
+  excludeRecipe?: Set<string>
 ): MakeOption[] {
   // Optimized cache checking for children
   if (depth > 0) {
     if (exploreAllChildScenarios) {
       // Check full exploration cache
-      const cacheKey = memoKey(exchange, priceType, materialTicker, forceMake, forceBuy);
+      const cacheKey = memoKey(exchange, priceType, materialTicker, forceMake, forceBuy, forceRecipe, excludeRecipe);
       if (ALL_SCENARIOS_MEMO.has(cacheKey)) {
         return ALL_SCENARIOS_MEMO.get(cacheKey)!;
       }
@@ -840,7 +939,9 @@ export function findAllMakeOptions(
           honorRecipeIdFilter,
           undefined,
           forceMake,
-          forceBuy
+          forceBuy,
+          forceRecipe,
+          excludeRecipe
         );
       } else {
         // Fallback to single best (has its own BEST_MEMO cache)
@@ -854,7 +955,9 @@ export function findAllMakeOptions(
           honorRecipeIdFilter,
           undefined,
           forceMake,
-          forceBuy
+          forceBuy,
+          forceRecipe,
+          excludeRecipe
         );
         return best ? [best] : [];
       }
@@ -867,6 +970,7 @@ export function findAllMakeOptions(
   const rows = recipeMap.map[materialTicker] || [];
 
   const costCols = getCostColumnNames(exchange, priceType);
+  const buildingIndex = headers.indexOf("Building");
   const recipeIdIndex = headers.indexOf("RecipeID");
   const workforceCostIndex = headers.indexOf(costCols.wfCst);
   const depreciationCostIndex = headers.indexOf(costCols.deprec);
@@ -886,9 +990,47 @@ export function findAllMakeOptions(
     }
   }
 
+  // Apply recipe constraints (force/exclude)
+  if (forceRecipe || excludeRecipe) {
+    rowsToProcess = rowsToProcess.filter((r) => {
+      const recipeId = String(r[recipeIdIndex] ?? "").toUpperCase();
+      if (!recipeId) return true; // Keep rows without recipe ID
+
+      // Extract ticker from recipe ID (format: TICKER_VARIANT, e.g., C_1, GRN_2)
+      const recipeIdTicker = recipeId.split('_')[0];
+
+      // If force recipes are specified, check if any are for THIS ticker
+      if (forceRecipe && forceRecipe.size > 0) {
+        // Find all forced recipes that belong to this ticker
+        const forcedRecipesForThisTicker = Array.from(forceRecipe).filter(
+          id => id.split('_')[0] === materialTicker
+        );
+
+        // Only apply whitelist filter if there ARE forced recipes for this ticker
+        if (forcedRecipesForThisTicker.length > 0) {
+          if (!forceRecipe.has(recipeId)) {
+            return false;
+          }
+        }
+        // Otherwise, don't filter - allow all recipes for this ticker
+      }
+
+      // If exclude recipes are specified, filter them out (only for this ticker)
+      if (excludeRecipe && excludeRecipe.size > 0) {
+        if (recipeIdTicker === materialTicker && excludeRecipe.has(recipeId)) {
+          return false;
+        }
+      }
+
+      return true;
+    });
+  }
+
   for (const row of rowsToProcess) {
     const recipeId =
       recipeIdIndex !== -1 ? String(row[recipeIdIndex] ?? "") : null;
+    const building =
+      buildingIndex !== -1 ? String(row[buildingIndex] ?? "") : null;
 
     const runsPerDayVal =
       runsPerDayIndex !== -1 ? Number(row[runsPerDayIndex] ?? 0) : 0;
@@ -943,7 +1085,9 @@ export function findAllMakeOptions(
           depth <= 2 && exploreAllChildScenarios,
           honorRecipeIdFilter,
           forceMake,
-          forceBuy
+          forceBuy,
+          forceRecipe,
+          excludeRecipe
         );
 
         // Apply intelligent pruning based on depth
@@ -1122,6 +1266,7 @@ export function findAllMakeOptions(
         recipeId,
         ticker: materialTicker,
         scenario: scn.scenarioName,
+        building,
         baseProfit,
         profit: finalProfit,
         cogmPerOutput,
@@ -1150,7 +1295,7 @@ export function findAllMakeOptions(
 
   // Cache AFTER all rows processed, OUTSIDE the loop
   if (depth > 0 && results.length > 0 && exploreAllChildScenarios) {
-    const cacheKey = memoKey(exchange, priceType, materialTicker, forceMake, forceBuy);
+    const cacheKey = memoKey(exchange, priceType, materialTicker, forceMake, forceBuy, forceRecipe, excludeRecipe);
     ALL_SCENARIOS_MEMO.set(cacheKey, results);
   }
 
