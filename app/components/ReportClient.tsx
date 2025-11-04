@@ -6,6 +6,7 @@ import BestScenarioSankey from "./BestScenarioSankey";
 import Top20Table from "./Top20Table";
 import CondensedOptionsTable from "./CondensedOptionsTable";
 import { scenarioDisplayName } from "@/core/scenario";
+import { formatCurrency } from "@/lib/formatting";
 
 type ApiReport = {
   schemaVersion: number;
@@ -112,9 +113,7 @@ export default function ReportClient() {
 
   // Helper formatting function matching the Sankey component
   const money = (n: number | null | undefined) =>
-    n != null && Number.isFinite(n)
-      ? `₳${n.toLocaleString(undefined, { maximumFractionDigits: 2 })}`
-      : "n/a";
+    formatCurrency(n, report?.exchange ?? exchange);
 
   return (
     <>
@@ -493,7 +492,7 @@ VEG_2 - HYF: 16xH2O-1xNS=>6xVEG`}
                                         <p style={{ margin: "0 0 12px 0", fontSize: 16, paddingLeft: "20px" }}>
                       <strong> {report.ticker} </strong> &nbsp; | &nbsp;
                       <strong>Best P/A:</strong>{" "}
-                      {report.bestPA != null ? `₳${Number(report.bestPA).toFixed(2)}` : "n/a"}   | &nbsp;
+                      {formatCurrency(report.bestPA, report.exchange)}   | &nbsp;
                       {report.best.scenario && (
                         <>
                           <strong>Scenario:</strong> {scenarioDisplayName(report.best.scenario)}   | &nbsp;

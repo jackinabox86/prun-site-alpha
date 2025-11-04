@@ -4,6 +4,7 @@ import { useState, useEffect, useMemo } from "react";
 import { scenarioDisplayName } from "@/core/scenario";
 import { tickerFilterGroups } from "@/lib/tickerFilters";
 import type { Exchange } from "@/types";
+import { formatProfitPerArea } from "@/lib/formatting";
 
 interface BestRecipeResult {
   ticker: string;
@@ -505,14 +506,14 @@ export default function BestRecipesClient() {
                     </td>
                     <td style={{ padding: "12px 16px", textAlign: "right" }}>
                       {typeof row.profitPA === "number" && Number.isFinite(row.profitPA)
-                        ? `₳${row.profitPA.toFixed(1).replace(/\.0$/, "")}`
+                        ? formatProfitPerArea(row.profitPA, exchange as Exchange)
                         : "—"}
                     </td>
                     <td style={{ padding: "12px 16px", textAlign: "right" }}>
                       {row.buyAllProfitPA === null
                         ? "Input N/A"
                         : typeof row.buyAllProfitPA === "number" && Number.isFinite(row.buyAllProfitPA)
-                        ? `₳${row.buyAllProfitPA.toFixed(1).replace(/\.0$/, "")}`
+                        ? formatProfitPerArea(row.buyAllProfitPA, exchange as Exchange)
                         : "—"}
                     </td>
                     <td style={{ padding: "12px 16px", textAlign: "center" }}>

@@ -5,6 +5,7 @@ import React, { useState } from "react";
 import { scenarioDisplayName } from "@/core/scenario";
 import BestScenarioSankey from "./BestScenarioSankey";
 import type { Exchange, PriceType } from "@/types";
+import { formatCurrencyRounded, getCurrencySymbol } from "@/lib/formatting";
 
 type CondensedOption = {
   ticker: string;
@@ -49,9 +50,7 @@ export default function CondensedOptionsTable({ options, exchange, priceType }: 
       : "n/a";
 
   const money = (n: number | null | undefined) =>
-    n != null && Number.isFinite(n)
-      ? `₳${Math.round(n).toLocaleString()}`
-      : "n/a";
+    formatCurrencyRounded(n, exchange ?? "ANT");
 
   return (
     <>
@@ -121,7 +120,7 @@ export default function CondensedOptionsTable({ options, exchange, priceType }: 
                     {option.roiBroadDays != null ? `${fmt(option.roiBroadDays)} days` : "n/a"}
                   </td>
                   <td style={{ padding: "8px", border: "1px solid #dee2e6", textAlign: "center" }}>
-                    {option.totalProfitPA != null && Number.isFinite(option.totalProfitPA) ? `₳${fmt(option.totalProfitPA)}` : "n/a"}
+                    {option.totalProfitPA != null && Number.isFinite(option.totalProfitPA) ? `${getCurrencySymbol(exchange ?? "ANT")}${fmt(option.totalProfitPA)}` : "n/a"}
                   </td>
                 </tr>
                 {expandedRows.has(index) && (
@@ -194,7 +193,7 @@ export default function CondensedOptionsTable({ options, exchange, priceType }: 
                             </div>
                           )}
                           <div>
-                            <strong>Profit P/A:</strong> {option.totalProfitPA != null && Number.isFinite(option.totalProfitPA) ? `₳${fmt(option.totalProfitPA)}` : "n/a"}
+                            <strong>Profit P/A:</strong> {option.totalProfitPA != null && Number.isFinite(option.totalProfitPA) ? `${getCurrencySymbol(exchange ?? "ANT")}${fmt(option.totalProfitPA)}` : "n/a"}
                           </div>
                         </div>
                       </div>
