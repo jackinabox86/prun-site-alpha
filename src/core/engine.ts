@@ -267,14 +267,23 @@ function buildAllOptionsForTicker(
       const recipeId = String(r[idx.recipeId] ?? "").toUpperCase();
       if (!recipeId) return true; // Keep rows without recipe ID
 
+      // Extract ticker from recipe ID (format: TICKER_VARIANT, e.g., C_1, GRN_2)
+      const recipeIdTicker = recipeId.split('_')[0];
+
       // If force recipes are specified, only keep recipes in that set
+      // BUT only apply constraint if this recipe is for the ticker being constrained
       if (forceRecipe && forceRecipe.size > 0) {
-        if (!forceRecipe.has(recipeId)) return false;
+        if (recipeIdTicker === materialTicker && !forceRecipe.has(recipeId)) {
+          return false;
+        }
       }
 
       // If exclude recipes are specified, filter them out
+      // BUT only apply constraint if this recipe is for the ticker being constrained
       if (excludeRecipe && excludeRecipe.size > 0) {
-        if (excludeRecipe.has(recipeId)) return false;
+        if (recipeIdTicker === materialTicker && excludeRecipe.has(recipeId)) {
+          return false;
+        }
       }
 
       return true;
@@ -584,14 +593,23 @@ function bestOptionForTicker(
       const recipeId = String(r[idx.recipeId] ?? "").toUpperCase();
       if (!recipeId) return true; // Keep rows without recipe ID
 
+      // Extract ticker from recipe ID (format: TICKER_VARIANT, e.g., C_1, GRN_2)
+      const recipeIdTicker = recipeId.split('_')[0];
+
       // If force recipes are specified, only keep recipes in that set
+      // BUT only apply constraint if this recipe is for the ticker being constrained
       if (forceRecipe && forceRecipe.size > 0) {
-        if (!forceRecipe.has(recipeId)) return false;
+        if (recipeIdTicker === materialTicker && !forceRecipe.has(recipeId)) {
+          return false;
+        }
       }
 
       // If exclude recipes are specified, filter them out
+      // BUT only apply constraint if this recipe is for the ticker being constrained
       if (excludeRecipe && excludeRecipe.size > 0) {
-        if (excludeRecipe.has(recipeId)) return false;
+        if (recipeIdTicker === materialTicker && excludeRecipe.has(recipeId)) {
+          return false;
+        }
       }
 
       return true;
@@ -956,14 +974,23 @@ export function findAllMakeOptions(
       const recipeId = String(r[recipeIdIndex] ?? "").toUpperCase();
       if (!recipeId) return true; // Keep rows without recipe ID
 
+      // Extract ticker from recipe ID (format: TICKER_VARIANT, e.g., C_1, GRN_2)
+      const recipeIdTicker = recipeId.split('_')[0];
+
       // If force recipes are specified, only keep recipes in that set
+      // BUT only apply constraint if this recipe is for the ticker being constrained
       if (forceRecipe && forceRecipe.size > 0) {
-        if (!forceRecipe.has(recipeId)) return false;
+        if (recipeIdTicker === materialTicker && !forceRecipe.has(recipeId)) {
+          return false;
+        }
       }
 
       // If exclude recipes are specified, filter them out
+      // BUT only apply constraint if this recipe is for the ticker being constrained
       if (excludeRecipe && excludeRecipe.size > 0) {
-        if (excludeRecipe.has(recipeId)) return false;
+        if (recipeIdTicker === materialTicker && excludeRecipe.has(recipeId)) {
+          return false;
+        }
       }
 
       return true;

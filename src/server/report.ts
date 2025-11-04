@@ -160,6 +160,17 @@ export async function buildReport(opts: {
         continue;
       }
 
+      // Validate recipe ID format (should be TICKER_VARIANT, e.g., C_1, GRN_2)
+      if (!recipeId.includes('_')) {
+        validationErrors.push(`Recipe ID "${recipeId}" does not follow expected format "TICKER_VARIANT" (e.g., C_1, GRN_2). Recipe constraints are scoped by ticker prefix.`);
+      } else {
+        // Verify the ticker prefix matches the actual ticker
+        const recipeIdPrefix = recipeId.split('_')[0];
+        if (recipeIdPrefix !== recipeTicker) {
+          validationErrors.push(`Recipe ID "${recipeId}" has prefix "${recipeIdPrefix}" but belongs to ticker "${recipeTicker}". This may cause unexpected filtering behavior.`);
+        }
+      }
+
       // Check if ticker is force-bought
       if (forceBuySet && forceBuySet.has(recipeTicker)) {
         validationErrors.push(`Conflict: Recipe "${recipeId}" for ticker "${recipeTicker}" cannot be used because "${recipeTicker}" is in Force Buy list`);
