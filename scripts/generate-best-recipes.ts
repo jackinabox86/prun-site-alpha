@@ -2,8 +2,10 @@
 /**
  * Generate best recipes data at build time
  * This runs during deployment to pre-compute best recipe analysis
- * Generates data for all exchanges: ANT, CIS, ICA, NCC, UNV7, UNV30
- * Note: UNV is split into UNV7 (pp7 prices) and UNV30 (pp30 prices)
+ * Generates data for all exchanges with all sell price options
+ * Standard exchanges (ANT, CIS, ICA, NCC): bid, ask, pp7
+ * UNV special cases: UNV7 (pp7), UNV30 (pp30) - not displayed in UI
+ * Total: 12 standard + 2 UNV = 14 files
  */
 
 import { writeFileSync, mkdirSync } from 'fs';
@@ -11,19 +13,29 @@ import { join } from 'path';
 import { refreshBestRecipeIDs } from '../src/server/bestRecipes';
 import type { Exchange, PriceType } from '../src/types';
 
-// Exchange configurations: [outputName, actualExchange, buyPriceType, sellPriceType]
+// Exchange configurations
 type ExchangeConfig = {
-  outputName: string;
-  exchange: Exchange;
-  buyPriceType: PriceType;
-  sellPriceType: PriceType;
+  outputName: string;      // File name identifier (e.g., "ANT-bid")
+  exchange: Exchange;      // Actual exchange
+  buyPriceType: PriceType; // Always "ask" for standard exchanges
+  sellPriceType: PriceType; // bid/ask/pp7
 };
 
+// Standard exchanges with all sell price options (buy always at ask)
+const STANDARD_EXCHANGES: Exchange[] = ["ANT", "CIS", "ICA", "NCC"];
+const SELL_PRICE_TYPES: PriceType[] = ["bid", "ask", "pp7"];
+
 const EXCHANGE_CONFIGS: ExchangeConfig[] = [
-  { outputName: "ANT", exchange: "ANT", buyPriceType: "ask", sellPriceType: "bid" },
-  { outputName: "CIS", exchange: "CIS", buyPriceType: "ask", sellPriceType: "bid" },
-  { outputName: "ICA", exchange: "ICA", buyPriceType: "ask", sellPriceType: "bid" },
-  { outputName: "NCC", exchange: "NCC", buyPriceType: "ask", sellPriceType: "bid" },
+  // Generate all combinations for standard exchanges
+  ...STANDARD_EXCHANGES.flatMap(exchange =>
+    SELL_PRICE_TYPES.map(sellPriceType => ({
+      outputName: `${exchange}-${sellPriceType}`,
+      exchange,
+      buyPriceType: "ask" as PriceType,
+      sellPriceType
+    }))
+  ),
+  // UNV special cases (not displayed in UI, but kept for compatibility)
   { outputName: "UNV7", exchange: "UNV", buyPriceType: "pp7", sellPriceType: "pp7" },
   { outputName: "UNV30", exchange: "UNV", buyPriceType: "pp30", sellPriceType: "pp30" },
 ];
@@ -73,20 +85,21 @@ async function generateBestRecipes() {
       console.log(`[${outputName}] Written to ${outputPath}`);
     }
 
-    // Write default file (ANT) for backwards compatibility
-    const antResult = results.find(r => r.exchange === "ANT")!;
+    // Write default file (ANT-bid) for backwards compatibility
+    const antBidResult = results.find(r => r.outputName === "ANT-bid")!;
     const defaultPath = join(outputDir, 'best-recipes.json');
-    writeFileSync(defaultPath, JSON.stringify(antResult.data, null, 2));
+    writeFileSync(defaultPath, JSON.stringify(antBidResult.data, null, 2));
 
     const defaultMetaPath = join(outputDir, 'best-recipes-meta.json');
     writeFileSync(defaultMetaPath, JSON.stringify({
       exchange: "ANT",
+      sellPriceType: "bid",
       generatedAt: new Date().toISOString(),
-      tickerCount: antResult.data.length,
-      durationSeconds: parseFloat(antResult.duration)
+      tickerCount: antBidResult.data.length,
+      durationSeconds: parseFloat(antBidResult.duration)
     }, null, 2));
 
-    console.log(`\n✓ Default files (ANT) written to ${defaultPath}`);
+    console.log(`\n✓ Default files (ANT-bid) written to ${defaultPath}`);
 
     const overallDuration = ((Date.now() - overallStartTime) / 1000).toFixed(2);
     console.log(`\n✅ Successfully generated best recipes for all ${EXCHANGE_CONFIGS.length} configurations in ${overallDuration}s`);

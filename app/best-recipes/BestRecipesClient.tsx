@@ -32,6 +32,13 @@ const EXCHANGE_DISPLAYS = [
 
 const EXCHANGES: Exchange[] = ["ANT", "CIS", "ICA", "NCC"];
 
+// Sell price options
+const SELL_AT_OPTIONS = [
+  { display: "Bid", value: "bid" },
+  { display: "Ask", value: "ask" },
+  { display: "PP7", value: "pp7" },
+];
+
 export default function BestRecipesClient() {
   const [loading, setLoading] = useState(false);
   const [data, setData] = useState<BestRecipeResult[]>([]);
@@ -42,8 +49,9 @@ export default function BestRecipesClient() {
   const [selectedFilterGroupId, setSelectedFilterGroupId] = useState<string>("all");
   const [selectedBuilding, setSelectedBuilding] = useState<string>("all");
   const [exchange, setExchange] = useState<string>("ANT");
+  const [sellAt, setSellAt] = useState<string>("bid");
 
-  // Read exchange from URL params on mount
+  // Read exchange and sellAt from URL params on mount
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const exchangeParam = params.get("exchange")?.toUpperCase();
@@ -54,22 +62,30 @@ export default function BestRecipesClient() {
         setExchange(validDisplay.display);
       }
     }
+    const sellAtParam = params.get("sellAt")?.toLowerCase();
+    if (sellAtParam) {
+      const validSellAt = SELL_AT_OPTIONS.find(opt => opt.value === sellAtParam);
+      if (validSellAt) {
+        setSellAt(validSellAt.value);
+      }
+    }
   }, []);
 
   const loadData = async () => {
     setLoading(true);
     setError(null);
     try {
-      // Update URL with current exchange
+      // Update URL with current exchange and sellAt
       const url = new URL(window.location.href);
       url.searchParams.set("exchange", exchange);
+      url.searchParams.set("sellAt", sellAt);
       window.history.replaceState({}, "", url);
 
       // Add a longer timeout for this computation-heavy request
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), 300000); // 5 min timeout
 
-      const qs = new URLSearchParams({ exchange });
+      const qs = new URLSearchParams({ exchange, sellAt });
       const res = await fetch(`/api/best-recipes?${qs.toString()}`, {
         cache: "no-store",
         signal: controller.signal
@@ -171,7 +187,7 @@ export default function BestRecipesClient() {
       fontFamily: "-apple-system, BlinkMacSystemFont, Segoe UI, Roboto, Helvetica Neue, Arial, sans-serif"
     }}>
       <div style={{ maxWidth: 1200, margin: "0 auto" }}>
-        <h1 style={{ marginBottom: 16 }}>Best Recipe IDs - {exchange}</h1>
+        <h1 style={{ marginBottom: 16 }}>Best Recipe IDs - {exchange} (Sell at {sellAt.toUpperCase()})</h1>
 
         {/* Exchange Navigation Links */}
         <div style={{
@@ -187,7 +203,7 @@ export default function BestRecipesClient() {
           {EXCHANGE_DISPLAYS.map((exConfig) => (
             <a
               key={exConfig.display}
-              href={`?exchange=${exConfig.display}`}
+              href={`?exchange=${exConfig.display}&sellAt=${sellAt}`}
               onClick={(e) => {
                 e.preventDefault();
                 setExchange(exConfig.display);
@@ -219,8 +235,55 @@ export default function BestRecipesClient() {
           ))}
         </div>
 
+        {/* Sell At Navigation Links */}
+        <div style={{
+          display: "flex",
+          gap: 12,
+          marginBottom: 16,
+          padding: 16,
+          backgroundColor: "#f8f9fa",
+          borderRadius: 6,
+          border: "1px solid #dee2e6"
+        }}>
+          <span style={{ fontWeight: 600, marginRight: 8 }}>Sell At:</span>
+          {SELL_AT_OPTIONS.map((option) => (
+            <a
+              key={option.value}
+              href={`?exchange=${exchange}&sellAt=${option.value}`}
+              onClick={(e) => {
+                e.preventDefault();
+                setSellAt(option.value);
+              }}
+              style={{
+                padding: "8px 16px",
+                fontWeight: sellAt === option.value ? 600 : 400,
+                backgroundColor: sellAt === option.value ? "#28a745" : "white",
+                color: sellAt === option.value ? "white" : "#28a745",
+                border: `1px solid ${sellAt === option.value ? "#28a745" : "#ccc"}`,
+                borderRadius: 4,
+                textDecoration: "none",
+                cursor: "pointer",
+                transition: "all 0.2s"
+              }}
+              onMouseEnter={(e) => {
+                if (sellAt !== option.value) {
+                  e.currentTarget.style.backgroundColor = "#e8f5e9";
+                }
+              }}
+              onMouseLeave={(e) => {
+                if (sellAt !== option.value) {
+                  e.currentTarget.style.backgroundColor = "white";
+                }
+              }}
+            >
+              {option.display}
+            </a>
+          ))}
+        </div>
+
         <p style={{ margin: "8px 0 16px", color: "#555", maxWidth: 900 }}>
           This page displays the best production recipe for each ticker on the {exchange} exchange, calculated in dependency order.
+          Inputs are always purchased at <strong>Ask</strong> price, and outputs are sold at <strong>{sellAt.toUpperCase()}</strong> price.
           Each ticker shows its optimal recipe ID, scenario, profit per area (P/A), and the P/A if all inputs are bought (Buy All P/A).
           This data is generated dynamically from the current recipes and prices data.
         </p>
