@@ -106,7 +106,10 @@ export default function Top20Table({ options, exchange, priceType }: { options: 
                   </td>
                   <td style={{ padding: "8px", border: "1px solid #dee2e6", textAlign: "center" }}>{option.ticker}</td>
                   <td style={{ padding: "8px", border: "1px solid #dee2e6", textAlign: "center" }}>{option.recipeId || "—"}</td>
-                  <td style={{ padding: "8px", border: "1px solid #dee2e6", textAlign: "center" }}>
+                  <td
+                    style={{ padding: "8px", border: "1px solid #dee2e6", textAlign: "center", cursor: "help" }}
+                    title={option.scenario || ""}
+                  >
                     {option.scenario ? scenarioDisplayName(option.scenario) : "—"}
                   </td>
                   <td style={{ padding: "8px", border: "1px solid #dee2e6", textAlign: "center" }}>{money(option.baseProfitPerDay)}</td>
