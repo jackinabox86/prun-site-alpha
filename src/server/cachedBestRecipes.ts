@@ -213,12 +213,15 @@ class CachedBestRecipes {
    */
   clearCache(exchange?: string): void {
     if (exchange) {
-      // Clear specific exchange for both sources
-      const localKey = this.getCacheKey("local", exchange);
-      const gcsKey = this.getCacheKey("gcs", exchange);
-      this.cache.delete(localKey);
-      this.cache.delete(gcsKey);
-      console.log(`Clearing best recipes cache for ${exchange}`);
+      // Clear specific exchange for both sources and all sellAt options
+      const sellAtOptions = ["bid", "ask", "pp7"];
+      for (const sellAt of sellAtOptions) {
+        const localKey = this.getCacheKey("local", exchange, sellAt);
+        const gcsKey = this.getCacheKey("gcs", exchange, sellAt);
+        this.cache.delete(localKey);
+        this.cache.delete(gcsKey);
+      }
+      console.log(`Clearing best recipes cache for ${exchange} (all sell price options)`);
     } else {
       // Clear all
       console.log("Clearing all best recipes cache");
