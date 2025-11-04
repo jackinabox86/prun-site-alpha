@@ -48,7 +48,9 @@ const memoKey = (
   priceType: PriceType,
   ticker: string,
   forceMake?: Set<string>,
-  forceBuy?: Set<string>
+  forceBuy?: Set<string>,
+  forceRecipe?: Set<string>,
+  excludeRecipe?: Set<string>
 ) => {
   // Serialize force constraints into the cache key
   const forceMakeStr = forceMake && forceMake.size > 0
@@ -57,7 +59,13 @@ const memoKey = (
   const forceBuyStr = forceBuy && forceBuy.size > 0
     ? Array.from(forceBuy).sort().join(',')
     : '';
-  return `${exchange}::${priceType}::${ticker}::${forceMakeStr}::${forceBuyStr}`;
+  const forceRecipeStr = forceRecipe && forceRecipe.size > 0
+    ? Array.from(forceRecipe).sort().join(',')
+    : '';
+  const excludeRecipeStr = excludeRecipe && excludeRecipe.size > 0
+    ? Array.from(excludeRecipe).sort().join(',')
+    : '';
+  return `${exchange}::${priceType}::${ticker}::${forceMakeStr}::${forceBuyStr}::${forceRecipeStr}::${excludeRecipeStr}`;
 };
 
 /** Clear all caches - call this between different analyses if needed */
@@ -181,17 +189,19 @@ function topDisplayScenarioOptionsForTicker(
   honorRecipeIdFilter: boolean,
   seen: Set<string> = new Set(),
   forceMake?: Set<string>,
-  forceBuy?: Set<string>
+  forceBuy?: Set<string>,
+  forceRecipe?: Set<string>,
+  excludeRecipe?: Set<string>
 ): MakeOption[] {
   const bestEntry = bestMap?.[materialTicker];
   if (!bestEntry || !bestEntry.top3DisplayScenarios || bestEntry.top3DisplayScenarios.length === 0) {
     // Fallback to single best option
-    const best = bestOptionForTicker(materialTicker, recipeMap, priceMap, exchange, priceType, bestMap, honorRecipeIdFilter, seen, forceMake, forceBuy);
+    const best = bestOptionForTicker(materialTicker, recipeMap, priceMap, exchange, priceType, bestMap, honorRecipeIdFilter, seen, forceMake, forceBuy, forceRecipe, excludeRecipe);
     return best ? [best] : [];
   }
 
   // Build all options for this ticker and match against stored display scenarios
-  const allOptions = buildAllOptionsForTicker(materialTicker, recipeMap, priceMap, exchange, priceType, bestMap, honorRecipeIdFilter, seen, forceMake, forceBuy);
+  const allOptions = buildAllOptionsForTicker(materialTicker, recipeMap, priceMap, exchange, priceType, bestMap, honorRecipeIdFilter, seen, forceMake, forceBuy, forceRecipe, excludeRecipe);
 
   // Match options to the stored top 3 display scenarios
   const matchedOptions: MakeOption[] = [];
@@ -223,7 +233,9 @@ function buildAllOptionsForTicker(
   honorRecipeIdFilter: boolean,
   seen: Set<string>,
   forceMake?: Set<string>,
-  forceBuy?: Set<string>
+  forceBuy?: Set<string>,
+  forceRecipe?: Set<string>,
+  excludeRecipe?: Set<string>
 ): MakeOption[] {
   const headers = recipeMap.headers;
   const rows = recipeMap.map[materialTicker] || [];
@@ -247,7 +259,27 @@ function buildAllOptionsForTicker(
   const rowsToUse0 = (bestId && honorRecipeIdFilter)
     ? rows.filter((r) => String(r[idx.recipeId] ?? "") === bestId)
     : rows;
-  const rowsToUse = rowsToUse0.length ? rowsToUse0 : rows;
+  let rowsToUse = rowsToUse0.length ? rowsToUse0 : rows;
+
+  // Apply recipe constraints (force/exclude)
+  if (forceRecipe || excludeRecipe) {
+    rowsToUse = rowsToUse.filter((r) => {
+      const recipeId = String(r[idx.recipeId] ?? "").toUpperCase();
+      if (!recipeId) return true; // Keep rows without recipe ID
+
+      // If force recipes are specified, only keep recipes in that set
+      if (forceRecipe && forceRecipe.size > 0) {
+        if (!forceRecipe.has(recipeId)) return false;
+      }
+
+      // If exclude recipes are specified, filter them out
+      if (excludeRecipe && excludeRecipe.size > 0) {
+        if (excludeRecipe.has(recipeId)) return false;
+      }
+
+      return true;
+    });
+  }
 
   const allOptions: MakeOption[] = [];
 
@@ -289,7 +321,9 @@ function buildAllOptionsForTicker(
           honorRecipeIdFilter,
           seen,
           forceMake,
-          forceBuy
+          forceBuy,
+          forceRecipe,
+          excludeRecipe
         );
         inputs.push({ ticker: inputTicker, amount: inputAmount, buyCost, childBest });
       }
@@ -507,9 +541,11 @@ function bestOptionForTicker(
   honorRecipeIdFilter: boolean,
   seen: Set<string> = new Set(),
   forceMake?: Set<string>,
-  forceBuy?: Set<string>
+  forceBuy?: Set<string>,
+  forceRecipe?: Set<string>,
+  excludeRecipe?: Set<string>
 ): MakeOption | null {
-  const mkey = memoKey(exchange, priceType, materialTicker, forceMake, forceBuy);
+  const mkey = memoKey(exchange, priceType, materialTicker, forceMake, forceBuy, forceRecipe, excludeRecipe);
   if (BEST_MEMO.has(mkey)) return BEST_MEMO.get(mkey)!;
 
   // guard against cycles
@@ -540,7 +576,27 @@ function bestOptionForTicker(
   const rowsToUse0 = (bestId && honorRecipeIdFilter)
     ? rows.filter((r) => String(r[idx.recipeId] ?? "") === bestId)
     : rows;
-  const rowsToUse = rowsToUse0.length ? rowsToUse0 : rows;
+  let rowsToUse = rowsToUse0.length ? rowsToUse0 : rows;
+
+  // Apply recipe constraints (force/exclude)
+  if (forceRecipe || excludeRecipe) {
+    rowsToUse = rowsToUse.filter((r) => {
+      const recipeId = String(r[idx.recipeId] ?? "").toUpperCase();
+      if (!recipeId) return true; // Keep rows without recipe ID
+
+      // If force recipes are specified, only keep recipes in that set
+      if (forceRecipe && forceRecipe.size > 0) {
+        if (!forceRecipe.has(recipeId)) return false;
+      }
+
+      // If exclude recipes are specified, filter them out
+      if (excludeRecipe && excludeRecipe.size > 0) {
+        if (excludeRecipe.has(recipeId)) return false;
+      }
+
+      return true;
+    });
+  }
 
   let chosenByPA: { opt: MakeOption; pa: number } | null = null;
   let chosenByScenario: MakeOption | null = null;
@@ -586,7 +642,9 @@ function bestOptionForTicker(
           honorRecipeIdFilter,
           nextSeen,
           forceMake,
-          forceBuy
+          forceBuy,
+          forceRecipe,
+          excludeRecipe
         );
         inputs.push({ ticker: inputTicker, amount: inputAmount, buyCost, childBest });
       }
@@ -815,13 +873,15 @@ export function findAllMakeOptions(
   exploreAllChildScenarios = false,
   honorRecipeIdFilter = false,
   forceMake?: Set<string>,
-  forceBuy?: Set<string>
+  forceBuy?: Set<string>,
+  forceRecipe?: Set<string>,
+  excludeRecipe?: Set<string>
 ): MakeOption[] {
   // Optimized cache checking for children
   if (depth > 0) {
     if (exploreAllChildScenarios) {
       // Check full exploration cache
-      const cacheKey = memoKey(exchange, priceType, materialTicker, forceMake, forceBuy);
+      const cacheKey = memoKey(exchange, priceType, materialTicker, forceMake, forceBuy, forceRecipe, excludeRecipe);
       if (ALL_SCENARIOS_MEMO.has(cacheKey)) {
         return ALL_SCENARIOS_MEMO.get(cacheKey)!;
       }
@@ -840,7 +900,9 @@ export function findAllMakeOptions(
           honorRecipeIdFilter,
           undefined,
           forceMake,
-          forceBuy
+          forceBuy,
+          forceRecipe,
+          excludeRecipe
         );
       } else {
         // Fallback to single best (has its own BEST_MEMO cache)
@@ -854,7 +916,9 @@ export function findAllMakeOptions(
           honorRecipeIdFilter,
           undefined,
           forceMake,
-          forceBuy
+          forceBuy,
+          forceRecipe,
+          excludeRecipe
         );
         return best ? [best] : [];
       }
@@ -884,6 +948,26 @@ export function findAllMakeOptions(
       const filtered = rows.filter((r) => String(r[recipeIdIndex] ?? "") === bestId);
       if (filtered.length > 0) rowsToProcess = filtered;
     }
+  }
+
+  // Apply recipe constraints (force/exclude)
+  if (forceRecipe || excludeRecipe) {
+    rowsToProcess = rowsToProcess.filter((r) => {
+      const recipeId = String(r[recipeIdIndex] ?? "").toUpperCase();
+      if (!recipeId) return true; // Keep rows without recipe ID
+
+      // If force recipes are specified, only keep recipes in that set
+      if (forceRecipe && forceRecipe.size > 0) {
+        if (!forceRecipe.has(recipeId)) return false;
+      }
+
+      // If exclude recipes are specified, filter them out
+      if (excludeRecipe && excludeRecipe.size > 0) {
+        if (excludeRecipe.has(recipeId)) return false;
+      }
+
+      return true;
+    });
   }
 
   for (const row of rowsToProcess) {
@@ -943,7 +1027,9 @@ export function findAllMakeOptions(
           depth <= 2 && exploreAllChildScenarios,
           honorRecipeIdFilter,
           forceMake,
-          forceBuy
+          forceBuy,
+          forceRecipe,
+          excludeRecipe
         );
 
         // Apply intelligent pruning based on depth
@@ -1150,7 +1236,7 @@ export function findAllMakeOptions(
 
   // Cache AFTER all rows processed, OUTSIDE the loop
   if (depth > 0 && results.length > 0 && exploreAllChildScenarios) {
-    const cacheKey = memoKey(exchange, priceType, materialTicker, forceMake, forceBuy);
+    const cacheKey = memoKey(exchange, priceType, materialTicker, forceMake, forceBuy, forceRecipe, excludeRecipe);
     ALL_SCENARIOS_MEMO.set(cacheKey, results);
   }
 

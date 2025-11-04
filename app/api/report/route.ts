@@ -20,8 +20,10 @@ export async function GET(req: Request) {
     // Extract force make/buy constraints
     const forceMake = url.searchParams.get("forceMake") || undefined;
     const forceBuy = url.searchParams.get("forceBuy") || undefined;
+    const forceRecipe = url.searchParams.get("forceRecipe") || undefined;
+    const excludeRecipe = url.searchParams.get("excludeRecipe") || undefined;
 
-    const report = await buildReport({ ticker, exchange, priceType, priceSource, forceMake, forceBuy });
+    const report = await buildReport({ ticker, exchange, priceType, priceSource, forceMake, forceBuy, forceRecipe, excludeRecipe });
     const status = (report as any)?.ok === false ? 500 : 200;
     return NextResponse.json(report, { status });
   } catch (err: any) {

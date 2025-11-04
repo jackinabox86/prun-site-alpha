@@ -28,8 +28,10 @@ export async function buildReport(opts: {
   priceSource?: "local" | "gcs";
   forceMake?: string;
   forceBuy?: string;
+  forceRecipe?: string;
+  excludeRecipe?: string;
 }) {
-  const { ticker, exchange, priceType, priceSource = "local", forceMake, forceBuy } = opts;
+  const { ticker, exchange, priceType, priceSource = "local", forceMake, forceBuy, forceRecipe, excludeRecipe } = opts;
 
   // Parse force constraints into sets
   const forceMakeSet = forceMake
@@ -37,6 +39,12 @@ export async function buildReport(opts: {
     : undefined;
   const forceBuySet = forceBuy
     ? new Set(forceBuy.split(',').map(t => t.trim().toUpperCase()).filter(t => t.length > 0))
+    : undefined;
+  const forceRecipeSet = forceRecipe
+    ? new Set(forceRecipe.split(',').map(r => r.trim().toUpperCase()).filter(r => r.length > 0))
+    : undefined;
+  const excludeRecipeSet = excludeRecipe
+    ? new Set(excludeRecipe.split(',').map(r => r.trim().toUpperCase()).filter(r => r.length > 0))
     : undefined;
 
   // Get cached best recipes matching the price source
@@ -121,7 +129,99 @@ export async function buildReport(opts: {
     };
   }
 
-  const options = findAllMakeOptions(ticker, recipeMap, pricesMap, exchange, priceType, bestMap, 0, true, honorRecipeIdFilter, forceMakeSet, forceBuySet);
+  // Validate recipe constraints against force make/buy
+  if (forceRecipeSet || excludeRecipeSet) {
+    const validationErrors: string[] = [];
+
+    // Build recipe ID to ticker map
+    const recipeToTicker = new Map<string, string>();
+    for (const [ticker, rows] of Object.entries(recipeMap.map)) {
+      const recipeIdIdx = recipeMap.headers.indexOf("RecipeID");
+      if (recipeIdIdx !== -1) {
+        for (const row of rows) {
+          const recipeId = String(row[recipeIdIdx] ?? "").toUpperCase();
+          if (recipeId) {
+            recipeToTicker.set(recipeId, ticker);
+          }
+        }
+      }
+    }
+
+    // Check for conflicts with force make/buy
+    const allRecipeIds = new Set([
+      ...(forceRecipeSet || []),
+      ...(excludeRecipeSet || [])
+    ]);
+
+    for (const recipeId of allRecipeIds) {
+      const recipeTicker = recipeToTicker.get(recipeId);
+      if (!recipeTicker) {
+        validationErrors.push(`Recipe ID "${recipeId}" does not exist in recipe data`);
+        continue;
+      }
+
+      // Check if ticker is force-bought
+      if (forceBuySet && forceBuySet.has(recipeTicker)) {
+        validationErrors.push(`Conflict: Recipe "${recipeId}" for ticker "${recipeTicker}" cannot be used because "${recipeTicker}" is in Force Buy list`);
+      }
+    }
+
+    // Check if all recipes for any ticker would be excluded
+    if (forceRecipeSet || excludeRecipeSet) {
+      const tickersWithRecipes = new Set<string>();
+      for (const ticker of recipeToTicker.values()) {
+        tickersWithRecipes.add(ticker);
+      }
+
+      for (const ticker of tickersWithRecipes) {
+        // Get all recipe IDs for this ticker
+        const recipeIdIdx = recipeMap.headers.indexOf("RecipeID");
+        const tickerRecipes = recipeMap.map[ticker] || [];
+        const allRecipeIdsForTicker = tickerRecipes
+          .map(row => String(row[recipeIdIdx] ?? "").toUpperCase())
+          .filter(id => id.length > 0);
+
+        if (allRecipeIdsForTicker.length === 0) continue;
+
+        // Filter based on constraints
+        let availableRecipes = [...allRecipeIdsForTicker];
+
+        // If force recipes exist for this ticker, only those are available
+        const forcedRecipesForTicker = allRecipeIdsForTicker.filter(id => forceRecipeSet?.has(id));
+        if (forceRecipeSet && forcedRecipesForTicker.length > 0) {
+          availableRecipes = forcedRecipesForTicker;
+        }
+
+        // Remove excluded recipes
+        if (excludeRecipeSet) {
+          availableRecipes = availableRecipes.filter(id => !excludeRecipeSet.has(id));
+        }
+
+        // If no recipes remain, that's an error (unless ticker is force-bought)
+        if (availableRecipes.length === 0 && (!forceBuySet || !forceBuySet.has(ticker))) {
+          validationErrors.push(`All recipes for ticker "${ticker}" would be excluded. Available recipes: ${allRecipeIdsForTicker.join(', ')}`);
+        }
+      }
+    }
+
+    if (validationErrors.length > 0) {
+      return {
+        schemaVersion: 3,
+        ticker,
+        exchange,
+        priceType,
+        totalOptions: 0,
+        bestPA: null,
+        bestScenario: "",
+        best: null,
+        top20: [],
+        topDisplayScenarios: [],
+        error: `Recipe constraint validation failed:\n${validationErrors.join('\n')}`,
+      };
+    }
+  }
+
+  const options = findAllMakeOptions(ticker, recipeMap, pricesMap, exchange, priceType, bestMap, 0, true, honorRecipeIdFilter, forceMakeSet, forceBuySet, forceRecipeSet, excludeRecipeSet);
   if (!options.length) {
     return {
       schemaVersion: 3,
