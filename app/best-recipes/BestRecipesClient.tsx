@@ -182,26 +182,27 @@ export default function BestRecipesClient() {
   });
 
   return (
-    <main style={{
-      padding: "24px",
-      maxWidth: "100%",
-      fontFamily: "-apple-system, BlinkMacSystemFont, Segoe UI, Roboto, Helvetica Neue, Arial, sans-serif"
-    }}>
-      <div style={{ maxWidth: 1200, margin: "0 auto" }}>
-        <h1 style={{ marginBottom: 16 }}>Best Recipe IDs - {exchange} (Sell at {sellAt.toUpperCase()})</h1>
+    <>
+      {/* Header Section */}
+      <div className="terminal-box" style={{ marginBottom: "2rem" }}>
+        <h1 className="terminal-header" style={{ margin: 0, fontSize: "1.2rem" }}>
+          BEST RECIPE DATABASE // {exchange} // SELL_AT_{sellAt.toUpperCase()}
+        </h1>
+        <p style={{ marginTop: "1rem", marginBottom: 0, color: "var(--color-text-secondary)", fontSize: "0.875rem", lineHeight: "1.6" }}>
+          This tool determines the best production recipe for each ticker on the {exchange} exchange, calculated in dependency order using streamlined pruning;
+          results may differ slightly from a full analysis done on the main page.
+          Inputs are always purchased at <span className="text-accent">Ask</span> price, and outputs are sold at the price type chosen by the user.
+          Each ticker shows its optimal recipe ID, scenario, profit per area (P/A), and the P/A if all inputs are bought (Buy All P/A).
+          <span className="text-mono" style={{ display: "block", marginTop: "0.5rem", fontSize: "0.75rem", color: "var(--color-text-muted)" }}>
+            Data refreshed hourly from FIO price feeds.
+          </span>
+        </p>
+      </div>
 
-        {/* Exchange Navigation Links */}
-        <div style={{
-          display: "flex",
-          gap: 12,
-          marginBottom: 16,
-          padding: 16,
-          backgroundColor: "#f8f9fa",
-          borderRadius: 6,
-          border: "1px solid #dee2e6",
-          alignItems: "center"
-        }}>
-          <span style={{ fontWeight: 600, marginRight: 8 }}>Exchange:</span>
+      {/* Exchange Selection */}
+      <div className="terminal-box" style={{ marginBottom: "1.5rem" }}>
+        <div className="terminal-header" style={{ marginBottom: "1rem" }}>Exchange Selection</div>
+        <div style={{ display: "flex", gap: "0.75rem", flexWrap: "wrap" }}>
           {EXCHANGE_DISPLAYS.map((exConfig) => (
             <a
               key={exConfig.display}
@@ -210,45 +211,26 @@ export default function BestRecipesClient() {
                 e.preventDefault();
                 setExchange(exConfig.display);
               }}
+              className="terminal-button"
               style={{
-                padding: "8px 16px",
-                fontWeight: exchange === exConfig.display ? 600 : 400,
-                backgroundColor: exchange === exConfig.display ? "#007bff" : "white",
-                color: exchange === exConfig.display ? "white" : "#007bff",
-                border: `1px solid ${exchange === exConfig.display ? "#007bff" : "#ccc"}`,
-                borderRadius: 4,
                 textDecoration: "none",
-                cursor: "pointer",
-                transition: "all 0.2s"
-              }}
-              onMouseEnter={(e) => {
-                if (exchange !== exConfig.display) {
-                  e.currentTarget.style.backgroundColor = "#e7f3ff";
-                }
-              }}
-              onMouseLeave={(e) => {
-                if (exchange !== exConfig.display) {
-                  e.currentTarget.style.backgroundColor = "white";
-                }
+                padding: "0.5rem 1.5rem",
+                opacity: exchange === exConfig.display ? 1 : 0.7,
+                background: exchange === exConfig.display ? "var(--color-accent-primary)" : "var(--color-bg-tertiary)",
+                color: exchange === exConfig.display ? "var(--color-bg-primary)" : "var(--color-accent-primary)",
+                borderColor: exchange === exConfig.display ? "var(--color-accent-primary)" : "var(--color-border-primary)"
               }}
             >
               {exConfig.display}
             </a>
           ))}
         </div>
+      </div>
 
-        {/* Sell At Navigation Links */}
-        <div style={{
-          display: "flex",
-          gap: 12,
-          marginBottom: 16,
-          padding: 16,
-          backgroundColor: "#f8f9fa",
-          borderRadius: 6,
-          border: "1px solid #dee2e6",
-          alignItems: "center"
-        }}>
-          <span style={{ fontWeight: 600, marginRight: 8 }}>Sell At:</span>
+      {/* Sell At Selection */}
+      <div className="terminal-box" style={{ marginBottom: "1.5rem" }}>
+        <div className="terminal-header" style={{ marginBottom: "1rem" }}>Price Type Selection</div>
+        <div style={{ display: "flex", gap: "0.75rem", flexWrap: "wrap" }}>
           {SELL_AT_OPTIONS.map((option) => (
             <a
               key={option.value}
@@ -257,86 +239,51 @@ export default function BestRecipesClient() {
                 e.preventDefault();
                 setSellAt(option.value);
               }}
+              className="terminal-button"
               style={{
-                padding: "8px 16px",
-                fontWeight: sellAt === option.value ? 600 : 400,
-                backgroundColor: sellAt === option.value ? "#059669" : "white",
-                color: sellAt === option.value ? "white" : "#059669",
-                border: `1px solid ${sellAt === option.value ? "#059669" : "#ccc"}`,
-                borderRadius: 4,
                 textDecoration: "none",
-                cursor: "pointer",
-                transition: "all 0.2s"
-              }}
-              onMouseEnter={(e) => {
-                if (sellAt !== option.value) {
-                  e.currentTarget.style.backgroundColor = "#e0f2f1";
-                }
-              }}
-              onMouseLeave={(e) => {
-                if (sellAt !== option.value) {
-                  e.currentTarget.style.backgroundColor = "white";
-                }
+                padding: "0.5rem 1.5rem",
+                opacity: sellAt === option.value ? 1 : 0.7,
+                background: sellAt === option.value ? "var(--color-success)" : "var(--color-bg-tertiary)",
+                color: sellAt === option.value ? "var(--color-bg-primary)" : "var(--color-success)",
+                borderColor: sellAt === option.value ? "var(--color-success)" : "var(--color-border-primary)"
               }}
             >
               {option.display}
             </a>
           ))}
         </div>
+      </div>
 
-        <p style={{ margin: "8px 0 16px", color: "#555", maxWidth: 900 }}>
-          This tool determines the best production recipe for each ticker on the {exchange} exchange, calculated in dependency order using streamlined pruning; 
-          results may differ slightly from a full analysis done on the main page.
-          Inputs are always purchased at <strong>Ask</strong> price, and outputs are sold at the price type chosen by the user.
-          Each ticker shows its optimal recipe ID, scenario, profit per area (P/A), and the P/A if all inputs are bought (Buy All P/A).
-          This data is generated dynamically each hour from current prices data from FIO.
-        </p>
-
-        {loading && (
-          <div style={{
-            padding: 16,
-            backgroundColor: "#fff3cd",
-            border: "1px solid #ffc107",
-            borderRadius: 4,
-            color: "#856404",
-            marginBottom: 16
-          }}>
-            <strong>Processing...</strong> 
+      {/* Loading Indicator */}
+      {loading && (
+        <div className="terminal-box" style={{ borderColor: "var(--color-warning)", marginBottom: "1.5rem" }}>
+          <div className="status-warning terminal-loading" style={{ fontFamily: "var(--font-mono)", fontSize: "0.875rem" }}>
+            <strong>PROCESSING RECIPES</strong>
           </div>
-        )}
+        </div>
+      )}
 
-        <div style={{ display: "flex", gap: 12, marginBottom: 16, alignItems: "center" }}>
+      {/* Controls Section */}
+      <div className="terminal-box" style={{ marginBottom: "1.5rem" }}>
+        <div style={{ display: "flex", gap: "1rem", marginBottom: data.length > 0 ? "1rem" : 0, alignItems: "center", flexWrap: "wrap" }}>
           <button
             onClick={loadData}
             disabled={loading}
-            style={{
-              padding: "10px 20px",
-              fontWeight: 600,
-              fontFamily: "inherit",
-              backgroundColor: loading ? "#ccc" : "#007bff",
-              color: "white",
-              border: "none",
-              borderRadius: 4,
-              cursor: loading ? "not-allowed" : "pointer"
-            }}
+            className="terminal-button"
+            style={{ padding: "0.75rem 1.5rem" }}
           >
-            {loading ? "Loading..." : "Generate Best Recipes"}
+            {loading ? <span className="terminal-loading">Generating</span> : "Generate Best Recipes"}
           </button>
 
           {data.length > 0 && (
             <input
               type="text"
-              placeholder='Filter by ticker name (use "quotes" for exact match)'
+              placeholder='Filter by ticker (use "quotes" for exact match)'
               value={filterText}
               onChange={(e) => setFilterText(e.target.value)}
-              style={{
-                padding: "8px 12px",
-                fontFamily: "inherit",
-                border: "1px solid #ccc",
-                borderRadius: 4,
-                flex: 1,
-                maxWidth: 400
-              }}
+              className="terminal-input"
+              style={{ flex: 1, maxWidth: "400px" }}
             />
           )}
 
@@ -344,14 +291,8 @@ export default function BestRecipesClient() {
             <select
               value={selectedBuilding}
               onChange={(e) => setSelectedBuilding(e.target.value)}
-              style={{
-                padding: "8px 12px",
-                fontFamily: "inherit",
-                border: "1px solid #ccc",
-                borderRadius: 4,
-                minWidth: 150,
-                cursor: "pointer"
-              }}
+              className="terminal-select"
+              style={{ minWidth: "150px" }}
             >
               {uniqueBuildings.map((building) => (
                 <option key={building} value={building}>
@@ -364,39 +305,22 @@ export default function BestRecipesClient() {
 
         {/* Ticker Group Filters */}
         {data.length > 0 && (
-          <div style={{
-            display: "flex",
-            gap: 8,
-            marginBottom: 16,
-            flexWrap: "wrap",
-            alignItems: "center"
-          }}>
-            <span style={{ fontWeight: 600, marginRight: 4 }}>Filter by:</span>
+          <div style={{ display: "flex", gap: "0.5rem", flexWrap: "wrap", alignItems: "center" }}>
+            <span style={{ fontFamily: "var(--font-mono)", fontSize: "0.75rem", color: "var(--color-text-muted)", marginRight: "0.5rem" }}>
+              FILTER:
+            </span>
             {tickerFilterGroups.map((group) => (
               <button
                 key={group.id}
                 onClick={() => setSelectedFilterGroupId(group.id)}
+                className="terminal-button"
                 style={{
-                  padding: "6px 16px",
-                  fontFamily: "inherit",
-                  fontSize: 14,
-                  fontWeight: selectedFilterGroupId === group.id ? 600 : 400,
-                  backgroundColor: selectedFilterGroupId === group.id ? "#007bff" : "#f8f9fa",
-                  color: selectedFilterGroupId === group.id ? "white" : "#333",
-                  border: selectedFilterGroupId === group.id ? "1px solid #007bff" : "1px solid #ccc",
-                  borderRadius: 4,
-                  cursor: "pointer",
-                  transition: "all 0.2s"
-                }}
-                onMouseEnter={(e) => {
-                  if (selectedFilterGroupId !== group.id) {
-                    e.currentTarget.style.backgroundColor = "#e9ecef";
-                  }
-                }}
-                onMouseLeave={(e) => {
-                  if (selectedFilterGroupId !== group.id) {
-                    e.currentTarget.style.backgroundColor = "#f8f9fa";
-                  }
+                  padding: "0.35rem 0.75rem",
+                  fontSize: "0.75rem",
+                  opacity: selectedFilterGroupId === group.id ? 1 : 0.6,
+                  background: selectedFilterGroupId === group.id ? "var(--color-accent-secondary)" : "var(--color-bg-elevated)",
+                  color: selectedFilterGroupId === group.id ? "var(--color-bg-primary)" : "var(--color-accent-primary)",
+                  borderColor: selectedFilterGroupId === group.id ? "var(--color-accent-secondary)" : "var(--color-border-primary)"
                 }}
               >
                 {group.label}
@@ -404,60 +328,41 @@ export default function BestRecipesClient() {
             ))}
           </div>
         )}
+      </div>
 
-        {error && (
-          <div style={{
-            padding: 16,
-            backgroundColor: "#fee",
-            border: "1px solid #fcc",
-            borderRadius: 4,
-            color: "#c00",
-            marginBottom: 16
-          }}>
-            <strong>Error:</strong> {error}
+      {/* Error Display */}
+      {error && (
+        <div className="terminal-box" style={{ borderColor: "var(--color-error)", marginBottom: "1.5rem" }}>
+          <div className="status-error" style={{ fontFamily: "var(--font-mono)", fontSize: "0.875rem" }}>
+            ERROR: {error}
           </div>
-        )}
+        </div>
+      )}
 
-        {data.length > 0 && (
-          <div style={{
-            marginTop: 16,
-            backgroundColor: "#f8f9fa",
-            border: "1px solid #dee2e6",
-            borderRadius: 6,
-            padding: 16
-          }}>
-            <p style={{ margin: 0, fontSize: 14 }}>
-              <strong>Showing:</strong> {sortedData.length} ticker{sortedData.length !== 1 ? 's' : ''}
-              {selectedBuilding !== 'all' && ` (building: ${selectedBuilding})`}
-              {selectedFilterGroupId !== 'all' && ` (from ${groupFilteredData.length} in ${selectedGroup?.label})`}
-              {data.length > sortedData.length && ` out of ${data.length} total`}
-            </p>
+      {/* Results Count */}
+      {data.length > 0 && (
+        <div className="terminal-box" style={{ marginBottom: "1.5rem" }}>
+          <div style={{ fontFamily: "var(--font-mono)", fontSize: "0.875rem", color: "var(--color-text-secondary)" }}>
+            <span className="text-accent">SHOWING:</span> {sortedData.length} ticker{sortedData.length !== 1 ? 's' : ''}
+            {selectedBuilding !== 'all' && <span> (building: {selectedBuilding})</span>}
+            {selectedFilterGroupId !== 'all' && <span> (from {groupFilteredData.length} in {selectedGroup?.label})</span>}
+            {data.length > sortedData.length && <span> out of {data.length} total</span>}
           </div>
-        )}
+        </div>
+      )}
 
-        {data.length > 0 && (
-          <div style={{ marginTop: 16, overflowX: "auto" }}>
-            <table style={{
-              width: "100%",
-              borderCollapse: "collapse",
-              backgroundColor: "white",
-              boxShadow: "0 1px 3px rgba(0,0,0,0.1)"
-            }}>
+      {/* Data Table */}
+      {data.length > 0 && (
+        <div className="terminal-box">
+          <div style={{ overflowX: "auto" }}>
+            <table className="terminal-table">
               <thead>
-                <tr style={{ backgroundColor: "#f8f9fa", borderBottom: "2px solid #dee2e6" }}>
+                <tr>
                   {["ticker", "recipeId", "scenario", "profitPA", "buyAllProfitPA"].map((col) => (
                     <th
                       key={col}
                       onClick={() => handleSort(col as keyof BestRecipeResult)}
-                      style={{
-                        padding: "12px 16px",
-                        textAlign: "left",
-                        fontWeight: 600,
-                        cursor: "pointer",
-                        userSelect: "none",
-                        position: "relative",
-                        whiteSpace: "nowrap"
-                      }}
+                      style={{ cursor: "pointer", userSelect: "none" }}
                     >
                       {col === "ticker" && "Ticker"}
                       {col === "recipeId" && "RecipeID"}
@@ -465,67 +370,52 @@ export default function BestRecipesClient() {
                       {col === "profitPA" && "Profit P/A"}
                       {col === "buyAllProfitPA" && "Buy All P/A"}
                       {sortColumn === col && (
-                        <span style={{ marginLeft: 6 }}>
+                        <span style={{ marginLeft: "0.5rem" }}>
                           {sortDirection === "asc" ? "↑" : "↓"}
                         </span>
                       )}
                     </th>
                   ))}
-                  <th
-                    style={{
-                      padding: "12px 16px",
-                      textAlign: "left",
-                      fontWeight: 600,
-                      whiteSpace: "nowrap"
-                    }}
-                  >
-                    Analysis
-                  </th>
+                  <th>Analysis</th>
                 </tr>
               </thead>
               <tbody>
                 {sortedData.map((row, idx) => (
-                  <tr
-                    key={`${row.ticker}-${idx}`}
-                    style={{
-                      borderBottom: "1px solid #dee2e6",
-                      backgroundColor: idx % 2 === 0 ? "white" : "#f8f9fa"
-                    }}
-                  >
-                    <td style={{ padding: "12px 16px", fontWeight: 600 }}>
+                  <tr key={`${row.ticker}-${idx}`}>
+                    <td style={{ fontWeight: "bold", color: "var(--color-accent-primary)" }}>
                       {row.ticker}
                     </td>
-                    <td style={{ padding: "12px 16px" }}>
-                      {row.recipeId || "—"}
+                    <td style={{ fontFamily: "var(--font-mono)" }}>
+                      {row.recipeId || <span style={{ color: "var(--color-text-muted)" }}>—</span>}
                     </td>
                     <td
-                      style={{ padding: "12px 16px", fontSize: 14, maxWidth: 400, wordWrap: "break-word", cursor: "help" }}
+                      style={{ fontSize: "0.875rem", maxWidth: "400px", cursor: "help" }}
                       title={row.scenario || ""}
                     >
-                      {row.scenario ? scenarioDisplayName(row.scenario) : "—"}
+                      {row.scenario ? scenarioDisplayName(row.scenario) : <span style={{ color: "var(--color-text-muted)" }}>—</span>}
                     </td>
-                    <td style={{ padding: "12px 16px", textAlign: "right" }}>
+                    <td style={{ textAlign: "right", fontFamily: "var(--font-mono)" }}>
                       {typeof row.profitPA === "number" && Number.isFinite(row.profitPA)
-                        ? formatProfitPerArea(row.profitPA, exchange as Exchange)
-                        : "—"}
+                        ? <span className="status-success">{formatProfitPerArea(row.profitPA, exchange as Exchange)}</span>
+                        : <span style={{ color: "var(--color-text-muted)" }}>—</span>}
                     </td>
-                    <td style={{ padding: "12px 16px", textAlign: "right" }}>
+                    <td style={{ textAlign: "right", fontFamily: "var(--font-mono)" }}>
                       {row.buyAllProfitPA === null
-                        ? "Input N/A"
+                        ? <span style={{ fontSize: "0.75rem", color: "var(--color-text-muted)" }}>Input N/A</span>
                         : typeof row.buyAllProfitPA === "number" && Number.isFinite(row.buyAllProfitPA)
-                        ? formatProfitPerArea(row.buyAllProfitPA, exchange as Exchange)
-                        : "—"}
+                        ? <span className={row.buyAllProfitPA > 0 ? "status-success" : "status-error"}>{formatProfitPerArea(row.buyAllProfitPA, exchange as Exchange)}</span>
+                        : <span style={{ color: "var(--color-text-muted)" }}>—</span>}
                     </td>
-                    <td style={{ padding: "12px 16px", textAlign: "center" }}>
+                    <td style={{ textAlign: "center" }}>
                       <a
                         href={`/?ticker=${encodeURIComponent(row.ticker)}`}
+                        className="terminal-button"
                         style={{
-                          color: "#007bff",
                           textDecoration: "none",
-                          fontWeight: 600
+                          padding: "0.25rem 0.75rem",
+                          fontSize: "0.75rem",
+                          display: "inline-block"
                         }}
-                        onMouseEnter={(e) => e.currentTarget.style.textDecoration = "underline"}
-                        onMouseLeave={(e) => e.currentTarget.style.textDecoration = "none"}
                       >
                         View
                       </a>
@@ -535,21 +425,20 @@ export default function BestRecipesClient() {
               </tbody>
             </table>
           </div>
-        )}
+        </div>
+      )}
 
-        {!loading && data.length === 0 && !error && (
-          <div style={{
-            marginTop: 32,
-            padding: 32,
-            textAlign: "center",
-            color: "#666",
-            backgroundColor: "#f8f9fa",
-            borderRadius: 6
-          }}>
+      {/* Empty State */}
+      {!loading && data.length === 0 && !error && (
+        <div className="terminal-box" style={{ textAlign: "center", padding: "3rem 1rem" }}>
+          <div style={{ fontFamily: "var(--font-mono)", fontSize: "0.875rem", color: "var(--color-text-muted)" }}>
+            <span className="text-accent" style={{ display: "block", marginBottom: "1rem", fontSize: "1.2rem" }}>
+              [NO DATA]
+            </span>
             Click "Generate Best Recipes" to calculate optimal recipes for all tickers.
           </div>
-        )}
-      </div>
-    </main>
+        </div>
+      )}
+    </>
   );
 }

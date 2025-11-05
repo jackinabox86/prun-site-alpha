@@ -68,12 +68,12 @@ const BestScenarioSankey = memo(function BestScenarioSankey({
     const EXTRA_DRAG_BUFFER_PX = 80;
 
     const palette = {
-      root: "#2563eb",
-      make: "#3b82f6",
-      buy: "#f97316",
+      root: "#ff9500",
+      make: "#ff7a00",
+      buy: "#00ff88",
       border: "#0f172a",
-      linkBuy: "rgba(249,115,22,0.45)",
-      linkMake: "rgba(59,130,246,0.45)",
+      linkBuy: "rgba(0,255,136,0.45)",
+      linkMake: "rgba(255,149,0,0.45)",
     };
 
     const nodeIndexById = new Map<string, number>();
@@ -141,7 +141,7 @@ const BestScenarioSankey = memo(function BestScenarioSankey({
 
     const rootId = `STAGE::${best.recipeId || best.ticker}::0`;
     const rootProfitPA = best.totalProfitPA ?? 0;
-    const rootLabel = `<b>${best.ticker}</b><br>[${getCurrencySymbol(exchange ?? "ANT")}${fmtPA(rootProfitPA)} P/A]`;
+    const rootLabel = `<b>&nbsp;${best.ticker}</b><br>[${getCurrencySymbol(exchange ?? "ANT")}${fmtPA(rootProfitPA)} P/A]`;
     const rootHover = [
       `<b>${best.ticker}</b>`,
       best.building ? `BUI: ${best.building}` : null,
@@ -175,7 +175,7 @@ const BestScenarioSankey = memo(function BestScenarioSankey({
           const costPerDay = Math.max(0, batchCost * stageRunsPerDay);
 
           const buyNodeId = `BUY::${stage.recipeId || stage.ticker}::${inp.ticker}::${depth + 1}`;
-          const buyLabel = `<b>Buy ${inp.ticker}</b>`;
+          const buyLabel = `<b>&nbsp;Buy ${inp.ticker}</b>`;
           const buyHover = [
             `<b>Buy ${inp.ticker}</b>`,
             inp.unitCost != null ? `Price: ${money(inp.unitCost)}` : null,
@@ -203,7 +203,7 @@ const BestScenarioSankey = memo(function BestScenarioSankey({
 
         const childId = `STAGE::${child.recipeId || child.ticker}::${depth + 1}`;
         const childProfitPA = child.totalProfitPA ?? 0;
-        const childLabel = `<b>Make ${child.recipeId || child.ticker}</b><br>[${getCurrencySymbol(exchange ?? "ANT")}${fmtPA(childProfitPA)} P/A]`;
+        const childLabel = `<b>&nbsp;Make ${child.recipeId || child.ticker}</b><br>[${getCurrencySymbol(exchange ?? "ANT")}${fmtPA(childProfitPA)} P/A]`;
         const childHover = [
           `<b>Make ${child.recipeId || child.ticker}</b>`,
           child.building ? `BUI: ${child.building}` : null,
@@ -373,8 +373,20 @@ const BestScenarioSankey = memo(function BestScenarioSankey({
         margin: { l: 2, r: 2, t: 24, b: 12 },
         font: {
           size: 12,
-          family: "-apple-system, BlinkMacSystemFont, Segoe UI, Roboto, Helvetica Neue, Arial, sans-serif"
+          family: "'Courier New', 'Consolas', 'Monaco', monospace",
+          color: "white"
         },
+        hoverlabel: {
+          font: {
+            family: "'Courier New', 'Consolas', 'Monaco', monospace",
+            size: 13,
+            color: "white"
+          },
+          bgcolor: "#101419",
+          bordercolor: "#ff9500"
+        },
+        plot_bgcolor: "#0a0e14",
+        paper_bgcolor: "#0a0e14",
         hovermode: "closest",
         height: dynamicHeight,
       },

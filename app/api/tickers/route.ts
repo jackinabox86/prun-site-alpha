@@ -1,26 +1,27 @@
 // app/api/tickers/route.ts
 import { NextResponse } from "next/server";
 import { loadAllFromCsv } from "@/lib/loadFromCsv";
+import { GCS_DATA_SOURCES } from "@/lib/config";
+import { cachedBestRecipes } from "@/server/cachedBestRecipes";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 export async function GET() {
-  const REC = process.env.CSV_RECIPES_URL;
-  const PRI = process.env.CSV_PRICES_URL;
-
-  if (!REC || !PRI) {
-    return NextResponse.json({ tickers: [] }, { status: 200 });
-  }
-
   try {
-    // Only need recipeMap, so we pass an empty bestMap to avoid generating it
+    // Use GCS data sources (always use production data for tickers)
+    const dataSources = GCS_DATA_SOURCES;
+
+    // Get bestMap from cached best recipes (use ANT bid as default)
+    const { bestMap } = await cachedBestRecipes.getBestRecipes("gcs", "ANT", "bid");
+
+    // Load recipes and prices from GCS
     const { recipeMap } = await loadAllFromCsv(
       {
-        recipes: REC,
-        prices: PRI,
+        recipes: dataSources.recipes,
+        prices: dataSources.prices,
       },
-      { bestMap: {} } // Pass empty bestMap since we don't need it for tickers
+      { bestMap }
     );
 
     const tickers = Object.keys(recipeMap.map || {}).sort((a, b) =>
@@ -28,7 +29,8 @@ export async function GET() {
     );
 
     return NextResponse.json({ tickers });
-  } catch {
+  } catch (err: any) {
+    console.error("Failed to load tickers:", err?.message ?? err);
     return NextResponse.json({ tickers: [] }, { status: 200 });
   }
 }

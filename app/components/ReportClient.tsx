@@ -6,7 +6,7 @@ import BestScenarioSankey from "./BestScenarioSankey";
 import Top20Table from "./Top20Table";
 import CondensedOptionsTable from "./CondensedOptionsTable";
 import { scenarioDisplayName } from "@/core/scenario";
-import { formatCurrency } from "@/lib/formatting";
+import { formatCurrency, formatCurrencyRounded, getCurrencySymbol } from "@/lib/formatting";
 
 type ApiReport = {
   schemaVersion: number;
@@ -34,6 +34,9 @@ export default function ReportClient() {
   const [forceRecipe, setForceRecipe] = useState<string>("");
   const [excludeRecipe, setExcludeRecipe] = useState<string>("");
   const [showRecipeList, setShowRecipeList] = useState(false);
+  const [analysisCollapsed, setAnalysisCollapsed] = useState(false);
+  const [systemControlsCollapsed, setSystemControlsCollapsed] = useState(true);
+  const [showTickerDropdown, setShowTickerDropdown] = useState(false);
 
   const [loading, setLoading] = useState(false);
   const [report, setReport] = useState<ApiReport | null>(null);
@@ -112,8 +115,8 @@ export default function ReportClient() {
   }, [urlParamsChecked]);
 
   // Helper formatting function matching the Sankey component
-  const money = (n: number | null | undefined) =>
-    formatCurrency(n, report?.exchange ?? exchange);
+  const money = (n: number | null | undefined, exchange: Exchange = "ANT") =>
+    formatCurrency(n, exchange);
 
   return (
     <>
@@ -126,250 +129,320 @@ export default function ReportClient() {
           position: absolute;
           bottom: 100%;
           left: 0;
-          padding: 6px 10px;
-          background-color: #333;
-          color: #fff;
+          padding: 8px 12px;
+          background-color: var(--color-bg-elevated);
+          color: var(--color-accent-primary);
           font-size: 13px;
           white-space: nowrap;
-          border-radius: 4px;
+          border: 1px solid var(--color-border-glow);
           opacity: 0;
           pointer-events: none;
           transition: opacity 0.2s;
-          margin-bottom: 5px;
+          margin-bottom: 8px;
           z-index: 1000;
+          box-shadow: var(--glow-md);
+          font-family: var(--font-mono);
         }
         [data-tooltip]:hover::after {
           opacity: 1;
         }
       `}</style>
-      <main style={{
-        padding: "24px 0",
-        maxWidth: "100%",
-        fontFamily: "-apple-system, BlinkMacSystemFont, Segoe UI, Roboto, Helvetica Neue, Arial, sans-serif"
-      }}>
-      <div style={{ padding: "0 24px", margin: "0 auto", maxWidth: 900 }}>
-        <div style={{ display: "flex", alignItems: "center", gap: "8px", maxWidth: 900, margin: "0 0 16px", paddingRight: "24px" }}>
-          <h2 style={{ margin: 0, textAlign: "center", flex: 1 }}>PrUn Ticker Analysis - Best Profit Per Area Production Scenario</h2>
+
+      {/* Header Section */}
+      <div className="terminal-box" style={{ marginBottom: "2rem" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: "1rem", marginBottom: "1rem" }}>
+          <h1 className="terminal-header" style={{ flex: 1, margin: 0, fontSize: "1.2rem", paddingBottom: 0, borderBottom: "none", fontWeight: "normal" }}>
+            TICKER ANALYSIS // BEST PROFIT PER AREA SCENARIO
+          </h1>
           <button
             onClick={() => setReadmeHidden(!readmeHidden)}
-            style={{
-              padding: "6px 12px",
-              fontWeight: 600,
-              fontFamily: "inherit",
-              backgroundColor: readmeHidden ? "#a8d5a8" : "#e8a4a4",
-              border: "1px solid " + (readmeHidden ? "#7cb17c" : "#c87878"),
-              borderRadius: 4,
-              cursor: "pointer",
-              whiteSpace: "nowrap"
-            }}
+            className="terminal-button"
+            style={{ fontSize: "0.75rem", padding: "0.5rem 1rem" }}
           >
-            {readmeHidden ? "Expand Readme" : "Hide Readme"}
+            {readmeHidden ? "[+] Expand" : "[-] Hide"} Readme
           </button>
         </div>
-                    {!readmeHidden && <p style={{ margin: "8px 0 16px", color: "#555", maxWidth: 900 }}>
-                      This tool determines and displays the highest profit per area per day production scenario for one 
-                      building producing the selected ticker (not a full base). 
-                      A production scenario is the buy/make decision for each input in a ticker's full production chain.
-                      This model uses FIO data (refreshed hourly) for its calculations on optimal buy/make decisions.
-                    </p>}
-                    {!readmeHidden && <p style={{ margin: "8px 0 16px", color: "#555", maxWidth: 900 }}>
-                      Users may force certain inputs to be made or bought, as well as force or exclude specific recipe IDs using the controls below.
-                      This can help explore alternative production scenarios or work around supply constraints.
-                      Below the main analysis is a condensed ranked table of other profitable production scenarios for the selected ticker, 
-                      which can be expanded to show a sankey chart.  The table is condensed to show only unique high-level scenarios 
-                      (buy/make decisions for direct inputs only).  
-                      An additional expanded table shows the top 20 full scenarios without filtering by high-level input distinctions.  
-                    </p>}
-                    {!readmeHidden && <p style={{ margin: "8px 0 16px", color: "#555", maxWidth: 900 }}>
-                      Each ticker on the sankey chain has a node and tooltip with additional info on its own profitability to enable users to 
-                      avoid unintended opportunity costs [that daily profitability is based on the specific production scenario for that node;
-                      more profitable scenarios may exist if a given input is itself examined].
-                      The flows between nodes are sized according to the relative proportion of an inputs value to the parent's total cost;
-                      tickers with broader flows can be prioritized when optimizing for profitability.
-                      Full credit to Taiyi for the Sankey inspiration.                    
-                    </p>}
-                                              </div>
 
-      <div style={{ padding: "0 24px", margin: "0 auto", maxWidth: 900 }}>
+        {!readmeHidden && (
+          <div style={{ color: "var(--color-text-secondary)", fontSize: "0.875rem", lineHeight: "1.6" }}>
+            <p style={{ marginBottom: "0.75rem" }}>
+              This tool determines and displays the highest profit per area per day production scenario for one
+              building producing the selected ticker (not a full base). A production scenario is the buy/make
+              decision for each input in a ticker's full production chain. This model uses FIO data (refreshed hourly)
+              for its calculations on optimal buy/make decisions.
+            </p>
+            <p style={{ marginBottom: "0.75rem" }}>
+              Users may force certain inputs to be made or bought, as well as force or exclude specific recipe IDs
+              using the controls below. This can help explore alternative production scenarios or work around supply
+              constraints. Below the main analysis is a condensed ranked table of other profitable production scenarios
+              for the selected ticker, which can be expanded to show a sankey chart. The table is condensed to show
+              only unique high-level scenarios (buy/make decisions for direct inputs only).
+            </p>
+            <p style={{ margin: 0 }}>
+              Each ticker on the sankey chain has a node and tooltip with additional info on its own profitability
+              to enable users to avoid unintended opportunity costs. The flows between nodes are sized according to
+              the relative proportion of an input's value to the parent's total cost; tickers with broader flows can
+              be prioritized when optimizing for profitability. <span className="text-accent">Full credit to Taiyi for the Sankey inspiration.</span>
+            </p>
+          </div>
+        )}
+      </div>
+
+      {/* Controls Section */}
+      <div className="terminal-box" style={{ marginBottom: "2rem" }}>
         <div
+          onClick={() => setSystemControlsCollapsed(!systemControlsCollapsed)}
           style={{
-            display: "grid",
-            gap: 20,
-            gridTemplateColumns: "60px 50px 52px 120px 500px",
-            alignItems: "end",
-            maxWidth: 900,
+            cursor: "pointer",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+            marginBottom: "1rem"
           }}
         >
-        <div>
-          <label style={{ display: "block", fontSize: 14, marginBottom: 4, textAlign: "center" }}>
-            Ticker
-          </label>
-          <input
-            list="ticker-list"
-            value={tickerInput}
-            onChange={(e) => setTickerInput(e.target.value)}
-            style={{ width: "100%", padding: "8px 10px", fontWeight: 600, fontFamily: "inherit" }}
-          />
-          <datalist id="ticker-list">
-            {filteredTickers.map((t) => (
-              <option key={t} value={t} />
-            ))}
-          </datalist>
+          <div className="terminal-header" style={{ margin: 0, paddingBottom: 0, borderBottom: "none" }}>System Controls</div>
+          <span className="text-accent text-mono" style={{ fontSize: "0.875rem" }}>
+            {systemControlsCollapsed ? "[+] ADVANCED" : "[-] COLLAPSE"}
+          </span>
         </div>
 
-        <div>
-          <label style={{ display: "block", fontSize: 14,  marginBottom: 4, textAlign: "center" }}>
-            Exchange
-          </label>
-          <select
-            value={exchange}
-            onChange={(e) => setExchange(e.target.value as Exchange)}
-            style={{ padding: "8px 10px", fontWeight: 600, fontFamily: "inherit" }}
-          >
-            <option value="ANT">ANT</option>
-            <option value="CIS">CIS</option>
-            <option value="ICA">ICA</option>
-            <option value="NCC">NCC</option>
-            <option value="UNV">UNV</option>
-          </select>
-        </div>
+        <div style={{
+          display: "grid",
+          gap: "1rem",
+          gridTemplateColumns: "80px 80px 80px 140px 1fr",
+          alignItems: "end",
+          marginBottom: systemControlsCollapsed ? "0.5rem" : "1.5rem"
+        }}>
+          <div style={{ position: "relative" }}>
+            <label style={{ display: "block", fontSize: "0.75rem", marginBottom: "0.5rem", color: "var(--color-accent-primary)", textTransform: "uppercase" }}>
+              Ticker
+            </label>
+            <input
+              value={tickerInput}
+              onChange={(e) => {
+                setTickerInput(e.target.value);
+                setShowTickerDropdown(true);
+              }}
+              onFocus={() => setShowTickerDropdown(true)}
+              onBlur={() => setTimeout(() => setShowTickerDropdown(false), 200)}
+              className="terminal-input"
+              style={{ width: "100%", textAlign: "center", fontWeight: "bold" }}
+              placeholder="Type ticker..."
+            />
+            {showTickerDropdown && filteredTickers.length > 0 && (
+              <div style={{
+                position: "absolute",
+                top: "calc(100% + 1px)",
+                left: 0,
+                minWidth: "200px",
+                maxHeight: "300px",
+                overflowY: "auto",
+                background: "var(--color-bg-elevated)",
+                border: "1px solid var(--color-accent-primary)",
+                borderRadius: "2px",
+                zIndex: 9999,
+                boxShadow: "0 4px 12px rgba(0, 0, 0, 0.5), var(--glow-md)"
+              }}>
+                {filteredTickers.map((t) => (
+                  <div
+                    key={t}
+                    onMouseDown={(e) => {
+                      e.preventDefault();
+                      setTickerInput(t);
+                      setShowTickerDropdown(false);
+                    }}
+                    style={{
+                      padding: "0.5rem",
+                      cursor: "pointer",
+                      fontFamily: "var(--font-mono)",
+                      fontSize: "0.875rem",
+                      color: "var(--color-text-primary)",
+                      borderBottom: "1px solid var(--color-border-secondary)",
+                      transition: "all 0.2s ease"
+                    }}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.background = "var(--color-accent-primary)";
+                      e.currentTarget.style.color = "var(--color-bg-primary)";
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.background = "transparent";
+                      e.currentTarget.style.color = "var(--color-text-primary)";
+                    }}
+                  >
+                    {t}
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
 
-        <div>
-          <label style={{ display: "block", fontSize: 14,  marginBottom: 4, textAlign: "center" }}>
-            Sell At
-          </label>
-          <select
-            value={priceType}
-            onChange={(e) => setPriceType(e.target.value as PriceType)}
-            style={{ padding: "8px 10px", fontWeight: 600, fontFamily: "inherit" }}
-          >
-            <option value="ask">Ask</option>
-            <option value="bid">Bid</option>
-            <option value="pp7">PP7</option>
-            <option value="pp30">PP30</option>
-          </select>
-        </div>
-
-        <button
-          onClick={run}
-          disabled={loading || !tickerInput.trim()}
-          style={{ padding: "8px 10px", fontWeight: 600, fontFamily: "inherit" }}
-        >
-          {loading ? "Running..." : "Run"}
-        </button>
-
-        <div style={{ fontSize: 20, paddingBottom: 6 }}>
-          {exchange === "ANT" ? "😊" : "😢"}
-        </div>
-        </div>
-
-        {/* Force Make/Buy Controls */}
-        <div
-          style={{
-            display: "grid",
-            gap: 20,
-            gridTemplateColumns: "1fr 1fr",
-            alignItems: "end",
-            maxWidth: 900,
-            marginTop: 16,
-          }}
-        >
           <div>
-            <label style={{ display: "block", fontSize: 14, marginBottom: 4 }}>
-              Force Make (comma-separated tickers)
+            <label style={{ display: "block", fontSize: "0.75rem", marginBottom: "0.5rem", color: "var(--color-accent-primary)", textTransform: "uppercase" }}>
+              Exchange
+            </label>
+            <select
+              value={exchange}
+              onChange={(e) => setExchange(e.target.value as Exchange)}
+              className="terminal-select"
+              style={{ width: "100%" }}
+            >
+              <option value="ANT">ANT</option>
+              <option value="CIS">CIS</option>
+              <option value="ICA">ICA</option>
+              <option value="NCC">NCC</option>
+              <option value="UNV">UNV</option>
+            </select>
+          </div>
+
+          <div>
+            <label style={{ display: "block", fontSize: "0.75rem", marginBottom: "0.5rem", color: "var(--color-accent-primary)", textTransform: "uppercase" }}>
+              Sell At
+            </label>
+            <select
+              value={priceType}
+              onChange={(e) => setPriceType(e.target.value as PriceType)}
+              className="terminal-select"
+              style={{ width: "100%" }}
+            >
+              <option value="ask">Ask</option>
+              <option value="bid">Bid</option>
+              <option value="pp7">PP7</option>
+              <option value="pp30">PP30</option>
+            </select>
+          </div>
+
+          <button
+            onClick={run}
+            disabled={loading || !tickerInput.trim()}
+            className="terminal-button"
+            style={{ padding: "0.65rem 1rem" }}
+          >
+            {loading ? <span className="terminal-loading">Processing</span> : "Execute"}
+          </button>
+
+          <div style={{ fontSize: "0.875rem", color: "var(--color-text-muted)", fontFamily: "var(--font-mono)", paddingBottom: "0.5rem" }}>
+            {exchange === "ANT" ? <span className="status-success">◉ OPTIMAL_EXCHANGE</span> : <span className="status-warning">◉ SUBOPTIMAL_EXCHANGE</span>}
+          </div>
+        </div>
+
+        {!systemControlsCollapsed && (<>
+        {/* Force Make/Buy Controls */}
+        <div style={{
+          display: "grid",
+          gap: "1rem",
+          gridTemplateColumns: "1fr 1fr",
+          marginBottom: "1rem"
+        }}>
+          <div>
+            <label style={{ display: "block", fontSize: "0.75rem", marginBottom: "0.5rem", color: "var(--color-accent-primary)", textTransform: "uppercase" }}>
+              Force Make (comma-separated)
             </label>
             <input
               type="text"
               value={forceMake}
               onChange={(e) => setForceMake(e.target.value)}
               placeholder="e.g., C, H2O, PE"
-              style={{ width: "100%", padding: "8px 10px", fontFamily: "inherit", maxWidth: "400px" }}
+              className="terminal-input"
+              style={{ width: "100%" }}
             />
           </div>
 
           <div>
-            <label style={{ display: "block", fontSize: 14, marginBottom: 4 }}>
-              Force Buy (comma-separated tickers)
+            <label style={{ display: "block", fontSize: "0.75rem", marginBottom: "0.5rem", color: "var(--color-accent-primary)", textTransform: "uppercase" }}>
+              Force Buy (comma-separated)
             </label>
             <input
               type="text"
               value={forceBuy}
               onChange={(e) => setForceBuy(e.target.value)}
               placeholder="e.g., H, O, FE"
-              style={{ width: "100%", padding: "8px 10px", fontFamily: "inherit", maxWidth: "400px" }}
+              className="terminal-input"
+              style={{ width: "100%" }}
             />
           </div>
         </div>
 
         {/* Force/Exclude Recipe Controls */}
-        <div
-          style={{
-            display: "grid",
-            gap: 20,
-            gridTemplateColumns: "1fr 1fr",
-            alignItems: "end",
-            maxWidth: 900,
-            marginTop: 16,
-          }}
-        >
+        <div style={{
+          display: "grid",
+          gap: "1rem",
+          gridTemplateColumns: "1fr 1fr",
+          marginBottom: "1rem"
+        }}>
           <div>
-            <label style={{ display: "block", fontSize: 14, marginBottom: 4 }}>
-              Force RecipeID (comma-separated recipe IDs)
+            <label style={{ display: "block", fontSize: "0.75rem", marginBottom: "0.5rem", color: "var(--color-accent-primary)", textTransform: "uppercase" }}>
+              Force RecipeID (comma-separated)
             </label>
             <input
               type="text"
               value={forceRecipe}
               onChange={(e) => setForceRecipe(e.target.value)}
               placeholder="e.g., C_5, CL_2, HCP_1"
-              style={{ width: "100%", padding: "8px 10px", fontFamily: "inherit", maxWidth: "400px" }}
+              className="terminal-input"
+              style={{ width: "100%" }}
             />
           </div>
 
           <div>
-            <label style={{ display: "block", fontSize: 14, marginBottom: 4 }}>
-              Exclude RecipeID (comma-separated recipe IDs)
+            <label style={{ display: "block", fontSize: "0.75rem", marginBottom: "0.5rem", color: "var(--color-accent-primary)", textTransform: "uppercase" }}>
+              Exclude RecipeID (comma-separated)
             </label>
             <input
               type="text"
               value={excludeRecipe}
               onChange={(e) => setExcludeRecipe(e.target.value)}
               placeholder="e.g., C_1, CL_3"
-              style={{ width: "100%", padding: "8px 10px", fontFamily: "inherit", maxWidth: "400px" }}
+              className="terminal-input"
+              style={{ width: "100%" }}
             />
           </div>
         </div>
 
-        {/* Recipe List Toggle */}
-        <div style={{ maxWidth: 900, marginTop: 16 }}>
-          <button
+        {/* Recipe List Toggle - Moved to bottom of system controls */}
+        <div style={{ marginTop: "1rem" }}>
+          <div
             onClick={() => setShowRecipeList(!showRecipeList)}
             style={{
-              padding: "8px 12px",
-              fontWeight: 600,
-              fontFamily: "inherit",
-              backgroundColor: showRecipeList ? "#e8a4a4" : "#a8d5a8",
-              border: "1px solid " + (showRecipeList ? "#c87878" : "#7cb17c"),
-              borderRadius: 4,
               cursor: "pointer",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "space-between",
+              padding: "0.5rem",
+              background: "var(--color-bg-primary)",
+              border: "1px solid var(--color-border-primary)",
+              borderRadius: "2px",
+              transition: "all 0.2s ease"
             }}
+            onMouseEnter={(e) => e.currentTarget.style.borderColor = "var(--color-border-glow)"}
+            onMouseLeave={(e) => e.currentTarget.style.borderColor = "var(--color-border-primary)"}
           >
-            {showRecipeList ? "Hide Recipe List" : "Show RecipeID List"}
-          </button>
+            <span className="text-accent text-mono" style={{ fontSize: "0.875rem" }}>
+              {showRecipeList ? "[-]" : "[+]"} RECIPE DATABASE
+            </span>
+            <span style={{ fontSize: "0.75rem", color: "var(--color-text-muted)" }}>
+              {showRecipeList ? "COLLAPSE" : "EXPAND"}
+            </span>
+          </div>
           {showRecipeList && (
-            <div
-              style={{
-                marginTop: 12,
-                padding: 16,
-                backgroundColor: "#f8f9fa",
-                border: "1px solid #dee2e6",
-                borderRadius: 6,
-                maxHeight: 400,
-                overflowY: "auto",
-              }}
-            >
-              <pre style={{ margin: 0, whiteSpace: "pre-wrap", fontFamily: "-apple-system, BlinkMacSystemFont, Segoe UI, Roboto, Helvetica Neue, Arial, sans-serif", fontSize: "14px" }}>
+            <div style={{
+              marginTop: "0.5rem",
+              padding: "1rem",
+              background: "var(--color-bg-primary)",
+              border: "1px solid var(--color-border-secondary)",
+              borderRadius: "2px",
+              maxHeight: "400px",
+              overflowY: "auto"
+            }}>
+              <pre style={{
+                margin: 0,
+                whiteSpace: "pre-wrap",
+                fontFamily: "var(--font-mono)",
+                fontSize: "0.75rem",
+                lineHeight: "1.6",
+                color: "var(--color-text-secondary)"
+              }}>
                 {`Only materials with multiple recipes are listed here to provide recipe IDs:
-                
+
 AL_1 - SME: 6xALO-1xC-1xO=>3xAL
 AL_2 - SME: 6xALO-1xC-1xFLX-1xO=>4xAL
 BBH_1 - PP1: 2xFE-1xLST=>1xBBH
@@ -455,300 +528,240 @@ VEG_2 - HYF: 16xH2O-1xNS=>6xVEG`}
             </div>
           )}
         </div>
+        </>)}
       </div>
 
-      <div style={{ padding: "0 24px", margin: "0 auto", maxWidth: 900 }}>
-        {error && (
-          <p style={{ marginTop: 12, color: "#b00" }}>
-            Error: {error}
-          </p>
-        )}
-
-        {report && report.error && (
-          <p style={{ marginTop: 12, color: "#b00" }}>
-            {report.error}
-          </p>
-        )}
-
-        {report && (
-          <>
-            {/* Results */}
-            {report && !error && !report.error && (
-              <>
-                {report.best ? (
-                  <section style={{ marginTop: 10 }}>
-
-                    {/* Summary Box */}
-                    <div
-                      style={{
-                        backgroundColor: "#f8f9fa",
-                        border: "1px solid #dee2e6",
-                        borderRadius: 6,
-                        padding: 16,
-                        marginBottom: 10,
-                        maxWidth: 867,
-                      }}
-                    >
-                                        <p style={{ margin: "0 0 12px 0", fontSize: 16, paddingLeft: "20px" }}>
-                      <strong> {report.ticker} </strong> &nbsp; | &nbsp;
-                      <strong>Best P/A:</strong>{" "}
-                      {formatCurrency(report.bestPA, report.exchange)}   | &nbsp;
-                      {report.best.scenario && (
-                        <>
-                          <strong>Scenario:</strong> {scenarioDisplayName(report.best.scenario)}   | &nbsp;
-                        </>
-                      )}
-                      <strong>Options Run:</strong> {report.totalOptions.toLocaleString()}
-                    </p>
-                    <div style={{ display: "grid", gap: 6, fontSize: 14 }}>
-                      
-
-                      <div>
-                        <span
-                          data-tooltip="The daily profit generated by a single building producing this ticker in this scenario."
-                          style={{
-                            position: "relative",
-                            cursor: "help",
-                            marginRight: "6px"
-                          }}
-                        >
-                          ⓘ
-                        </span>
-                        <strong>Building Profit/Day:</strong> {money(report.best.baseProfitPerDay)}
-                      </div>
-                      <div>
-                        <span
-                          data-tooltip="Cost of Goods Made for one count of this ticker."
-                          style={{
-                            position: "relative",
-                            cursor: "help",
-                            marginRight: "6px"
-                          }}
-                        >
-                          ⓘ
-                        </span>
-                        <strong>COGM:</strong> {money(report.best.cogmPerOutput)}
-                      </div>
-                      <div>
-                        <span
-                          data-tooltip="The area of the production building and the proportionate area of input production buildings 
-                          needed for one day's production of this ticker in this scenario."
-                          style={{
-                            position: "relative",
-                            cursor: "help",
-                            marginRight: "6px"
-                          }}
-                        >
-                          ⓘ
-                        </span>
-                        <strong>Total Area/Day:</strong> {report.best.totalAreaPerDay != null && Number.isFinite(report.best.totalAreaPerDay)
-                          ? report.best.totalAreaPerDay.toFixed(1).replace(/\.0$/, "")
-                          : "n/a"}
-                      </div>
-                      <div>
-                        <span
-                          data-tooltip="The number of orders that the production building will complete each day at full efficiency (160.5%)."
-                          style={{
-                            position: "relative",
-                            cursor: "help",
-                            marginRight: "6px"
-                          }}
-                        >
-                          ⓘ
-                        </span>
-                        <strong>Orders/day:</strong> {report.best.runsPerDay != null && Number.isFinite(report.best.runsPerDay)
-                          ? report.best.runsPerDay.toFixed(1).replace(/\.0$/, "")
-                          : "n/a"}
-                      </div>
-                      {(report.best.buildCost != null || report.best.roiNarrowDays != null) && (
-                        <div>
-                          <span
-                            data-tooltip="The build cost for the production building and the proportionate build cost of needed habitation buildings and the core module, 
-                            as well as the expected time needed to reach a ROI."
-                            style={{
-                              position: "relative",
-                              cursor: "help",
-                              marginRight: "6px"
-                            }}
-                          >
-                            ⓘ
-                          </span>
-                          <strong>Build Cost - Narrow (ROI):</strong> {money(report.best.buildCost)} ({Number.isFinite(report.best.roiNarrowDays)
-                            ? report.best.roiNarrowDays.toFixed(1).replace(/\.0$/, "")
-                            : "n/a"} days)
-                        </div>
-                      )}
-                      {(report.best.totalBuildCost != null || report.best.roiBroadDays != null) && (
-                        <div>
-                          <span
-                            data-tooltip="This figure includes the narrow build cost plus the proportionate build cost of all input production and habitation buildings needed for one day's production of this ticker"
-                            style={{
-                              position: "relative",
-                              cursor: "help",
-                              marginRight: "6px"
-                            }}
-                          >
-                            ⓘ
-                          </span>
-                          <strong>Build Cost - Broad (ROI):</strong> {money(report.best.totalBuildCost)} ({Number.isFinite(report.best.roiBroadDays)
-                            ? report.best.roiBroadDays.toFixed(1).replace(/\.0$/, "")
-                            : "n/a"} days)
-                        </div>
-                      )}
-                      {(report.best.inputBuffer7 != null || report.best.inputPaybackDays7Narrow != null) && (
-                        <div>
-                          <span
-                            data-tooltip="Total cost of workforce and production inputs needed to keep the production building running for 7 days, 
-                            as well as the expected time needed to reach a ROI."
-                            style={{
-                              position: "relative",
-                              cursor: "help",
-                              marginRight: "6px"
-                            }}
-                          >
-                            ⓘ
-                          </span>
-                          <strong>Input Buffer 7d - Narrow (Payback):</strong> {money(report.best.inputBuffer7)} ({Number.isFinite(report.best.inputPaybackDays7Narrow)
-                            ? report.best.inputPaybackDays7Narrow.toFixed(1).replace(/\.0$/, "")
-                            : "n/a"} days)
-                        </div>
-                      )}
-                      {(report.best.totalInputBuffer7 != null || report.best.inputPaybackDays7Broad != null) && (
-                        <div>
-                          <span
-                            data-tooltip="Total cost of workforce and production inputs needed to keep all stages' production buildings running for 7 days,
-                            as well as the expected time needed to reach a ROI."
-                            style={{
-                              position: "relative",
-                              cursor: "help",
-                              marginRight: "6px"
-                            }}
-                          >
-                            ⓘ
-                          </span>
-                          <strong>Input Buffer 7d - Broad (Payback):</strong> {money(report.best.totalInputBuffer7)} ({Number.isFinite(report.best.inputPaybackDays7Broad)
-                            ? report.best.inputPaybackDays7Broad.toFixed(1).replace(/\.0$/, "")
-                            : "n/a"} days)
-                        </div>
-                      )}
-                      {report.best.scenario && (
-                        <div style={{ marginTop: 8, fontStyle: "italic", fontSize: 14, color: "#666" }}>
-                          Full Scenario Name: {report.best.scenario}
-                        </div>
-                      )}
-                      
-                    </div>
-                  </div>
-                  
-                </section>
-              ) : (
-                <p style={{ marginTop: 32 }}>No best scenario available for this ticker.</p>
-              )}
-            </>
-          )}
-        </>
-      )}
-      </div>
-
-      {/* Sankey Chart - Full Width */}
-      {report && !error && !report.error && report.best && (
-        <div
-          key={`sankey-${report.ticker}-${report.best.scenario}`}
-          style={{
-            margin: "2px 0",
-            padding: "0 20px",
-            position: "relative",
-            isolation: "isolate",
-            zIndex: 1
-          }}
-        >
-          <BestScenarioSankey best={report.best} exchange={report.exchange} priceType={report.priceType} />
+      {/* Error Display */}
+      {error && (
+        <div className="terminal-box" style={{ borderColor: "var(--color-error)", marginBottom: "2rem" }}>
+          <div className="status-error" style={{ fontFamily: "var(--font-mono)", fontSize: "0.875rem" }}>
+            ERROR: {error}
+          </div>
         </div>
       )}
 
-      <div style={{ padding: "0 24px" }}>
-        {report && !error && !report.error && (
-          <section style={{
-            marginTop: 10,
-            position: "relative",
-            isolation: "isolate",
-            zIndex: 2,
-            paddingTop: "0px"
-          }}>
-            {report.best && (
-              <div style={{ marginTop: 8, fontSize: 14, color: "#666", textAlign: "center" }}>
-                <strong>Sankey Key:</strong>{" "}
-                <span
-                  data-tooltip="Placeholder text for Parent Node"
-                  style={{
-                    position: "relative",
-                    cursor: "help",
-                    borderBottom: "1px dotted #999"
-                  }}
-                >
-                  Parent Node
-                </span>
-                {" | "}
-                <span
-                  data-tooltip="Placeholder text for Input Node"
-                  style={{
-                    position: "relative",
-                    cursor: "help",
-                    borderBottom: "1px dotted #999"
-                  }}
-                >
-                  Input Node
-                </span>
-                {" | "}
-                <span
-                  data-tooltip="Placeholder text for Flows"
-                  style={{
-                    position: "relative",
-                    cursor: "help",
-                    borderBottom: "1px dotted #999"
-                  }}
-                >
-                  Flows
-                </span>
+      {report && report.error && (
+        <div className="terminal-box" style={{ borderColor: "var(--color-error)", marginBottom: "2rem" }}>
+          <div className="status-error" style={{ fontFamily: "var(--font-mono)", fontSize: "0.875rem" }}>
+            ERROR: {report.error}
+          </div>
+        </div>
+      )}
+
+      {/* Results Section */}
+      {report && !error && !report.error && report.best && (
+        <>
+          {/* Summary Box - Collapsible */}
+          <div className="terminal-box" style={{ marginBottom: "2rem" }}>
+            <div
+              onClick={() => setAnalysisCollapsed(!analysisCollapsed)}
+              style={{
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "space-between",
+                cursor: "pointer",
+                marginBottom: analysisCollapsed ? 0 : "1rem"
+              }}
+            >
+              <div className="terminal-header" style={{ margin: 0 }}>Analysis Results</div>
+              <span className="text-mono" style={{ fontSize: "0.875rem", color: "var(--color-text-muted)" }}>
+                {analysisCollapsed ? "[+] EXPAND" : "[-] COLLAPSE"}
+              </span>
+            </div>
+
+            <div style={{
+              display: "grid",
+              gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))",
+              gap: "1rem",
+              marginBottom: analysisCollapsed ? 0 : "1rem",
+              padding: "1rem",
+              background: "var(--color-bg-primary)",
+              border: "1px solid var(--color-border-secondary)",
+              borderRadius: "2px"
+            }}>
+              <div>
+                <div style={{ fontSize: "0.75rem", color: "var(--color-text-muted)", textTransform: "uppercase", marginBottom: "0.25rem", fontFamily: "var(--font-mono)" }}>
+                  Ticker
+                </div>
+                <div className="text-accent" style={{ fontSize: "1.5rem", fontFamily: "var(--font-mono)", fontWeight: "bold" }}>
+                  {report.ticker}
+                </div>
               </div>
+              <div>
+                <div style={{ fontSize: "0.75rem", color: "var(--color-text-muted)", textTransform: "uppercase", marginBottom: "0.25rem", fontFamily: "var(--font-mono)" }}>
+                  Best P/A
+                </div>
+                <div className="status-success" style={{ fontSize: "1.5rem", fontFamily: "var(--font-mono)", fontWeight: "bold" }}>
+                  {formatCurrency(report.bestPA, report.exchange)}
+                </div>
+              </div>
+              <div>
+                <div style={{ fontSize: "0.75rem", color: "var(--color-text-muted)", textTransform: "uppercase", marginBottom: "0.25rem", fontFamily: "var(--font-mono)" }}>
+                  Options Evaluated
+                </div>
+                <div style={{ fontSize: "1.5rem", fontFamily: "var(--font-mono)", color: "var(--color-text-primary)", fontWeight: "bold" }}>
+                  {report.totalOptions.toLocaleString()}
+                </div>
+              </div>
+            </div>
+
+            {!analysisCollapsed && (
+              <>
+              <div style={{ display: "grid", gap: "0.5rem", fontSize: "0.875rem", fontFamily: "var(--font-mono)" }}>
+                <div style={{ display: "flex", gap: "0.5rem" }}>
+                  <span
+                    data-tooltip="The daily profit generated by a single building producing this ticker in this scenario."
+                    style={{ cursor: "help", color: "var(--color-accent-secondary)" }}
+                  >
+                    [i]
+                  </span>
+                  <span style={{ color: "var(--color-text-secondary)" }}>Building Profit/Day:</span>
+                  <span className="text-accent">{money(report.best.baseProfitPerDay, report.exchange)}</span>
+                </div>
+                <div style={{ display: "flex", gap: "0.5rem" }}>
+                  <span
+                    data-tooltip="Cost of Goods Made for one count of this ticker."
+                    style={{ cursor: "help", color: "var(--color-accent-secondary)" }}
+                  >
+                    [i]
+                  </span>
+                  <span style={{ color: "var(--color-text-secondary)" }}>COGM:</span>
+                  <span className="text-accent">{money(report.best.cogmPerOutput, report.exchange)}</span>
+                </div>
+                <div style={{ display: "flex", gap: "0.5rem" }}>
+                  <span
+                    data-tooltip="The area of the production building and the proportionate area of input production buildings needed for one day's production of this ticker in this scenario."
+                    style={{ cursor: "help", color: "var(--color-accent-secondary)" }}
+                  >
+                    [i]
+                  </span>
+                  <span style={{ color: "var(--color-text-secondary)" }}>Total Area/Day:</span>
+                  <span className="text-accent">
+                    {report.best.totalAreaPerDay != null && Number.isFinite(report.best.totalAreaPerDay)
+                      ? report.best.totalAreaPerDay.toFixed(1).replace(/\.0$/, "")
+                      : "n/a"}
+                  </span>
+                </div>
+                <div style={{ display: "flex", gap: "0.5rem" }}>
+                  <span
+                    data-tooltip="The number of orders that the production building will complete each day at full efficiency (160.5%)."
+                    style={{ cursor: "help", color: "var(--color-accent-secondary)" }}
+                  >
+                    [i]
+                  </span>
+                  <span style={{ color: "var(--color-text-secondary)" }}>Orders/day:</span>
+                  <span className="text-accent">
+                    {report.best.runsPerDay != null && Number.isFinite(report.best.runsPerDay)
+                      ? report.best.runsPerDay.toFixed(1).replace(/\.0$/, "")
+                      : "n/a"}
+                  </span>
+                </div>
+                {(report.best.buildCost != null || report.best.roiNarrowDays != null) && (
+                  <div style={{ display: "flex", gap: "0.5rem" }}>
+                    <span
+                      data-tooltip="The build cost for the production building and the proportionate build cost of needed habitation buildings and the core module, as well as the expected time needed to reach a ROI."
+                      style={{ cursor: "help", color: "var(--color-accent-secondary)" }}
+                    >
+                      [i]
+                    </span>
+                    <span style={{ color: "var(--color-text-secondary)" }}>Build Cost - Narrow (ROI):</span>
+                    <span className="text-accent">
+                      {money(report.best.buildCost, report.exchange)} ({Number.isFinite(report.best.roiNarrowDays)
+                        ? report.best.roiNarrowDays.toFixed(1).replace(/\.0$/, "")
+                        : "n/a"} days)
+                    </span>
+                  </div>
+                )}
+                {(report.best.totalBuildCost != null || report.best.roiBroadDays != null) && (
+                  <div style={{ display: "flex", gap: "0.5rem" }}>
+                    <span
+                      data-tooltip="This figure includes the narrow build cost plus the proportionate build cost of all input production and habitation buildings needed for one day's production of this ticker"
+                      style={{ cursor: "help", color: "var(--color-accent-secondary)" }}
+                    >
+                      [i]
+                    </span>
+                    <span style={{ color: "var(--color-text-secondary)" }}>Build Cost - Broad (ROI):</span>
+                    <span className="text-accent">
+                      {money(report.best.totalBuildCost, report.exchange)} ({Number.isFinite(report.best.roiBroadDays)
+                        ? report.best.roiBroadDays.toFixed(1).replace(/\.0$/, "")
+                        : "n/a"} days)
+                    </span>
+                  </div>
+                )}
+                {(report.best.inputBuffer7 != null || report.best.inputPaybackDays7Narrow != null) && (
+                  <div style={{ display: "flex", gap: "0.5rem" }}>
+                    <span
+                      data-tooltip="Total cost of workforce and production inputs needed to keep the production building running for 7 days, as well as the expected time needed to reach a ROI."
+                      style={{ cursor: "help", color: "var(--color-accent-secondary)" }}
+                    >
+                      [i]
+                    </span>
+                    <span style={{ color: "var(--color-text-secondary)" }}>Input Buffer 7d - Narrow (Payback):</span>
+                    <span className="text-accent">
+                      {money(report.best.inputBuffer7, report.exchange)} ({Number.isFinite(report.best.inputPaybackDays7Narrow)
+                        ? report.best.inputPaybackDays7Narrow.toFixed(1).replace(/\.0$/, "")
+                        : "n/a"} days)
+                    </span>
+                  </div>
+                )}
+                {(report.best.totalInputBuffer7 != null || report.best.inputPaybackDays7Broad != null) && (
+                  <div style={{ display: "flex", gap: "0.5rem" }}>
+                    <span
+                      data-tooltip="Total cost of workforce and production inputs needed to keep all stages' production buildings running for 7 days, as well as the expected time needed to reach a ROI."
+                      style={{ cursor: "help", color: "var(--color-accent-secondary)" }}
+                    >
+                      [i]
+                    </span>
+                    <span style={{ color: "var(--color-text-secondary)" }}>Input Buffer 7d - Broad (Payback):</span>
+                    <span className="text-accent">
+                      {money(report.best.totalInputBuffer7, report.exchange)} ({Number.isFinite(report.best.inputPaybackDays7Broad)
+                        ? report.best.inputPaybackDays7Broad.toFixed(1).replace(/\.0$/, "")
+                        : "n/a"} days)
+                    </span>
+                  </div>
+                )}
+                {report.best.scenario && (
+                  <div style={{ marginTop: "0.5rem", paddingTop: "0.75rem", borderTop: "1px solid var(--color-border-secondary)", fontStyle: "italic", fontSize: "0.75rem", color: "var(--color-text-muted)" }}>
+                    Full Scenario: {report.best.scenario}
+                  </div>
+                )}
+              </div>
+              </>
             )}
-            <h2>Best Options - Condensed</h2>
-            <p style={{ margin: "8px 0 16px", color: "#555", maxWidth: 760 }}>
+
+            {/* Sankey Chart - Always visible, even when analysis is collapsed */}
+            <div style={{ marginTop: "1rem" }}>
+              <BestScenarioSankey best={report.best} exchange={report.exchange} priceType={report.priceType} />
+            </div>
+          </div>
+
+          {/* Tables Section */}
+          <div className="terminal-box" style={{ marginBottom: "2rem" }}>
+            <div className="terminal-header">Best Options - Condensed</div>
+            <p style={{ margin: "0 0 1rem 0", color: "var(--color-text-secondary)", fontSize: "0.875rem" }}>
               Best performing option for each unique display scenario (up to 20). Display scenarios show only the buy/make decisions for direct inputs, not their sub-components.
             </p>
             <CondensedOptionsTable options={report.topDisplayScenarios} exchange={report.exchange} priceType={report.priceType} />
+          </div>
 
-            <h2 style={{ marginTop: 32 }}>Best Options - Expanded</h2>
-            <p style={{ margin: "8px 0 16px", color: "#555", maxWidth: 760 }}>
+          <div className="terminal-box">
+            <div className="terminal-header">Best Options - Expanded</div>
+            <p style={{ margin: "0 0 1rem 0", color: "var(--color-text-secondary)", fontSize: "0.875rem" }}>
               List of up to 20 other production scenarios ranked by profit per area, including multiple full scenarios per display scenario.
             </p>
             <Top20Table options={report.top20} exchange={report.exchange} priceType={report.priceType} />
-          </section>
-        )}
-      </div>
+          </div>
+        </>
+      )}
 
-      {/* Source selector - bottom right corner */}
-      <div style={{
-        float: "right",
-        backgroundColor: "white",
-        border: "1px solid #ccc",
-        borderRadius: "6px",
-        padding: "12px",
-        boxShadow: "0 2px 8px rgba(0,0,0,0.1)",
-      }}>
-        <label style={{ display: "block", fontSize: 12, marginBottom: 4, color: "#666" }}>
-          Source
-        </label>
-        <select
-          value={priceSource}
-          onChange={(e) => setPriceSource(e.target.value as "local" | "gcs")}
-          style={{ padding: "6px 8px", fontSize: 13, fontWeight: 600, fontFamily: "inherit" }}
-        >
-          <option value="local">Local</option>
-          <option value="gcs">GCS</option>
-        </select>
-      </div>
-    </main>
+      {report && !error && !report.error && !report.best && (
+        <div className="terminal-box">
+          <div style={{ color: "var(--color-warning)", fontFamily: "var(--font-mono)" }}>
+            No best scenario available for this ticker.
+          </div>
+        </div>
+      )}
+
     </>
   );
 }
