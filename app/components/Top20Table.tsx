@@ -5,6 +5,7 @@ import React, { useState } from "react";
 import { scenarioDisplayName } from "@/core/scenario";
 import BestScenarioSankey from "./BestScenarioSankey";
 import type { Exchange, PriceType } from "@/types";
+import { formatCurrencyRounded, getCurrencySymbol } from "@/lib/formatting";
 
 type Top20Option = {
   ticker: string;
@@ -49,9 +50,7 @@ export default function Top20Table({ options, exchange, priceType }: { options: 
       : "n/a";
 
   const money = (n: number | null | undefined) =>
-    n != null && Number.isFinite(n)
-      ? `₳${Math.round(n).toLocaleString()}`
-      : "n/a";
+    formatCurrencyRounded(n, exchange ?? "ANT");
 
   return (
     <>
@@ -109,7 +108,7 @@ export default function Top20Table({ options, exchange, priceType }: { options: 
                     {option.roiBroadDays != null ? `${fmt(option.roiBroadDays)} days` : <span style={{ color: "var(--color-text-muted)" }}>n/a</span>}
                   </td>
                   <td style={{ textAlign: "center", fontFamily: "var(--font-mono)" }}>
-                    {option.totalProfitPA != null && Number.isFinite(option.totalProfitPA) ? <span className="status-success">₳{fmt(option.totalProfitPA)}</span> : <span style={{ color: "var(--color-text-muted)" }}>n/a</span>}
+                    {option.totalProfitPA != null && Number.isFinite(option.totalProfitPA) ? <span className="status-success">{getCurrencySymbol(exchange ?? "ANT")}{fmt(option.totalProfitPA)}</span> : <span style={{ color: "var(--color-text-muted)" }}>n/a</span>}
                   </td>
                 </tr>
                 {expandedRows.has(index) && (
@@ -183,7 +182,7 @@ export default function Top20Table({ options, exchange, priceType }: { options: 
                             </div>
                           )}
                           <div>
-                            <strong style={{ color: "var(--color-text-primary)" }}>Profit P/A:</strong> <span className="text-accent">{option.totalProfitPA != null && Number.isFinite(option.totalProfitPA) ? `₳${fmt(option.totalProfitPA)}` : "n/a"}</span>
+                            <strong style={{ color: "var(--color-text-primary)" }}>Profit P/A:</strong> <span className="text-accent">{option.totalProfitPA != null && Number.isFinite(option.totalProfitPA) ? `${getCurrencySymbol(exchange ?? "ANT")}${fmt(option.totalProfitPA)}` : "n/a"}</span>
                           </div>
                         </div>
                       </div>

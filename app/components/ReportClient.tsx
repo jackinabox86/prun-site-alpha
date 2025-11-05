@@ -6,6 +6,7 @@ import BestScenarioSankey from "./BestScenarioSankey";
 import Top20Table from "./Top20Table";
 import CondensedOptionsTable from "./CondensedOptionsTable";
 import { scenarioDisplayName } from "@/core/scenario";
+import { formatCurrency, formatCurrencyRounded, getCurrencySymbol } from "@/lib/formatting";
 
 type ApiReport = {
   schemaVersion: number;
@@ -114,10 +115,8 @@ export default function ReportClient() {
   }, [urlParamsChecked]);
 
   // Helper formatting function matching the Sankey component
-  const money = (n: number | null | undefined) =>
-    n != null && Number.isFinite(n)
-      ? `₳${n.toLocaleString(undefined, { maximumFractionDigits: 2 })}`
-      : "n/a";
+  const money = (n: number | null | undefined, exchange: Exchange = "ANT") =>
+    formatCurrency(n, exchange);
 
   return (
     <>
@@ -593,7 +592,7 @@ VEG_2 - HYF: 16xH2O-1xNS=>6xVEG`}
                   Best P/A
                 </div>
                 <div className="status-success" style={{ fontSize: "1.5rem", fontFamily: "var(--font-mono)", fontWeight: "bold" }}>
-                  {report.bestPA != null ? `₳${Number(report.bestPA).toFixed(2)}` : "n/a"}
+                  {formatCurrency(report.bestPA, report.exchange)}
                 </div>
               </div>
               <div>
@@ -617,7 +616,7 @@ VEG_2 - HYF: 16xH2O-1xNS=>6xVEG`}
                     [i]
                   </span>
                   <span style={{ color: "var(--color-text-secondary)" }}>Building Profit/Day:</span>
-                  <span className="text-accent">{money(report.best.baseProfitPerDay)}</span>
+                  <span className="text-accent">{money(report.best.baseProfitPerDay, report.exchange)}</span>
                 </div>
                 <div style={{ display: "flex", gap: "0.5rem" }}>
                   <span
@@ -627,7 +626,7 @@ VEG_2 - HYF: 16xH2O-1xNS=>6xVEG`}
                     [i]
                   </span>
                   <span style={{ color: "var(--color-text-secondary)" }}>COGM:</span>
-                  <span className="text-accent">{money(report.best.cogmPerOutput)}</span>
+                  <span className="text-accent">{money(report.best.cogmPerOutput, report.exchange)}</span>
                 </div>
                 <div style={{ display: "flex", gap: "0.5rem" }}>
                   <span
@@ -667,7 +666,7 @@ VEG_2 - HYF: 16xH2O-1xNS=>6xVEG`}
                     </span>
                     <span style={{ color: "var(--color-text-secondary)" }}>Build Cost - Narrow (ROI):</span>
                     <span className="text-accent">
-                      {money(report.best.buildCost)} ({Number.isFinite(report.best.roiNarrowDays)
+                      {money(report.best.buildCost, report.exchange)} ({Number.isFinite(report.best.roiNarrowDays)
                         ? report.best.roiNarrowDays.toFixed(1).replace(/\.0$/, "")
                         : "n/a"} days)
                     </span>
@@ -683,7 +682,7 @@ VEG_2 - HYF: 16xH2O-1xNS=>6xVEG`}
                     </span>
                     <span style={{ color: "var(--color-text-secondary)" }}>Build Cost - Broad (ROI):</span>
                     <span className="text-accent">
-                      {money(report.best.totalBuildCost)} ({Number.isFinite(report.best.roiBroadDays)
+                      {money(report.best.totalBuildCost, report.exchange)} ({Number.isFinite(report.best.roiBroadDays)
                         ? report.best.roiBroadDays.toFixed(1).replace(/\.0$/, "")
                         : "n/a"} days)
                     </span>
@@ -699,7 +698,7 @@ VEG_2 - HYF: 16xH2O-1xNS=>6xVEG`}
                     </span>
                     <span style={{ color: "var(--color-text-secondary)" }}>Input Buffer 7d - Narrow (Payback):</span>
                     <span className="text-accent">
-                      {money(report.best.inputBuffer7)} ({Number.isFinite(report.best.inputPaybackDays7Narrow)
+                      {money(report.best.inputBuffer7, report.exchange)} ({Number.isFinite(report.best.inputPaybackDays7Narrow)
                         ? report.best.inputPaybackDays7Narrow.toFixed(1).replace(/\.0$/, "")
                         : "n/a"} days)
                     </span>
@@ -715,7 +714,7 @@ VEG_2 - HYF: 16xH2O-1xNS=>6xVEG`}
                     </span>
                     <span style={{ color: "var(--color-text-secondary)" }}>Input Buffer 7d - Broad (Payback):</span>
                     <span className="text-accent">
-                      {money(report.best.totalInputBuffer7)} ({Number.isFinite(report.best.inputPaybackDays7Broad)
+                      {money(report.best.totalInputBuffer7, report.exchange)} ({Number.isFinite(report.best.inputPaybackDays7Broad)
                         ? report.best.inputPaybackDays7Broad.toFixed(1).replace(/\.0$/, "")
                         : "n/a"} days)
                     </span>

@@ -34,8 +34,9 @@ export default function XitConverterClient() {
     const lines = text.split("\n");
 
     for (const line of lines) {
-      // Match pattern: ACTION: Transfer [number] [ticker] from ... to ...
-      const match = line.match(/ACTION:\s*Transfer\s+(\d+)\s+([A-Z0-9]+)\s+from/i);
+      // Match pattern: Transfer [number] [ticker] from ... to ...
+      // More flexible - works with ACTION:, SUCCESS:, or any prefix
+      const match = line.match(/Transfer\s+(\d+)\s+([A-Z0-9]+)\s+from/i);
       if (match) {
         const quantity = parseInt(match[1], 10);
         const ticker = match[2];
@@ -126,7 +127,7 @@ export default function XitConverterClient() {
           id="input-text"
           value={inputText}
           onChange={(e) => setInputText(e.target.value)}
-          placeholder="ACTION: Transfer 104 O from Antares Station Warehouse to 3k Alpha Cargo&#10;ACTION: Transfer 104 H from Antares Station Warehouse to 3k Alpha Cargo&#10;..."
+          placeholder="ACTION: Transfer 104 O from Antares Station Warehouse to 3k Alpha Cargo&#10;SUCCESS: Transfer 104 H from Antares Station Warehouse to 3k Alpha Cargo&#10;..."
           className="terminal-input"
           style={{
             width: "100%",

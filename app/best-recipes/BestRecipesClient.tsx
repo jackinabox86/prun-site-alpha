@@ -4,6 +4,7 @@ import { useState, useEffect, useMemo } from "react";
 import { scenarioDisplayName } from "@/core/scenario";
 import { tickerFilterGroups } from "@/lib/tickerFilters";
 import type { Exchange } from "@/types";
+import { formatProfitPerArea } from "@/lib/formatting";
 
 interface BestRecipeResult {
   ticker: string;
@@ -395,14 +396,14 @@ export default function BestRecipesClient() {
                     </td>
                     <td style={{ textAlign: "right", fontFamily: "var(--font-mono)" }}>
                       {typeof row.profitPA === "number" && Number.isFinite(row.profitPA)
-                        ? <span className="status-success">₳{row.profitPA.toFixed(1).replace(/\.0$/, "")}</span>
+                        ? <span className="status-success">{formatProfitPerArea(row.profitPA, exchange as Exchange)}</span>
                         : <span style={{ color: "var(--color-text-muted)" }}>—</span>}
                     </td>
                     <td style={{ textAlign: "right", fontFamily: "var(--font-mono)" }}>
                       {row.buyAllProfitPA === null
                         ? <span style={{ fontSize: "0.75rem", color: "var(--color-text-muted)" }}>Input N/A</span>
                         : typeof row.buyAllProfitPA === "number" && Number.isFinite(row.buyAllProfitPA)
-                        ? <span className={row.buyAllProfitPA > 0 ? "status-success" : "status-error"}>₳{row.buyAllProfitPA.toFixed(1).replace(/\.0$/, "")}</span>
+                        ? <span className={row.buyAllProfitPA > 0 ? "status-success" : "status-error"}>{formatProfitPerArea(row.buyAllProfitPA, exchange as Exchange)}</span>
                         : <span style={{ color: "var(--color-text-muted)" }}>—</span>}
                     </td>
                     <td style={{ textAlign: "center" }}>
