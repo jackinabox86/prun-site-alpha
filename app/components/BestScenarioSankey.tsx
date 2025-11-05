@@ -174,7 +174,7 @@ const BestScenarioSankey = memo(function BestScenarioSankey({
           const costPerDay = Math.max(0, batchCost * stageRunsPerDay);
 
           const buyNodeId = `BUY::${stage.recipeId || stage.ticker}::${inp.ticker}::${depth + 1}`;
-          const buyLabel = `<b>Buy&nbsp;${inp.ticker}</b>`;
+          const buyLabel = `<b>&nbsp;Buy ${inp.ticker}</b>`;
           const buyHover = [
             `<b>Buy ${inp.ticker}</b>`,
             inp.unitCost != null ? `Price: ${money(inp.unitCost)}` : null,
@@ -202,7 +202,7 @@ const BestScenarioSankey = memo(function BestScenarioSankey({
 
         const childId = `STAGE::${child.recipeId || child.ticker}::${depth + 1}`;
         const childProfitPA = child.totalProfitPA ?? 0;
-        const childLabel = `<b>Make&nbsp;${child.recipeId || child.ticker}</b><br>[₳${fmtPA(childProfitPA)} P/A]`;
+        const childLabel = `<b>&nbsp;Make ${child.recipeId || child.ticker}</b><br>[₳${fmtPA(childProfitPA)} P/A]`;
         const childHover = [
           `<b>Make ${child.recipeId || child.ticker}</b>`,
           child.building ? `BUI: ${child.building}` : null,

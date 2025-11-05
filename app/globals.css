@@ -118,12 +118,6 @@ body {
   letter-spacing: 0.1em;
 }
 
-.terminal-header::before {
-  content: '>';
-  color: var(--color-accent-primary);
-  font-weight: bold;
-}
-
 /* Button styling */
 .terminal-button {
   background: var(--color-bg-tertiary);
