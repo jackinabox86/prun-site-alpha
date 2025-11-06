@@ -51,6 +51,10 @@ jobs:
 
       - name: Upload to Google Cloud Storage
         run: |
+          # Get current timestamp for historical snapshots
+          TIMESTAMP=$(date -u +"%Y-%m-%dT%H-%M-%SZ")
+          echo "Snapshot timestamp: ${TIMESTAMP}"
+
           # Upload standard exchange-specific data files (exchange-sellAt combinations)
           for exchange in ANT CIS ICA NCC; do
             for sellAt in bid ask pp7; do
@@ -66,22 +70,37 @@ jobs:
                      -h "Content-Type:application/json" \
                      cp public/data/${filename}-meta.json \
                      gs://prun-site-alpha-bucket/${filename}-meta.json
+
+              # Save historical snapshot
+              echo "Saving historical snapshot for ${filename}..."
+              gsutil -h "Cache-Control:public, max-age=31536000" \
+                     -h "Content-Type:application/json" \
+                     cp public/data/${filename}.json \
+                     gs://prun-site-alpha-bucket/historical/${filename}/${TIMESTAMP}.json
             done
           done
 
           # Upload UNV special cases (not displayed in UI, but kept for compatibility)
           for unv in UNV7 UNV30; do
-            echo "Uploading best-recipes-${unv}.json..."
+            filename="best-recipes-${unv}"
+            echo "Uploading ${filename}.json..."
             gsutil -h "Cache-Control:public, max-age=300" \
                    -h "Content-Type:application/json" \
-                   cp public/data/best-recipes-${unv}.json \
-                   gs://prun-site-alpha-bucket/best-recipes-${unv}.json
+                   cp public/data/${filename}.json \
+                   gs://prun-site-alpha-bucket/${filename}.json
 
-            echo "Uploading best-recipes-${unv}-meta.json..."
+            echo "Uploading ${filename}-meta.json..."
             gsutil -h "Cache-Control:public, max-age=300" \
                    -h "Content-Type:application/json" \
-                   cp public/data/best-recipes-${unv}-meta.json \
-                   gs://prun-site-alpha-bucket/best-recipes-${unv}-meta.json
+                   cp public/data/${filename}-meta.json \
+                   gs://prun-site-alpha-bucket/${filename}-meta.json
+
+            # Save historical snapshot
+            echo "Saving historical snapshot for ${filename}..."
+            gsutil -h "Cache-Control:public, max-age=31536000" \
+                   -h "Content-Type:application/json" \
+                   cp public/data/${filename}.json \
+                   gs://prun-site-alpha-bucket/historical/${filename}/${TIMESTAMP}.json
           done
 
           # Upload default file (ANT-bid) for backwards compatibility
@@ -97,6 +116,70 @@ jobs:
                  gs://prun-site-alpha-bucket/best-recipes-meta.json
 
           echo "✅ All files uploaded to GCS"
+
+      - name: Update historical indices
+        run: |
+          TIMESTAMP=$(date -u +"%Y-%m-%dT%H-%M-%SZ")
+
+          # Function to update index for a given configuration
+          update_index() {
+            local config=$1
+            local exchange=$2
+            local sellAt=$3
+
+            echo "Updating index for ${config}..."
+
+            # Download existing index if it exists, or create new one
+            if gsutil -q stat gs://prun-site-alpha-bucket/historical/${config}/index.json; then
+              gsutil cp gs://prun-site-alpha-bucket/historical/${config}/index.json /tmp/index-${config}.json
+            else
+              echo '{"snapshots":[],"lastUpdated":""}' > /tmp/index-${config}.json
+            fi
+
+            # Read metadata from the generated file
+            TICKER_COUNT=$(jq -r '.tickerCount // 0' public/data/${config}-meta.json)
+            GENERATED_AT=$(jq -r '.generatedAt // ""' public/data/${config}-meta.json)
+            DURATION=$(jq -r '.durationSeconds // 0' public/data/${config}-meta.json)
+
+            # Add new snapshot to index
+            jq --arg ts "${TIMESTAMP}" \
+               --arg gen "${GENERATED_AT}" \
+               --argjson count "${TICKER_COUNT}" \
+               --argjson dur "${DURATION}" \
+               --arg exch "${exchange}" \
+               --arg sell "${sellAt}" \
+               '.snapshots += [{
+                 timestamp: $ts,
+                 generatedAt: $gen,
+                 tickerCount: $count,
+                 durationSeconds: $dur
+               }] |
+               .exchange = $exch |
+               .sellAt = $sell |
+               .lastUpdated = $ts' \
+               /tmp/index-${config}.json > /tmp/index-${config}-updated.json
+
+            # Upload updated index
+            gsutil -h "Cache-Control:public, max-age=300" \
+                   -h "Content-Type:application/json" \
+                   cp /tmp/index-${config}-updated.json \
+                   gs://prun-site-alpha-bucket/historical/${config}/index.json
+
+            echo "✅ Index updated for ${config}"
+          }
+
+          # Update indices for all standard configurations
+          for exchange in ANT CIS ICA NCC; do
+            for sellAt in bid ask pp7; do
+              update_index "best-recipes-${exchange}-${sellAt}" "${exchange}" "${sellAt}"
+            done
+          done
+
+          # Update indices for UNV special cases
+          update_index "best-recipes-UNV7" "UNV" "pp7"
+          update_index "best-recipes-UNV30" "UNV" "pp30"
+
+          echo "✅ All historical indices updated"
 
       - name: Get public URLs
         run: |
