@@ -2,6 +2,7 @@
 import { NextResponse } from "next/server";
 import type { Exchange } from "@/types";
 import type { BestRecipeResult } from "@/server/bestRecipes";
+import { apiCache } from "../lib/cache";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -98,6 +99,15 @@ export async function GET(request: Request) {
     const sellAt = VALID_SELL_AT.includes(sellAtParam) ? sellAtParam : "bid";
 
     const limit = Math.min(Math.max(parseInt(limitParam, 10) || 50, 1), 500);
+
+    // Create cache key
+    const cacheKey = `movers:${period}:${exchange}:${sellAt}:${limit}:${sortBy}`;
+
+    // Check cache (5 min TTL)
+    const cached = apiCache.get(cacheKey);
+    if (cached) {
+      return NextResponse.json(cached);
+    }
 
     // Construct the config name
     const configName = `best-recipes-${exchange}-${sellAt}`;
@@ -230,7 +240,7 @@ export async function GET(request: Request) {
     // Apply limit
     const topMovers = movers.slice(0, limit);
 
-    return NextResponse.json({
+    const response = {
       success: true,
       period,
       exchange,
@@ -242,7 +252,12 @@ export async function GET(request: Request) {
       movers: topMovers,
       count: topMovers.length,
       totalTickersCompared: movers.length,
-    });
+    };
+
+    // Cache result for 5 minutes
+    apiCache.set(cacheKey, response, 5 * 60 * 1000);
+
+    return NextResponse.json(response);
   } catch (err: any) {
     console.error("Error in best-recipes/movers API:", err);
     return NextResponse.json(

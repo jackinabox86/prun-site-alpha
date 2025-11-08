@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import dynamic from "next/dynamic";
 import type { Exchange } from "@/types";
 import { formatProfitPerArea } from "@/lib/formatting";
@@ -93,7 +93,7 @@ export default function BestRecipesHistoryClient() {
   const [historyError, setHistoryError] = useState<string | null>(null);
 
   // Load movers data
-  const loadMovers = async () => {
+  const loadMovers = useCallback(async () => {
     setMoversLoading(true);
     setMoversError(null);
     try {
@@ -120,10 +120,10 @@ export default function BestRecipesHistoryClient() {
     } finally {
       setMoversLoading(false);
     }
-  };
+  }, [period, exchange, sellAt]);
 
   // Load history data for selected ticker
-  const loadHistory = async (ticker: string) => {
+  const loadHistory = useCallback(async (ticker: string) => {
     if (!ticker) return;
 
     setHistoryLoading(true);
@@ -149,12 +149,12 @@ export default function BestRecipesHistoryClient() {
     } finally {
       setHistoryLoading(false);
     }
-  };
+  }, [exchange, sellAt]);
 
   // Load movers on mount and when parameters change
   useEffect(() => {
     loadMovers();
-  }, [period, exchange, sellAt]);
+  }, [loadMovers]);
 
   // Load history when ticker is selected
   useEffect(() => {
@@ -164,7 +164,7 @@ export default function BestRecipesHistoryClient() {
       setHistoryData([]);
       setHistoryError(null);
     }
-  }, [selectedTicker, exchange, sellAt]);
+  }, [selectedTicker, loadHistory]);
 
   const handleTickerClick = (ticker: string) => {
     setSelectedTicker(ticker);
