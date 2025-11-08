@@ -2,6 +2,7 @@
 import { NextResponse } from "next/server";
 import type { Exchange, PriceType } from "@/types";
 import type { BestRecipeResult } from "@/server/bestRecipes";
+import { apiCache } from "../lib/cache";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -66,6 +67,15 @@ export async function GET(request: Request) {
 
     const limit = Math.min(Math.max(parseInt(limitParam, 10) || 100, 1), 1000);
 
+    // Create cache key
+    const cacheKey = `history:${ticker}:${exchange}:${sellAt}:${limit}:${fromParam || ''}:${toParam || ''}`;
+
+    // Check cache (5 min TTL)
+    const cached = apiCache.get(cacheKey);
+    if (cached) {
+      return NextResponse.json(cached);
+    }
+
     // Construct the config name (e.g., "best-recipes-ANT-bid")
     const configName = `best-recipes-${exchange}-${sellAt}`;
 
@@ -107,50 +117,64 @@ export async function GET(request: Request) {
       new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
     ).slice(0, limit);
 
-    // Fetch each snapshot and extract the ticker data
-    const history: HistoricalSnapshot[] = [];
-    let previousProfitPA: number | null = null;
-
-    // Process in reverse chronological order to calculate changes
-    for (let i = snapshots.length - 1; i >= 0; i--) {
-      const snapshot = snapshots[i];
+    // Fetch all snapshots in parallel
+    const snapshotPromises = snapshots.map(async (snapshot) => {
       const snapshotUrl = `${GCS_BUCKET}/historical/${configName}/${snapshot.timestamp}.json`;
 
       try {
         const snapshotResponse = await fetch(snapshotUrl, { cache: "no-store" });
         if (!snapshotResponse.ok) {
           console.warn(`Failed to fetch snapshot ${snapshot.timestamp}: ${snapshotResponse.status}`);
-          continue;
+          return null;
         }
 
         const snapshotData: BestRecipeResult[] = await snapshotResponse.json();
         const tickerData = snapshotData.find(item => item.ticker === ticker);
 
-        if (tickerData) {
-          const currentProfitPA = tickerData.profitPA;
-          const changeFromPrevious = previousProfitPA !== null
-            ? currentProfitPA - previousProfitPA
-            : undefined;
-          const percentChange = previousProfitPA !== null && previousProfitPA !== 0
-            ? ((currentProfitPA - previousProfitPA) / Math.abs(previousProfitPA)) * 100
-            : undefined;
+        if (!tickerData) return null;
 
-          history.unshift({
-            timestamp: snapshot.timestamp,
-            recipeId: tickerData.recipeId,
-            scenario: tickerData.scenario,
-            profitPA: currentProfitPA,
-            buyAllProfitPA: tickerData.buyAllProfitPA,
-            building: tickerData.building,
-            changeFromPrevious,
-            percentChange,
-          });
-
-          previousProfitPA = currentProfitPA;
-        }
+        return {
+          timestamp: snapshot.timestamp,
+          recipeId: tickerData.recipeId,
+          scenario: tickerData.scenario,
+          profitPA: tickerData.profitPA,
+          buyAllProfitPA: tickerData.buyAllProfitPA,
+          building: tickerData.building,
+        };
       } catch (err: any) {
         console.warn(`Error processing snapshot ${snapshot.timestamp}:`, err.message);
+        return null;
       }
+    });
+
+    // Fetch all in parallel
+    const results = await Promise.all(snapshotPromises);
+
+    // Filter out nulls and sort by timestamp ascending
+    const validSnapshots = results
+      .filter((r): r is NonNullable<typeof r> => r !== null)
+      .sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime());
+
+    // Calculate changes sequentially after data is loaded
+    const history: HistoricalSnapshot[] = [];
+    let previousProfitPA: number | null = null;
+
+    for (const snapshot of validSnapshots) {
+      const currentProfitPA = snapshot.profitPA;
+      const changeFromPrevious = previousProfitPA !== null
+        ? currentProfitPA - previousProfitPA
+        : undefined;
+      const percentChange = previousProfitPA !== null && previousProfitPA !== 0
+        ? ((currentProfitPA - previousProfitPA) / Math.abs(previousProfitPA)) * 100
+        : undefined;
+
+      history.push({
+        ...snapshot,
+        changeFromPrevious,
+        percentChange,
+      });
+
+      previousProfitPA = currentProfitPA;
     }
 
     if (history.length === 0) {
@@ -163,14 +187,19 @@ export async function GET(request: Request) {
       );
     }
 
-    return NextResponse.json({
+    const response = {
       success: true,
       ticker,
       exchange,
       sellAt,
       history,
       count: history.length,
-    });
+    };
+
+    // Cache result for 5 minutes
+    apiCache.set(cacheKey, response, 5 * 60 * 1000);
+
+    return NextResponse.json(response);
   } catch (err: any) {
     console.error("Error in best-recipes/history API:", err);
     return NextResponse.json(
