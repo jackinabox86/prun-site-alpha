@@ -1,4 +1,5 @@
-import { writeFileSync, mkdirSync, execSync, readFileSync } from "fs";
+import { writeFileSync, mkdirSync, readFileSync } from "fs";
+import { execSync } from "child_process";
 import { ApiRateLimiter } from "./lib/rate-limiter.js";
 import type { HistoricalPriceData } from "../src/types";
 
