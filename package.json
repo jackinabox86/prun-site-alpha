@@ -7,6 +7,7 @@
     "generate-best-recipes": "tsx scripts/generate-best-recipes.ts",
     "merge-prices": "tsx scripts/merge-prices.ts",
     "fetch-historical": "tsx scripts/fetch-historical-prices.ts",
+    "upload-historical": "tsx scripts/upload-historical-to-gcs.ts",
     "start": "next start"
   },
   "dependencies": {

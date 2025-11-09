@@ -1,4 +1,4 @@
-import { writeFileSync, mkdirSync } from "fs";
+import { writeFileSync, mkdirSync, execSync } from "fs";
 import { ApiRateLimiter } from "./lib/rate-limiter.js";
 import type { HistoricalPriceData } from "../src/types";
 
@@ -8,12 +8,34 @@ import type { HistoricalPriceData } from "../src/types";
  * This script fetches OHLC (Open, High, Low, Close) data for materials
  * from the FNAR exchange API and saves them locally.
  *
+ * Branch-aware behavior:
+ * - main branch: saves to production folder
+ * - other branches: saves to test folder (test-{branch-name})
+ *
  * Currently configured to fetch: RAT on AI1 (ANT exchange)
  * Can be expanded later to include more materials and exchanges.
  *
  * Usage:
  *   npm run fetch-historical
  */
+
+// Detect current git branch
+function getCurrentBranch(): string {
+  try {
+    const branch = execSync("git rev-parse --abbrev-ref HEAD", {
+      encoding: "utf8",
+    }).trim();
+    return branch;
+  } catch (error) {
+    console.warn("⚠️  Could not detect git branch, defaulting to 'unknown'");
+    return "unknown";
+  }
+}
+
+// Determine if running in production mode
+function isProductionBranch(branch: string): boolean {
+  return branch === "main";
+}
 
 // Exchange code mapping: Our codes -> FNAR API codes
 const EXCHANGE_MAP: Record<string, string> = {
@@ -27,16 +49,28 @@ interface FetchConfig {
   tickers: string[];
   exchanges: Array<keyof typeof EXCHANGE_MAP>;
   outputDir: string;
+  gcsBucket: string;
+  gcsPath: string;
   batchSize: number;
   delayMs: number;
 }
+
+// Detect current branch and set paths accordingly
+const CURRENT_BRANCH = getCurrentBranch();
+const IS_PRODUCTION = isProductionBranch(CURRENT_BRANCH);
 
 // Simple configuration - just RAT.AI1 for now
 // Can be expanded later to include more materials and exchanges
 const CONFIG: FetchConfig = {
   tickers: ["RAT"],
   exchanges: ["ANT"], // ANT = ai1 in FNAR API
-  outputDir: "public/data/historical-prices",
+  outputDir: IS_PRODUCTION
+    ? "public/data/historical-prices"
+    : `public/data/historical-prices-test`,
+  gcsBucket: "prun-site-alpha-bucket",
+  gcsPath: IS_PRODUCTION
+    ? "historical-prices"
+    : `historical-prices-test/${CURRENT_BRANCH}`,
   batchSize: 1,
   delayMs: 500,
 };
@@ -60,10 +94,13 @@ const CONFIG: FetchConfig = {
 
 async function fetchHistoricalPrices(config: FetchConfig) {
   console.log("\n🚀 Starting historical price fetch");
+  console.log(`   Branch: ${CURRENT_BRANCH}`);
+  console.log(`   Mode: ${IS_PRODUCTION ? "🟢 PRODUCTION" : "🟡 TEST"}`);
   console.log(`   Tickers: ${config.tickers.join(", ")}`);
   console.log(`   Exchanges: ${config.exchanges.join(", ")}`);
   console.log(`   Total endpoints: ${config.tickers.length * config.exchanges.length}`);
-  console.log(`   Output: ${config.outputDir}\n`);
+  console.log(`   Local output: ${config.outputDir}`);
+  console.log(`   GCS path: gs://${config.gcsBucket}/${config.gcsPath}\n`);
 
   // Create output directory if it doesn't exist
   try {
@@ -184,7 +221,14 @@ async function fetchHistoricalPrices(config: FetchConfig) {
     }
   }
 
-  console.log(`\n📁 Files saved to: ${config.outputDir}/\n`);
+  console.log(`\n📁 Files saved locally to: ${config.outputDir}/`);
+  console.log(`📤 To upload to GCS, run:`);
+  console.log(`   gsutil -m cp -r ${config.outputDir}/* gs://${config.gcsBucket}/${config.gcsPath}/`);
+
+  if (!IS_PRODUCTION) {
+    console.log(`\n⚠️  TEST MODE: Data will be uploaded to test folder, not production`);
+  }
+  console.log();
 }
 
 function formatDate(epochMs: number): string {

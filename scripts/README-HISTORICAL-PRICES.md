@@ -23,6 +23,20 @@ scripts/
     └── rate-limiter.ts           # API rate limiting class
 ```
 
+## Branch-Aware Behavior
+
+The fetch and upload scripts automatically detect the current git branch:
+
+- **main branch**: 🟢 PRODUCTION mode
+  - Local: `public/data/historical-prices/`
+  - GCS: `gs://prun-site-alpha-bucket/historical-prices/`
+
+- **other branches**: 🟡 TEST mode
+  - Local: `public/data/historical-prices-test/`
+  - GCS: `gs://prun-site-alpha-bucket/historical-prices-test/{branch-name}/`
+
+This ensures test data never overwrites production data.
+
 ## Usage
 
 ### Current Configuration
@@ -35,6 +49,23 @@ npm run fetch-historical
 
 This is a simple starting point to test the system and get familiar with the data structure.
 
+### Uploading to GCS
+
+After fetching data, upload to Google Cloud Storage:
+
+```bash
+npm run upload-historical
+```
+
+**Production uploads (main branch only):**
+- Includes a 5-second warning before uploading
+- Overwrites production historical data
+- Use with caution!
+
+**Test uploads (all other branches):**
+- Uploads immediately to test folder
+- Safe to run without affecting production
+
 ### Future Expansion
 
 The script can be easily expanded to fetch:
@@ -44,9 +75,51 @@ The script can be easily expanded to fetch:
 
 To expand, edit `scripts/fetch-historical-prices.ts` and modify the `CONFIG` object.
 
+## Typical Workflow
+
+### For Development/Testing (non-main branches):
+
+```bash
+# 1. Create/checkout your feature branch
+git checkout -b my-feature-branch
+
+# 2. Fetch historical data
+npm run fetch-historical
+
+# 3. Verify the data looks good
+cat public/data/historical-prices-test/RAT-ai1.json
+
+# 4. Upload to GCS test folder
+npm run upload-historical
+# → Uploads to gs://prun-site-alpha-bucket/historical-prices-test/my-feature-branch/
+
+# 5. Test is complete, safe to experiment!
+```
+
+### For Production (main branch only):
+
+```bash
+# 1. Ensure you're on main
+git checkout main
+
+# 2. Fetch historical data
+npm run fetch-historical
+
+# 3. Carefully verify the data
+cat public/data/historical-prices/RAT-ai1.json
+
+# 4. Upload to production GCS
+npm run upload-historical
+# → Shows 5-second warning
+# → Uploads to gs://prun-site-alpha-bucket/historical-prices/
+```
+
 ## Output
 
-Data is saved to: `public/data/historical-prices/`
+**Branch-dependent paths:**
+
+- Production (main): `public/data/historical-prices/`
+- Test (other): `public/data/historical-prices-test/`
 
 File format: `{TICKER}-{exchange}.json`
 
