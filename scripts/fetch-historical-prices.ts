@@ -1,4 +1,4 @@
-import { writeFileSync, mkdirSync, execSync } from "fs";
+import { writeFileSync, mkdirSync, execSync, readFileSync } from "fs";
 import { ApiRateLimiter } from "./lib/rate-limiter.js";
 import type { HistoricalPriceData } from "../src/types";
 
@@ -108,6 +108,20 @@ const EXCHANGE_MAP: Record<string, string> = {
   NCC: "nc1",
 };
 
+// Load tickers from file
+function loadTickersFromFile(filepath: string): string[] {
+  try {
+    const content = readFileSync(filepath, "utf8");
+    return content
+      .split("\n")
+      .map((line) => line.trim())
+      .filter((line) => line.length > 0 && !line.startsWith("#"));
+  } catch (error) {
+    console.error(`❌ Failed to load tickers from ${filepath}`);
+    throw error;
+  }
+}
+
 interface FetchConfig {
   tickers: string[];
   exchanges: Array<keyof typeof EXCHANGE_MAP>;
@@ -122,11 +136,13 @@ interface FetchConfig {
 const CURRENT_BRANCH = getCurrentBranch();
 const IS_PRODUCTION = isProductionBranch(CURRENT_BRANCH);
 
-// Simple configuration - just RAT.AI1 for now
-// Can be expanded later to include more materials and exchanges
+// Configuration options
+// Uncomment the one you want to use:
+
+// Option 1: Single ticker for testing (default)
 const CONFIG: FetchConfig = {
   tickers: ["RAT"],
-  exchanges: ["ANT"], // ANT = ai1 in FNAR API
+  exchanges: ["ANT"], // Just one exchange for quick testing
   outputDir: IS_PRODUCTION
     ? "public/data/historical-prices"
     : `public/data/historical-prices-test`,
@@ -137,6 +153,22 @@ const CONFIG: FetchConfig = {
   batchSize: 1,
   delayMs: 500,
 };
+
+// Option 2: All tickers from file × all exchanges (~1332 endpoints)
+// IMPORTANT: This will take 20-25 minutes and make ~1332 API requests
+// const CONFIG: FetchConfig = {
+//   tickers: loadTickersFromFile("scripts/config/tickers.txt"),
+//   exchanges: ["ANT", "CIS", "ICA", "NCC"], // All 4 exchanges
+//   outputDir: IS_PRODUCTION
+//     ? "public/data/historical-prices"
+//     : `public/data/historical-prices-test`,
+//   gcsBucket: "prun-site-alpha-bucket",
+//   gcsPath: IS_PRODUCTION
+//     ? "historical-prices"
+//     : `historical-prices-test/${CURRENT_BRANCH}`,
+//   batchSize: 10, // 10 concurrent requests
+//   delayMs: 1000, // 1 second between batches
+// };
 
 // Future expansion configurations (commented out for now)
 // const ESSENTIALS_CONFIG: FetchConfig = {

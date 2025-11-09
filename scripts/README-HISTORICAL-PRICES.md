@@ -66,14 +66,52 @@ npm run upload-historical
 - Uploads immediately to test folder
 - Safe to run without affecting production
 
-### Future Expansion
+### Expanding to All Tickers
 
-The script can be easily expanded to fetch:
-- Multiple materials (uncomment `ESSENTIALS_CONFIG` or `FULL_CONFIG` in the script)
-- Multiple exchanges (ANT, CIS, ICA, NCC)
-- Custom material baskets (edit `CONFIG` in the script)
+To fetch all 333 tickers across all 4 exchanges (1,332 endpoints):
 
-To expand, edit `scripts/fetch-historical-prices.ts` and modify the `CONFIG` object.
+1. **Edit** `scripts/fetch-historical-prices.ts`
+2. **Comment out** Option 1 (RAT only)
+3. **Uncomment** Option 2 (all tickers from file)
+
+```typescript
+// Option 1: Single ticker for testing (default)
+// const CONFIG: FetchConfig = {
+//   tickers: ["RAT"],
+//   ...
+// };
+
+// Option 2: All tickers from file × all exchanges (~1332 endpoints)
+const CONFIG: FetchConfig = {
+  tickers: loadTickersFromFile("scripts/config/tickers.txt"),
+  exchanges: ["ANT", "CIS", "ICA", "NCC"], // All 4 exchanges
+  ...
+  batchSize: 10, // 10 concurrent requests
+  delayMs: 1000, // 1 second between batches
+};
+```
+
+**⚠️ Important:**
+- Will take **20-25 minutes** to complete
+- Makes **1,332 API requests** to FNAR
+- Generates **1,332 JSON files** (~3-4 MB total)
+- Best run once for initial data, then use daily updates
+
+### Customizing the Ticker List
+
+Edit `scripts/config/tickers.txt` to add/remove tickers:
+- One ticker per line
+- Lines starting with `#` are comments (ignored)
+- Blank lines are ignored
+
+Example:
+```
+RAT
+DW
+FE
+# AL  <- This line is ignored (commented out)
+O
+```
 
 ## Typical Workflow
 
