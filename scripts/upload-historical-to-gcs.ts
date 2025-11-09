@@ -17,17 +17,80 @@ import { execSync } from "child_process";
  *   npm run upload-historical
  */
 
-// Detect current git branch
+// Detect current git branch with multiple fallback methods
 function getCurrentBranch(): string {
   try {
+    // Method 1: git rev-parse (most reliable)
     const branch = execSync("git rev-parse --abbrev-ref HEAD", {
       encoding: "utf8",
+      stdio: ["pipe", "pipe", "pipe"],
     }).trim();
-    return branch;
+    if (branch && branch !== "HEAD") {
+      return branch;
+    }
   } catch (error) {
-    console.warn("⚠️  Could not detect git branch, defaulting to 'unknown'");
-    return "unknown";
+    // Silently continue to next method
   }
+
+  try {
+    // Method 2: git symbolic-ref (works in detached HEAD)
+    const branch = execSync("git symbolic-ref --short HEAD", {
+      encoding: "utf8",
+      stdio: ["pipe", "pipe", "pipe"],
+    }).trim();
+    if (branch) {
+      return branch;
+    }
+  } catch (error) {
+    // Silently continue to next method
+  }
+
+  try {
+    // Method 3: git branch --show-current (modern git)
+    const branch = execSync("git branch --show-current", {
+      encoding: "utf8",
+      stdio: ["pipe", "pipe", "pipe"],
+    }).trim();
+    if (branch) {
+      return branch;
+    }
+  } catch (error) {
+    // Silently continue to next method
+  }
+
+  try {
+    // Method 4: Check GITHUB_REF environment variable (GitHub Actions/Codespaces)
+    if (process.env.GITHUB_REF) {
+      const match = process.env.GITHUB_REF.match(/refs\/heads\/(.+)/);
+      if (match && match[1]) {
+        console.log(`   ℹ️  Detected branch from GITHUB_REF: ${match[1]}`);
+        return match[1];
+      }
+    }
+  } catch (error) {
+    // Silently continue
+  }
+
+  try {
+    // Method 5: Check CODESPACE_VSCODE_FOLDER (GitHub Codespaces specific)
+    if (process.env.CODESPACE_VSCODE_FOLDER) {
+      // Try to read .git/HEAD directly
+      const fs = require("fs");
+      const gitHead = fs.readFileSync(".git/HEAD", "utf8").trim();
+      const match = gitHead.match(/ref: refs\/heads\/(.+)/);
+      if (match && match[1]) {
+        console.log(`   ℹ️  Detected branch from .git/HEAD: ${match[1]}`);
+        return match[1];
+      }
+    }
+  } catch (error) {
+    // Silently continue
+  }
+
+  // All methods failed
+  console.warn("⚠️  Could not detect git branch, defaulting to 'unknown'");
+  console.warn("   This is safe - data will go to test folder, not production");
+  return "unknown";
 }
 
 // Determine if running in production mode
