@@ -1,6 +1,5 @@
 import { writeFileSync, mkdirSync } from "fs";
 import { ApiRateLimiter } from "./lib/rate-limiter.js";
-import { getAllTickers, BASKETS } from "./config/materials.js";
 import type { HistoricalPriceData } from "../src/types";
 
 /**
@@ -9,10 +8,11 @@ import type { HistoricalPriceData } from "../src/types";
  * This script fetches OHLC (Open, High, Low, Close) data for materials
  * from the FNAR exchange API and saves them locally.
  *
+ * Currently configured to fetch: RAT on AI1 (ANT exchange)
+ * Can be expanded later to include more materials and exchanges.
+ *
  * Usage:
- *   npm run fetch-historical           # Runs in test mode (RAT only)
- *   MODE=essentials npm run fetch-historical  # Fetch essentials basket
- *   MODE=full npm run fetch-historical        # Fetch all materials
+ *   npm run fetch-historical
  */
 
 // Exchange code mapping: Our codes -> FNAR API codes
@@ -31,47 +31,38 @@ interface FetchConfig {
   delayMs: number;
 }
 
-// Determine mode from environment variable
-const MODE = process.env.MODE || "test";
-
-// Configuration based on mode
-const CONFIGS: Record<string, FetchConfig> = {
-  // Test mode - just RAT on one exchange
-  test: {
-    tickers: ["RAT"],
-    exchanges: ["ANT"],
-    outputDir: "public/data/historical-prices",
-    batchSize: 1,
-    delayMs: 500,
-  },
-
-  // Essentials basket - high priority materials
-  essentials: {
-    tickers: BASKETS.essentials,
-    exchanges: ["ANT", "CIS", "ICA", "NCC"],
-    outputDir: "public/data/historical-prices",
-    batchSize: 10,
-    delayMs: 1000,
-  },
-
-  // Full mode - all materials
-  full: {
-    tickers: getAllTickers(),
-    exchanges: ["ANT", "CIS", "ICA", "NCC"],
-    outputDir: "public/data/historical-prices",
-    batchSize: 10,
-    delayMs: 1000,
-  },
+// Simple configuration - just RAT.AI1 for now
+// Can be expanded later to include more materials and exchanges
+const CONFIG: FetchConfig = {
+  tickers: ["RAT"],
+  exchanges: ["ANT"], // ANT = ai1 in FNAR API
+  outputDir: "public/data/historical-prices",
+  batchSize: 1,
+  delayMs: 500,
 };
+
+// Future expansion configurations (commented out for now)
+// const ESSENTIALS_CONFIG: FetchConfig = {
+//   tickers: BASKETS.essentials,
+//   exchanges: ["ANT", "CIS", "ICA", "NCC"],
+//   outputDir: "public/data/historical-prices",
+//   batchSize: 10,
+//   delayMs: 1000,
+// };
+
+// const FULL_CONFIG: FetchConfig = {
+//   tickers: getAllTickers(),
+//   exchanges: ["ANT", "CIS", "ICA", "NCC"],
+//   outputDir: "public/data/historical-prices",
+//   batchSize: 10,
+//   delayMs: 1000,
+// };
 
 async function fetchHistoricalPrices(config: FetchConfig) {
   console.log("\n🚀 Starting historical price fetch");
-  console.log(`   Mode: ${MODE.toUpperCase()}`);
-  console.log(`   Tickers: ${config.tickers.length} (${config.tickers.slice(0, 5).join(", ")}${config.tickers.length > 5 ? "..." : ""})`);
+  console.log(`   Tickers: ${config.tickers.join(", ")}`);
   console.log(`   Exchanges: ${config.exchanges.join(", ")}`);
   console.log(`   Total endpoints: ${config.tickers.length * config.exchanges.length}`);
-  console.log(`   Batch size: ${config.batchSize}`);
-  console.log(`   Delay between batches: ${config.delayMs}ms`);
   console.log(`   Output: ${config.outputDir}\n`);
 
   // Create output directory if it doesn't exist
@@ -206,15 +197,7 @@ function sleep(ms: number): Promise<void> {
 }
 
 // Run the script
-const config = CONFIGS[MODE];
-
-if (!config) {
-  console.error(`\n❌ Invalid MODE: ${MODE}`);
-  console.error(`   Valid modes: ${Object.keys(CONFIGS).join(", ")}\n`);
-  process.exit(1);
-}
-
-fetchHistoricalPrices(config).catch((error) => {
+fetchHistoricalPrices(CONFIG).catch((error) => {
   console.error("❌ Fatal error:", error);
   process.exit(1);
 });

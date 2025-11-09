@@ -25,33 +25,24 @@ scripts/
 
 ## Usage
 
-### Test Mode (Single Material)
+### Current Configuration
 
-Fetch just RAT on ANT exchange for testing:
+The script is currently configured to fetch **RAT on AI1 (ANT exchange)** only:
 
 ```bash
 npm run fetch-historical
 ```
 
-### Essentials Mode
+This is a simple starting point to test the system and get familiar with the data structure.
 
-Fetch the essentials basket (10 high-priority materials) across all 4 exchanges:
+### Future Expansion
 
-```bash
-MODE=essentials npm run fetch-historical
-```
+The script can be easily expanded to fetch:
+- Multiple materials (uncomment `ESSENTIALS_CONFIG` or `FULL_CONFIG` in the script)
+- Multiple exchanges (ANT, CIS, ICA, NCC)
+- Custom material baskets (edit `CONFIG` in the script)
 
-This fetches 40 endpoints (10 tickers × 4 exchanges).
-
-### Full Mode
-
-Fetch all materials across all exchanges:
-
-```bash
-MODE=full npm run fetch-historical
-```
-
-**⚠️ Warning:** This fetches ~200+ endpoints. Will take 10-15 minutes with rate limiting.
+To expand, edit `scripts/fetch-historical-prices.ts` and modify the `CONFIG` object.
 
 ## Output
 
@@ -100,13 +91,17 @@ Edit `scripts/config/materials.ts` to:
 - Set priority levels (high/medium/low)
 - Define custom baskets
 
-### Predefined Baskets
+### Predefined Baskets (For Future Use)
+
+The `scripts/config/materials.ts` file contains predefined baskets that can be used when expanding:
 
 - `essentials` - 10 high-liquidity materials (recommended for inflation index)
 - `consumables` - Food and consumable items
 - `construction` - Construction materials
 - `basicMaterials` - Raw materials
 - `comprehensive` - All high + medium priority materials
+
+To use these, uncomment the `ESSENTIALS_CONFIG` or `FULL_CONFIG` in `fetch-historical-prices.ts`.
 
 ## Rate Limiting & Monitoring
 
@@ -127,17 +122,18 @@ The rate limiter automatically:
 
 ## Batch Processing
 
-Configurable per mode:
+Current configuration:
 
 ```typescript
 {
-  batchSize: 10,     // How many concurrent requests
-  delayMs: 1000,     // Delay between batches (milliseconds)
+  tickers: ["RAT"],
+  exchanges: ["ANT"],
+  batchSize: 1,      // Single request (only 1 endpoint)
+  delayMs: 500,      // 500ms delay
 }
 ```
 
-**Test mode** uses smaller batches (1) for safety.
-**Essentials/Full** use 10 concurrent requests with 1s delays.
+When expanding to multiple materials, increase `batchSize` to 10 and `delayMs` to 1000ms for efficiency.
 
 ## Next Steps
 
@@ -175,24 +171,30 @@ If requests timeout:
 
 ## Examples
 
-### Fetch specific basket
+### Expand to multiple materials
 
-Create a custom mode in `fetch-historical-prices.ts`:
+Edit `fetch-historical-prices.ts` and modify the `CONFIG`:
 
 ```typescript
-custom: {
-  tickers: ["RAT", "DW", "FE"],
+const CONFIG: FetchConfig = {
+  tickers: ["RAT", "DW", "FE"],  // Add more materials
   exchanges: ["ANT"],
   outputDir: "public/data/historical-prices",
   batchSize: 3,
   delayMs: 500,
-}
+};
 ```
 
-Then run:
+### Expand to all exchanges
 
-```bash
-MODE=custom npm run fetch-historical
+```typescript
+const CONFIG: FetchConfig = {
+  tickers: ["RAT"],
+  exchanges: ["ANT", "CIS", "ICA", "NCC"],  // All 4 exchanges
+  outputDir: "public/data/historical-prices",
+  batchSize: 4,
+  delayMs: 500,
+};
 ```
 
 ### Test without network
