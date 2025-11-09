@@ -1,0 +1,37 @@
+{
+  "ticker": "RAT",
+  "exchange": "ai1",
+  "lastUpdated": 1762654840590,
+  "data": [
+    {
+      "Interval": "DAY_ONE",
+      "DateEpochMs": 1689984000000,
+      "Open": 112,
+      "Close": 113,
+      "High": 114,
+      "Low": 98,
+      "Volume": 1283219.75,
+      "Traded": 11529
+    },
+    {
+      "Interval": "DAY_ONE",
+      "DateEpochMs": 1690070400000,
+      "Open": 114,
+      "Close": 113,
+      "High": 114,
+      "Low": 98.19999694824219,
+      "Volume": 553210.1875,
+      "Traded": 4984
+    },
+    {
+      "Interval": "DAY_ONE",
+      "DateEpochMs": 1690156800000,
+      "Open": 98.5999984741211,
+      "Close": 113,
+      "High": 113,
+      "Low": 98,
+      "Volume": 824616,
+      "Traded": 7677
+    }
+  ]
+}

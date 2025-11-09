@@ -6,6 +6,7 @@
     "calculate-costs": "tsx scripts/calculate-dynamic-costs.ts",
     "generate-best-recipes": "tsx scripts/generate-best-recipes.ts",
     "merge-prices": "tsx scripts/merge-prices.ts",
+    "fetch-historical": "tsx scripts/fetch-historical-prices.ts",
     "start": "next start"
   },
   "dependencies": {
