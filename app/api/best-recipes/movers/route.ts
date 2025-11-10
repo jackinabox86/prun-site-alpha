@@ -21,6 +21,10 @@ interface MoverResult {
   previousProfitPA: number | null;
   absoluteChange: number;
   percentChange: number;
+  currentBuyAllProfitPA: number | null;
+  previousBuyAllProfitPA: number | null;
+  buyAllAbsoluteChange: number | null;
+  buyAllPercentChange: number | null;
   recipeChanged: boolean;
   currentRecipeId: string | null;
   previousRecipeId: string | null;
@@ -202,12 +206,27 @@ export async function GET(request: Request) {
           ? (absoluteChange / Math.abs(previousItem.profitPA)) * 100
           : 0;
 
+        // Calculate buyAllProfitPA changes
+        let buyAllAbsoluteChange: number | null = null;
+        let buyAllPercentChange: number | null = null;
+
+        if (currentItem.buyAllProfitPA !== null && previousItem.buyAllProfitPA !== null) {
+          buyAllAbsoluteChange = currentItem.buyAllProfitPA - previousItem.buyAllProfitPA;
+          buyAllPercentChange = previousItem.buyAllProfitPA !== 0
+            ? (buyAllAbsoluteChange / Math.abs(previousItem.buyAllProfitPA)) * 100
+            : 0;
+        }
+
         movers.push({
           ticker: currentItem.ticker,
           currentProfitPA: currentItem.profitPA,
           previousProfitPA: previousItem.profitPA,
           absoluteChange,
           percentChange,
+          currentBuyAllProfitPA: currentItem.buyAllProfitPA,
+          previousBuyAllProfitPA: previousItem.buyAllProfitPA,
+          buyAllAbsoluteChange,
+          buyAllPercentChange,
           recipeChanged: currentItem.recipeId !== previousItem.recipeId,
           currentRecipeId: currentItem.recipeId,
           previousRecipeId: previousItem.recipeId,
@@ -222,6 +241,10 @@ export async function GET(request: Request) {
           previousProfitPA: null,
           absoluteChange: currentItem.profitPA,
           percentChange: 100, // Treat as 100% increase for new tickers
+          currentBuyAllProfitPA: currentItem.buyAllProfitPA,
+          previousBuyAllProfitPA: null,
+          buyAllAbsoluteChange: currentItem.buyAllProfitPA,
+          buyAllPercentChange: 100,
           recipeChanged: false,
           currentRecipeId: currentItem.recipeId,
           previousRecipeId: null,

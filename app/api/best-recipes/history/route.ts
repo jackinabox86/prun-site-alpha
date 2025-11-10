@@ -24,6 +24,8 @@ interface HistoricalSnapshot {
   building?: string | null;
   changeFromPrevious?: number;
   percentChange?: number;
+  buyAllChangeFromPrevious?: number;
+  buyAllPercentChange?: number;
 }
 
 interface IndexEntry {
@@ -161,6 +163,7 @@ export async function GET(request: Request) {
     // Calculate changes sequentially after data is loaded
     const history: HistoricalSnapshot[] = [];
     let previousProfitPA: number | null = null;
+    let previousBuyAllProfitPA: number | null = null;
 
     for (const snapshot of validSnapshots) {
       const currentProfitPA = snapshot.profitPA;
@@ -171,13 +174,28 @@ export async function GET(request: Request) {
         ? ((currentProfitPA - previousProfitPA) / Math.abs(previousProfitPA)) * 100
         : undefined;
 
+      // Calculate buyAllProfitPA changes
+      const currentBuyAllProfitPA = snapshot.buyAllProfitPA;
+      let buyAllChangeFromPrevious: number | undefined = undefined;
+      let buyAllPercentChange: number | undefined = undefined;
+
+      if (currentBuyAllProfitPA !== null && previousBuyAllProfitPA !== null) {
+        buyAllChangeFromPrevious = currentBuyAllProfitPA - previousBuyAllProfitPA;
+        buyAllPercentChange = previousBuyAllProfitPA !== 0
+          ? (buyAllChangeFromPrevious / Math.abs(previousBuyAllProfitPA)) * 100
+          : undefined;
+      }
+
       history.push({
         ...snapshot,
         changeFromPrevious,
         percentChange,
+        buyAllChangeFromPrevious,
+        buyAllPercentChange,
       });
 
       previousProfitPA = currentProfitPA;
+      previousBuyAllProfitPA = currentBuyAllProfitPA;
     }
 
     if (history.length === 0) {
