@@ -63,6 +63,25 @@ Fetches historical price data for all configured tickers.
 - On branches: Re-fetches all data for testing
 - **Note**: Local data is not kept - all data lives in GCS
 
+#### `npm run update-daily-historical`
+Daily incremental update that fetches only yesterday's data.
+- Fetches using API endpoint: `/exchange/cxpc/{ticker}/{timestamp}`
+- Downloads existing files from GCS
+- Appends new data point for each ticker/exchange
+- Uploads updated files back to GCS
+- Tracks failures in missed days log
+- Runs automatically via GitHub Actions at 04:00 UTC daily
+- **Dry run**: `npm run update-daily-historical -- --dry-run`
+
+#### `npm run retry-missed-days`
+Retries failed fetches from previous runs.
+- Loads missed days log from GCS
+- Retries only failures from last 7 days
+- Removes successful retries from log
+- Updates failure records with new attempts
+- Runs automatically after daily update
+- **Dry run**: `npm run retry-missed-days -- --dry-run`
+
 ### Data Analysis
 
 #### `npm run analyze-historical [prod|test]`
@@ -135,6 +154,74 @@ Each JSON file contains:
   ]
 }
 ```
+
+## Automated Daily Updates
+
+### GitHub Actions Workflow
+
+The system automatically updates daily via GitHub Actions:
+
+**Schedule**: 04:00 UTC every day (4 hours after new day begins)
+**Workflow**: `.github/workflows/update-daily-historical.yml`
+**Branch**: Only runs on `main`
+
+### What Happens Daily
+
+1. **Fetch Yesterday's Data**
+   - Calculates previous day's timestamp (00:00 UTC)
+   - Hits API: `GET /exchange/cxpc/{ticker}.{exchange}/{timestamp}`
+   - Processes all 1,332 ticker/exchange combinations
+
+2. **Update Files**
+   - Downloads existing file from GCS
+   - Appends new data point if not already present
+   - Validates and sorts data by date
+   - Uploads updated file back to GCS
+
+3. **Track Failures**
+   - Logs any failed fetches to `historical-prices-missed-days.json` in GCS
+   - Tracks: ticker, exchange, date, timestamp, error, attempts
+
+4. **Retry Missed Days**
+   - Automatically retries failures from last 7 days
+   - Removes successful retries from log
+   - Keeps only recent failures
+
+### Missed Days Log Structure
+
+**Location**: `gs://prun-site-alpha-bucket/historical-prices-missed-days.json`
+
+```json
+{
+  "lastUpdated": 1762793178972,
+  "failures": [
+    {
+      "ticker": "RAT",
+      "exchange": "ai1",
+      "date": "2025-11-09",
+      "timestamp": 1731110400000,
+      "error": "HTTP 503: Service unavailable",
+      "attempts": 2,
+      "firstAttempt": 1731196800000,
+      "lastAttempt": 1731283200000
+    }
+  ]
+}
+```
+
+### Manual Triggers
+
+You can manually trigger the workflow from GitHub Actions:
+- Go to Actions → "Update Daily Historical Prices"
+- Click "Run workflow"
+- Optionally enable dry-run mode
+
+### Monitoring
+
+Check workflow status:
+- **GitHub Actions**: View run history and logs
+- **GCS Missed Days Log**: Check for persistent failures
+- **Workflow Summary**: Each run generates a detailed summary
 
 ## Typical Workflows
 

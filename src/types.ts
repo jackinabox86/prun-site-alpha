@@ -147,6 +147,23 @@ export interface HistoricalPriceData {
   }>;
 }
 
+// Missed day tracking for retry logic
+export interface MissedDayEntry {
+  ticker: string;
+  exchange: string;
+  date: string;  // ISO date YYYY-MM-DD
+  timestamp: number;  // epoch ms at 00:00 UTC
+  error: string;
+  attempts: number;
+  firstAttempt: number;  // epoch ms
+  lastAttempt: number;  // epoch ms
+}
+
+export interface MissedDaysLog {
+  lastUpdated: number;
+  failures: MissedDayEntry[];
+}
+
 // Material basket definition for inflation indices
 export interface MaterialBasket {
   ticker: string;

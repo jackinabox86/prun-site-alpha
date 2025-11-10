@@ -1,0 +1,117 @@
+name: Update Daily Historical Prices
+
+on:
+  schedule:
+    # Run daily at 04:00 UTC (4 hours after new day begins)
+    - cron: '0 4 * * *'
+
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: 'Run in dry-run mode (no uploads to GCS)'
+        required: false
+        type: boolean
+        default: false
+
+jobs:
+  update:
+    # Only run on main branch
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Authenticate to Google Cloud
+        uses: google-github-actions/auth@v2
+        with:
+          credentials_json: ${{ secrets.GCP_SA_KEY }}
+
+      - name: Set up Cloud SDK
+        uses: google-github-actions/setup-gcloud@v2
+
+      - name: Run daily update script
+        id: update
+        run: |
+          echo "## 📊 Daily Historical Price Update" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Date:** $(date -u +"%Y-%m-%d %H:%M:%S UTC")" >> $GITHUB_STEP_SUMMARY
+          echo "**Target:** Yesterday's data ($(date -u -d '1 day ago' +"%Y-%m-%d"))" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+
+          if [[ "${{ github.event.inputs.dry_run }}" == "true" ]]; then
+            echo "**Mode:** 🔧 DRY RUN (no uploads)" >> $GITHUB_STEP_SUMMARY
+            npm run update-daily-historical -- --dry-run
+          else
+            echo "**Mode:** 🟢 PRODUCTION" >> $GITHUB_STEP_SUMMARY
+            npm run update-daily-historical
+          fi
+
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "✅ Daily update completed successfully" >> $GITHUB_STEP_SUMMARY
+
+      - name: Run retry for missed days
+        id: retry
+        run: |
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "## 🔄 Retry Missed Days" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+
+          if [[ "${{ github.event.inputs.dry_run }}" == "true" ]]; then
+            npm run retry-missed-days -- --dry-run
+          else
+            npm run retry-missed-days
+          fi
+
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "✅ Retry process completed" >> $GITHUB_STEP_SUMMARY
+
+      - name: Generate summary
+        if: always()
+        run: |
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "## 📋 Workflow Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "- **Workflow:** ${{ github.workflow }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Run:** #${{ github.run_number }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Branch:** ${{ github.ref_name }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Triggered by:** ${{ github.event_name }}" >> $GITHUB_STEP_SUMMARY
+
+          if [[ "${{ steps.update.outcome }}" == "success" ]]; then
+            echo "- **Daily Update:** ✅ Success" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "- **Daily Update:** ❌ Failed" >> $GITHUB_STEP_SUMMARY
+          fi
+
+          if [[ "${{ steps.retry.outcome }}" == "success" ]]; then
+            echo "- **Retry Missed Days:** ✅ Success" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "- **Retry Missed Days:** ❌ Failed" >> $GITHUB_STEP_SUMMARY
+          fi
+
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "---" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "💡 **Next Steps:**" >> $GITHUB_STEP_SUMMARY
+          echo "- Check logs above for detailed results" >> $GITHUB_STEP_SUMMARY
+          echo "- Review missed days log in GCS if failures occurred" >> $GITHUB_STEP_SUMMARY
+          echo "- Data available at: \`gs://prun-site-alpha-bucket/historical-prices/\`" >> $GITHUB_STEP_SUMMARY
+
+      - name: Upload logs on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: update-logs-${{ github.run_number }}
+          path: |
+            public/data/historical-prices-missed-days.json
+          retention-days: 30
