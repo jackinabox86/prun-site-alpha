@@ -14,6 +14,10 @@ interface MoverResult {
   previousProfitPA: number | null;
   absoluteChange: number;
   percentChange: number;
+  currentBuyAllProfitPA: number | null;
+  previousBuyAllProfitPA: number | null;
+  buyAllAbsoluteChange: number | null;
+  buyAllPercentChange: number | null;
   recipeChanged: boolean;
   currentRecipeId: string | null;
   previousRecipeId: string | null;
@@ -42,6 +46,8 @@ interface HistoricalSnapshot {
   building?: string | null;
   changeFromPrevious?: number;
   percentChange?: number;
+  buyAllChangeFromPrevious?: number;
+  buyAllPercentChange?: number;
 }
 
 interface HistoryResponse {
@@ -322,6 +328,15 @@ export default function BestRecipesHistoryClient() {
                   <th style={{ padding: "10px", textAlign: "right", borderBottom: "2px solid #ff8c00" }}>
                     % Change
                   </th>
+                  <th style={{ padding: "10px", textAlign: "right", borderBottom: "2px solid #ff8c00" }}>
+                    Buy-All P/A
+                  </th>
+                  <th style={{ padding: "10px", textAlign: "right", borderBottom: "2px solid #ff8c00" }}>
+                    Buy-All Change
+                  </th>
+                  <th style={{ padding: "10px", textAlign: "right", borderBottom: "2px solid #ff8c00" }}>
+                    Buy-All %
+                  </th>
                   <th style={{ padding: "10px", textAlign: "center", borderBottom: "2px solid #ff8c00" }}>
                     Recipe Changed
                   </th>
@@ -374,6 +389,37 @@ export default function BestRecipesHistoryClient() {
                       }}
                     >
                       {formatPercent(mover.percentChange)}
+                    </td>
+                    <td style={{ padding: "10px", textAlign: "right", color: "#888" }}>
+                      {mover.currentBuyAllProfitPA !== null
+                        ? formatProfitPerArea(mover.currentBuyAllProfitPA, exchange as Exchange)
+                        : "N/A"}
+                    </td>
+                    <td
+                      style={{
+                        padding: "10px",
+                        textAlign: "right",
+                        color: mover.buyAllAbsoluteChange !== null
+                          ? mover.buyAllAbsoluteChange >= 0 ? "#4ade80" : "#f87171"
+                          : "#666",
+                      }}
+                    >
+                      {mover.buyAllAbsoluteChange !== null
+                        ? formatChange(mover.buyAllAbsoluteChange)
+                        : "N/A"}
+                    </td>
+                    <td
+                      style={{
+                        padding: "10px",
+                        textAlign: "right",
+                        color: mover.buyAllPercentChange !== null
+                          ? mover.buyAllPercentChange >= 0 ? "#4ade80" : "#f87171"
+                          : "#666",
+                      }}
+                    >
+                      {mover.buyAllPercentChange !== null
+                        ? formatPercent(mover.buyAllPercentChange)
+                        : "N/A"}
                     </td>
                     <td
                       style={{
@@ -531,6 +577,15 @@ export default function BestRecipesHistoryClient() {
                     <th style={{ padding: "10px", textAlign: "right", borderBottom: "2px solid #ff8c00" }}>
                       % Change
                     </th>
+                    <th style={{ padding: "10px", textAlign: "right", borderBottom: "2px solid #ff8c00" }}>
+                      Buy-All P/A
+                    </th>
+                    <th style={{ padding: "10px", textAlign: "right", borderBottom: "2px solid #ff8c00" }}>
+                      Buy-All Change
+                    </th>
+                    <th style={{ padding: "10px", textAlign: "right", borderBottom: "2px solid #ff8c00" }}>
+                      Buy-All %
+                    </th>
                   </tr>
                 </thead>
                 <tbody>
@@ -574,6 +629,43 @@ export default function BestRecipesHistoryClient() {
                         }}
                       >
                         {snapshot.percentChange !== undefined ? formatPercent(snapshot.percentChange) : "-"}
+                      </td>
+                      <td style={{ padding: "10px", textAlign: "right", color: "#888" }}>
+                        {snapshot.buyAllProfitPA !== null
+                          ? formatProfitPerArea(snapshot.buyAllProfitPA, exchange as Exchange)
+                          : "N/A"}
+                      </td>
+                      <td
+                        style={{
+                          padding: "10px",
+                          textAlign: "right",
+                          color:
+                            snapshot.buyAllChangeFromPrevious === undefined
+                              ? "#666"
+                              : snapshot.buyAllChangeFromPrevious >= 0
+                              ? "#4ade80"
+                              : "#f87171",
+                        }}
+                      >
+                        {snapshot.buyAllChangeFromPrevious !== undefined
+                          ? formatChange(snapshot.buyAllChangeFromPrevious)
+                          : "-"}
+                      </td>
+                      <td
+                        style={{
+                          padding: "10px",
+                          textAlign: "right",
+                          color:
+                            snapshot.buyAllPercentChange === undefined
+                              ? "#666"
+                              : snapshot.buyAllPercentChange >= 0
+                              ? "#4ade80"
+                              : "#f87171",
+                        }}
+                      >
+                        {snapshot.buyAllPercentChange !== undefined
+                          ? formatPercent(snapshot.buyAllPercentChange)
+                          : "-"}
                       </td>
                     </tr>
                   ))}
