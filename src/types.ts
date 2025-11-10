@@ -116,3 +116,82 @@ export interface BestMapEntry {
   scenario: string; // full scenario string from BestRecipeIDs
 }
 export type BestMap = Record<string, BestMapEntry>;
+
+/** ===== Historical Price Data ===== */
+// Raw OHLC data point from FNAR API
+export interface HistoricalPricePoint {
+  ticker: string;
+  exchangeCode: Exchange;
+  dateEpochMs: number;
+  open: number;
+  close: number;
+  high: number;
+  low: number;
+  volume: number;    // Total value traded (currency)
+  traded: number;    // Number of units traded
+}
+
+// Storage format for historical data (per ticker per exchange)
+export interface HistoricalPriceData {
+  ticker: string;
+  exchange: string;
+  lastUpdated: number;
+  data: Array<{
+    DateEpochMs: number;
+    Open: number;
+    Close: number;
+    High: number;
+    Low: number;
+    Volume: number;
+    Traded: number;
+  }>;
+}
+
+// Material basket definition for inflation indices
+export interface MaterialBasket {
+  ticker: string;
+  weight: number;       // Weighting factor (0-1, sum to 1)
+  category?: string;    // e.g., "materials", "consumables", "food"
+}
+
+// Calculated inflation index point
+export interface InflationIndexPoint {
+  dateEpochMs: number;
+  indexValue: number;           // Base 100 at baseline date
+  percentChange: number;        // % change from previous day
+  averagePrice: number;         // Average of all materials in basket
+  materialCount: number;        // How many materials contributed
+}
+
+// Material trading metrics for basket analysis
+export interface MaterialMetrics {
+  ticker: string;
+
+  // Volume metrics
+  avgDailyVolume: number;
+  avgDailyTraded: number;
+  totalVolume30d: number;
+  totalTraded30d: number;
+
+  // Consistency metrics
+  tradingDays: number;          // How many days had trades
+  tradingDayPercentage: number; // % of days with trades
+  volumeStdDev: number;         // Consistency of volume
+
+  // Price metrics
+  avgPrice30d: number;
+  priceStdDev: number;
+  priceVolatility: number;      // Coefficient of variation
+
+  // Liquidity score (composite)
+  liquidityScore: number;       // 0-100 score
+
+  // By exchange breakdown
+  exchangeMetrics: {
+    [exchange: string]: {
+      avgVolume: number;
+      tradingDays: number;
+      dominancePercent: number; // % of total volume
+    };
+  };
+}

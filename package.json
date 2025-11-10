@@ -6,6 +6,11 @@
     "calculate-costs": "tsx scripts/calculate-dynamic-costs.ts",
     "generate-best-recipes": "tsx scripts/generate-best-recipes.ts",
     "merge-prices": "tsx scripts/merge-prices.ts",
+    "fetch-historical": "tsx scripts/fetch-historical-prices.ts",
+    "upload-missing-gcs": "tsx scripts/upload-missing-to-gcs.ts",
+    "move-to-production-gcs": "tsx scripts/move-to-production-gcs.ts",
+    "analyze-historical": "tsx scripts/analyze-historical-prices.ts",
+    "test-production-mode": "tsx scripts/test-production-mode.ts",
     "start": "next start"
   },
   "dependencies": {
