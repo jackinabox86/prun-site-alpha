@@ -10,6 +10,14 @@ export const maxDuration = 300;
 
 const GCS_BUCKET = "https://storage.googleapis.com/prun-site-alpha-bucket/historical-prices";
 
+// Mapping from FNAR exchange codes to human-readable names
+const EXCHANGE_CODE_TO_NAME: Record<string, Exchange> = {
+  ai1: "ANT",
+  ci1: "CIS",
+  ic1: "ICA",
+  nc1: "NCC",
+};
+
 interface ExchangeStats {
   exchange: string;
   avgTradedCount: number;
@@ -186,8 +194,11 @@ export async function GET(request: Request) {
           const totalVolume = recentData.reduce((sum, d) => sum + d.Volume, 0);
           const totalTraded = recentData.reduce((sum, d) => sum + d.Traded, 0);
 
+          // Convert FNAR exchange code to human-readable name
+          const exchangeName = EXCHANGE_CODE_TO_NAME[data.exchange] || data.exchange;
+
           return {
-            exchange: data.exchange,
+            exchange: exchangeName,
             ticker: data.ticker,
             totalVolume,
             totalTraded,
