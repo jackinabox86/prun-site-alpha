@@ -98,6 +98,7 @@ export default function BestRecipesHistoryClient() {
 
   // History state
   const [selectedTicker, setSelectedTicker] = useState<string>("");
+  const [tickerInput, setTickerInput] = useState<string>("");
   const [historyLoading, setHistoryLoading] = useState(false);
   const [historyData, setHistoryData] = useState<HistoricalSnapshot[]>([]);
   const [historyError, setHistoryError] = useState<string | null>(null);
@@ -184,6 +185,19 @@ export default function BestRecipesHistoryClient() {
     }, 100);
   };
 
+  const handleTickerJump = (e: React.FormEvent) => {
+    e.preventDefault();
+    const ticker = tickerInput.trim().toUpperCase();
+    if (ticker) {
+      setSelectedTicker(ticker);
+      setTickerInput("");
+      // Scroll to history section
+      setTimeout(() => {
+        document.getElementById("ticker-history")?.scrollIntoView({ behavior: "smooth" });
+      }, 100);
+    }
+  };
+
   // Handle sorting
   const handleSort = (column: keyof MoverResult) => {
     if (sortColumn === column) {
@@ -265,8 +279,12 @@ export default function BestRecipesHistoryClient() {
         <h1 className="terminal-header" style={{ fontSize: "1.2rem" }}>
           BEST RECIPES // HISTORICAL ANALYSIS
         </h1>
-        <p style={{ color: "var(--color-text-secondary)", fontSize: "0.875rem" }}>
-          Track profitability changes over time and identify the biggest movers in the market.
+        <p style={{ color: "var(--color-text-secondary)", fontSize: "0.875rem", lineHeight: "1.6" }}>
+          This page tracks historical changes in best recipe profitability across all tickers.
+          The <strong style={{ color: "var(--color-accent-primary)" }}>Biggest Movers</strong> table below shows which tickers have experienced the largest profit changes over your selected time period.
+          You can sort the table by clicking any column header.
+          To view detailed historical data for a specific ticker, simply <strong style={{ color: "var(--color-accent-primary)" }}>click on a ticker name</strong> in the table,
+          or use the "Jump to Deep Dive" input to search directly.
         </p>
       </div>
 
@@ -328,10 +346,29 @@ export default function BestRecipesHistoryClient() {
               ))}
             </select>
           </div>
+
+          <div style={{ marginLeft: "auto" }}>
+            <label style={{ display: "block", marginBottom: "0.5rem", color: "var(--color-text-secondary)", fontSize: "0.875rem", fontFamily: "var(--font-mono)", textTransform: "uppercase" }}>
+              Jump to Deep Dive:
+            </label>
+            <form onSubmit={handleTickerJump} style={{ display: "flex", gap: "0.5rem" }}>
+              <input
+                type="text"
+                value={tickerInput}
+                onChange={(e) => setTickerInput(e.target.value.toUpperCase())}
+                placeholder="Ticker..."
+                className="terminal-input"
+                style={{ width: "120px" }}
+              />
+              <button type="submit" className="terminal-button">
+                GO
+              </button>
+            </form>
+          </div>
         </div>
 
         {comparisonTimestamps && (
-          <p style={{ color: "var(--color-text-secondary)", fontSize: "0.875rem", marginBottom: "1rem" }}>
+          <p style={{ color: "var(--color-text-secondary)", fontSize: "0.875rem", marginBottom: "1rem", fontFamily: "var(--font-mono)" }}>
             Comparing {formatTimestamp(comparisonTimestamps.current)} with{" "}
             {formatTimestamp(comparisonTimestamps.previous)}
           </p>
