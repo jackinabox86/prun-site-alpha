@@ -240,9 +240,7 @@ export async function GET(request: Request) {
     for (const [exchange, stats] of exchangeMap.entries()) {
       exchangeStats.push({
         exchange,
-        avgTradedCount: stats.recordCount > 0
-          ? stats.totalTraded / stats.recordCount
-          : 0,
+        avgTradedCount: stats.totalTraded / days, // Average per day in the period
         recordCount: stats.recordCount,
         avgPrice: stats.totalTraded > 0
           ? stats.totalVolume / stats.totalTraded
@@ -257,9 +255,7 @@ export async function GET(request: Request) {
       cutoffDate: cutoffDate.toISOString().split('T')[0],
       exchangeStats,
       universeTotal: {
-        avgTradedCount: totalRecordsUniverse > 0
-          ? totalTradedUniverse / totalRecordsUniverse
-          : 0,
+        avgTradedCount: totalTradedUniverse / days, // Average per day in the period
         recordCount: totalRecordsUniverse,
         avgPrice: totalTradedUniverse > 0
           ? totalVolumeUniverse / totalTradedUniverse

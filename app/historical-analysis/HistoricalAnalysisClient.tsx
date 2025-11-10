@@ -601,10 +601,10 @@ export default function HistoricalAnalysisClient() {
               fontSize: "13px",
             }}
           >
-            <strong>Note:</strong> Average Traded Count is the average number of units traded per
-            record. Average Price is calculated as Total Volume divided by Total Traded. Record
-            Count represents the number of daily data points available for each exchange over the
-            selected period.
+            <strong>Note:</strong> Average Traded Count is the average number of units traded per day
+            over the selected period (Total Traded ÷ Days). Average Price is calculated as Total
+            Volume divided by Total Traded. Record Count represents the number of daily data points
+            available for each exchange (may be less than the period due to missing days).
           </div>
         </>
       )}
