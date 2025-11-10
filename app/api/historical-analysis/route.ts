@@ -53,11 +53,13 @@ interface Manifest {
  *
  * Query params:
  *   - days: number of days to look back (default: 90)
+ *   - ticker: specific ticker to analyze (optional, if not provided analyzes all)
  */
 export async function GET(request: Request) {
   try {
     const { searchParams } = new URL(request.url);
     const days = parseInt(searchParams.get("days") || "90", 10);
+    const ticker = searchParams.get("ticker")?.toUpperCase() || null;
 
     if (isNaN(days) || days <= 0) {
       return NextResponse.json(
@@ -112,7 +114,23 @@ export async function GET(request: Request) {
       );
     }
 
-    console.log(`Processing ${manifest.files.length} files with ${days} day lookback...`);
+    // Filter files by ticker if specified
+    let filesToProcess = manifest.files;
+    if (ticker) {
+      filesToProcess = manifest.files.filter(f => f.ticker === ticker);
+      if (filesToProcess.length === 0) {
+        return NextResponse.json(
+          {
+            error: `No data found for ticker "${ticker}"`,
+            hint: "Check that the ticker exists in the system"
+          },
+          { status: 404 }
+        );
+      }
+      console.log(`Processing ${filesToProcess.length} files for ticker ${ticker} with ${days} day lookback...`);
+    } else {
+      console.log(`Processing ${filesToProcess.length} files with ${days} day lookback...`);
+    }
 
     const exchanges: Exchange[] = ["ANT", "CIS", "ICA", "NCC"];
     const exchangeMap: Map<string, {
@@ -138,7 +156,7 @@ export async function GET(request: Request) {
 
     // Process files in batches to avoid overwhelming the system
     const BATCH_SIZE = 50;
-    const files = manifest.files;
+    const files = filesToProcess;
 
     for (let i = 0; i < files.length; i += BATCH_SIZE) {
       const batch = files.slice(i, i + BATCH_SIZE);
@@ -223,7 +241,7 @@ export async function GET(request: Request) {
       });
     }
 
-    const result: AnalysisResult = {
+    const result: any = {
       days,
       cutoffDate: cutoffDate.toISOString().split('T')[0],
       exchangeStats,
@@ -242,6 +260,11 @@ export async function GET(request: Request) {
       filesProcessed,
       lastUpdated: Date.now(),
     };
+
+    // Include ticker in response if analyzing a specific ticker
+    if (ticker) {
+      result.ticker = ticker;
+    }
 
     console.log(`Analysis complete: ${filesProcessed} files, ${processedTickers.size} tickers`);
 
