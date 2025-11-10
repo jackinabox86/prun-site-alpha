@@ -366,7 +366,8 @@ export default function BestRecipesClient() {
                         cursor: "pointer",
                         userSelect: "none",
                         textAlign: ["ticker", "recipeId", "profitPA", "buyAllProfitPA"].includes(col) ? "center" : undefined,
-                        width: ["profitPA", "buyAllProfitPA"].includes(col) ? "120px" : undefined
+                        width: ["profitPA", "buyAllProfitPA"].includes(col) ? "120px" : undefined,
+                        whiteSpace: "nowrap"
                       }}
                     >
                       {col === "ticker" && "Ticker"}
@@ -381,7 +382,7 @@ export default function BestRecipesClient() {
                       )}
                     </th>
                   ))}
-                  <th style={{ textAlign: "center" }}>Analysis</th>
+                  <th style={{ textAlign: "center", whiteSpace: "nowrap" }}>Analysis</th>
                 </tr>
               </thead>
               <tbody>
