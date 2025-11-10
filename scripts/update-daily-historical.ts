@@ -362,6 +362,18 @@ async function updateDailyHistoricalPrices(dryRun: boolean = false) {
     saveMissedDaysLog(missedDaysLog);
   }
 
+  // Generate and upload manifest
+  if (!dryRun) {
+    console.log("\n📋 Generating historical prices manifest...");
+    try {
+      execSync("npm run generate-manifest", { stdio: "inherit" });
+      console.log("✅ Manifest generated and uploaded successfully");
+    } catch (error) {
+      console.warn("⚠️  Failed to generate manifest, but continuing...");
+      console.warn("   You can manually run: npm run generate-manifest");
+    }
+  }
+
   // Print summary
   console.log("\n" + "=".repeat(60));
   console.log(`✅ Update complete in ${duration}s`);
