@@ -1,0 +1,6667 @@
+{
+  "generated": "2025-11-10T19:11:04.031Z",
+  "files": [
+    {
+      "ticker": "GWS",
+      "exchange": "ANT",
+      "filename": "GWS-ai1.json"
+    },
+    {
+      "ticker": "GWS",
+      "exchange": "CIS",
+      "filename": "GWS-ci1.json"
+    },
+    {
+      "ticker": "GWS",
+      "exchange": "ICA",
+      "filename": "GWS-ic1.json"
+    },
+    {
+      "ticker": "GWS",
+      "exchange": "NCC",
+      "filename": "GWS-nc1.json"
+    },
+    {
+      "ticker": "NV2",
+      "exchange": "ANT",
+      "filename": "NV2-ai1.json"
+    },
+    {
+      "ticker": "NV2",
+      "exchange": "CIS",
+      "filename": "NV2-ci1.json"
+    },
+    {
+      "ticker": "NV2",
+      "exchange": "ICA",
+      "filename": "NV2-ic1.json"
+    },
+    {
+      "ticker": "NV2",
+      "exchange": "NCC",
+      "filename": "NV2-nc1.json"
+    },
+    {
+      "ticker": "CRU",
+      "exchange": "ANT",
+      "filename": "CRU-ai1.json"
+    },
+    {
+      "ticker": "CRU",
+      "exchange": "CIS",
+      "filename": "CRU-ci1.json"
+    },
+    {
+      "ticker": "CRU",
+      "exchange": "ICA",
+      "filename": "CRU-ic1.json"
+    },
+    {
+      "ticker": "CRU",
+      "exchange": "NCC",
+      "filename": "CRU-nc1.json"
+    },
+    {
+      "ticker": "SST",
+      "exchange": "ANT",
+      "filename": "SST-ai1.json"
+    },
+    {
+      "ticker": "SST",
+      "exchange": "CIS",
+      "filename": "SST-ci1.json"
+    },
+    {
+      "ticker": "SST",
+      "exchange": "ICA",
+      "filename": "SST-ic1.json"
+    },
+    {
+      "ticker": "SST",
+      "exchange": "NCC",
+      "filename": "SST-nc1.json"
+    },
+    {
+      "ticker": "TAC",
+      "exchange": "ANT",
+      "filename": "TAC-ai1.json"
+    },
+    {
+      "ticker": "TAC",
+      "exchange": "CIS",
+      "filename": "TAC-ci1.json"
+    },
+    {
+      "ticker": "TAC",
+      "exchange": "ICA",
+      "filename": "TAC-ic1.json"
+    },
+    {
+      "ticker": "TAC",
+      "exchange": "NCC",
+      "filename": "TAC-nc1.json"
+    },
+    {
+      "ticker": "CC",
+      "exchange": "ANT",
+      "filename": "CC-ai1.json"
+    },
+    {
+      "ticker": "CC",
+      "exchange": "CIS",
+      "filename": "CC-ci1.json"
+    },
+    {
+      "ticker": "CC",
+      "exchange": "ICA",
+      "filename": "CC-ic1.json"
+    },
+    {
+      "ticker": "CC",
+      "exchange": "NCC",
+      "filename": "CC-nc1.json"
+    },
+    {
+      "ticker": "STS",
+      "exchange": "ANT",
+      "filename": "STS-ai1.json"
+    },
+    {
+      "ticker": "STS",
+      "exchange": "CIS",
+      "filename": "STS-ci1.json"
+    },
+    {
+      "ticker": "STS",
+      "exchange": "ICA",
+      "filename": "STS-ic1.json"
+    },
+    {
+      "ticker": "STS",
+      "exchange": "NCC",
+      "filename": "STS-nc1.json"
+    },
+    {
+      "ticker": "PFG",
+      "exchange": "ANT",
+      "filename": "PFG-ai1.json"
+    },
+    {
+      "ticker": "PFG",
+      "exchange": "CIS",
+      "filename": "PFG-ci1.json"
+    },
+    {
+      "ticker": "PFG",
+      "exchange": "ICA",
+      "filename": "PFG-ic1.json"
+    },
+    {
+      "ticker": "PFG",
+      "exchange": "NCC",
+      "filename": "PFG-nc1.json"
+    },
+    {
+      "ticker": "BOS",
+      "exchange": "ANT",
+      "filename": "BOS-ai1.json"
+    },
+    {
+      "ticker": "BOS",
+      "exchange": "CIS",
+      "filename": "BOS-ci1.json"
+    },
+    {
+      "ticker": "BOS",
+      "exchange": "ICA",
+      "filename": "BOS-ic1.json"
+    },
+    {
+      "ticker": "BOS",
+      "exchange": "NCC",
+      "filename": "BOS-nc1.json"
+    },
+    {
+      "ticker": "BE",
+      "exchange": "ANT",
+      "filename": "BE-ai1.json"
+    },
+    {
+      "ticker": "BE",
+      "exchange": "CIS",
+      "filename": "BE-ci1.json"
+    },
+    {
+      "ticker": "BE",
+      "exchange": "ICA",
+      "filename": "BE-ic1.json"
+    },
+    {
+      "ticker": "BE",
+      "exchange": "NCC",
+      "filename": "BE-nc1.json"
+    },
+    {
+      "ticker": "TA",
+      "exchange": "ANT",
+      "filename": "TA-ai1.json"
+    },
+    {
+      "ticker": "TA",
+      "exchange": "CIS",
+      "filename": "TA-ci1.json"
+    },
+    {
+      "ticker": "TA",
+      "exchange": "ICA",
+      "filename": "TA-ic1.json"
+    },
+    {
+      "ticker": "TA",
+      "exchange": "NCC",
+      "filename": "TA-nc1.json"
+    },
+    {
+      "ticker": "ZR",
+      "exchange": "ANT",
+      "filename": "ZR-ai1.json"
+    },
+    {
+      "ticker": "ZR",
+      "exchange": "CIS",
+      "filename": "ZR-ci1.json"
+    },
+    {
+      "ticker": "ZR",
+      "exchange": "ICA",
+      "filename": "ZR-ic1.json"
+    },
+    {
+      "ticker": "ZR",
+      "exchange": "NCC",
+      "filename": "ZR-nc1.json"
+    },
+    {
+      "ticker": "W",
+      "exchange": "ANT",
+      "filename": "W-ai1.json"
+    },
+    {
+      "ticker": "W",
+      "exchange": "CIS",
+      "filename": "W-ci1.json"
+    },
+    {
+      "ticker": "W",
+      "exchange": "ICA",
+      "filename": "W-ic1.json"
+    },
+    {
+      "ticker": "W",
+      "exchange": "NCC",
+      "filename": "W-nc1.json"
+    },
+    {
+      "ticker": "SDM",
+      "exchange": "ANT",
+      "filename": "SDM-ai1.json"
+    },
+    {
+      "ticker": "SDM",
+      "exchange": "CIS",
+      "filename": "SDM-ci1.json"
+    },
+    {
+      "ticker": "SDM",
+      "exchange": "ICA",
+      "filename": "SDM-ic1.json"
+    },
+    {
+      "ticker": "SDM",
+      "exchange": "NCC",
+      "filename": "SDM-nc1.json"
+    },
+    {
+      "ticker": "WR",
+      "exchange": "ANT",
+      "filename": "WR-ai1.json"
+    },
+    {
+      "ticker": "WR",
+      "exchange": "CIS",
+      "filename": "WR-ci1.json"
+    },
+    {
+      "ticker": "WR",
+      "exchange": "ICA",
+      "filename": "WR-ic1.json"
+    },
+    {
+      "ticker": "WR",
+      "exchange": "NCC",
+      "filename": "WR-nc1.json"
+    },
+    {
+      "ticker": "LOG",
+      "exchange": "ANT",
+      "filename": "LOG-ai1.json"
+    },
+    {
+      "ticker": "LOG",
+      "exchange": "CIS",
+      "filename": "LOG-ci1.json"
+    },
+    {
+      "ticker": "LOG",
+      "exchange": "ICA",
+      "filename": "LOG-ic1.json"
+    },
+    {
+      "ticker": "LOG",
+      "exchange": "NCC",
+      "filename": "LOG-nc1.json"
+    },
+    {
+      "ticker": "COM",
+      "exchange": "ANT",
+      "filename": "COM-ai1.json"
+    },
+    {
+      "ticker": "COM",
+      "exchange": "CIS",
+      "filename": "COM-ci1.json"
+    },
+    {
+      "ticker": "COM",
+      "exchange": "ICA",
+      "filename": "COM-ic1.json"
+    },
+    {
+      "ticker": "COM",
+      "exchange": "NCC",
+      "filename": "COM-nc1.json"
+    },
+    {
+      "ticker": "RCS",
+      "exchange": "ANT",
+      "filename": "RCS-ai1.json"
+    },
+    {
+      "ticker": "RCS",
+      "exchange": "CIS",
+      "filename": "RCS-ci1.json"
+    },
+    {
+      "ticker": "RCS",
+      "exchange": "ICA",
+      "filename": "RCS-ic1.json"
+    },
+    {
+      "ticker": "RCS",
+      "exchange": "NCC",
+      "filename": "RCS-nc1.json"
+    },
+    {
+      "ticker": "ADS",
+      "exchange": "ANT",
+      "filename": "ADS-ai1.json"
+    },
+    {
+      "ticker": "ADS",
+      "exchange": "CIS",
+      "filename": "ADS-ci1.json"
+    },
+    {
+      "ticker": "ADS",
+      "exchange": "ICA",
+      "filename": "ADS-ic1.json"
+    },
+    {
+      "ticker": "ADS",
+      "exchange": "NCC",
+      "filename": "ADS-nc1.json"
+    },
+    {
+      "ticker": "WS",
+      "exchange": "ANT",
+      "filename": "WS-ai1.json"
+    },
+    {
+      "ticker": "WS",
+      "exchange": "CIS",
+      "filename": "WS-ci1.json"
+    },
+    {
+      "ticker": "WS",
+      "exchange": "ICA",
+      "filename": "WS-ic1.json"
+    },
+    {
+      "ticker": "WS",
+      "exchange": "NCC",
+      "filename": "WS-nc1.json"
+    },
+    {
+      "ticker": "AIR",
+      "exchange": "ANT",
+      "filename": "AIR-ai1.json"
+    },
+    {
+      "ticker": "AIR",
+      "exchange": "CIS",
+      "filename": "AIR-ci1.json"
+    },
+    {
+      "ticker": "AIR",
+      "exchange": "ICA",
+      "filename": "AIR-ic1.json"
+    },
+    {
+      "ticker": "AIR",
+      "exchange": "NCC",
+      "filename": "AIR-nc1.json"
+    },
+    {
+      "ticker": "ACS",
+      "exchange": "ANT",
+      "filename": "ACS-ai1.json"
+    },
+    {
+      "ticker": "ACS",
+      "exchange": "CIS",
+      "filename": "ACS-ci1.json"
+    },
+    {
+      "ticker": "ACS",
+      "exchange": "ICA",
+      "filename": "ACS-ic1.json"
+    },
+    {
+      "ticker": "ACS",
+      "exchange": "NCC",
+      "filename": "ACS-nc1.json"
+    },
+    {
+      "ticker": "LIS",
+      "exchange": "ANT",
+      "filename": "LIS-ai1.json"
+    },
+    {
+      "ticker": "LIS",
+      "exchange": "CIS",
+      "filename": "LIS-ci1.json"
+    },
+    {
+      "ticker": "LIS",
+      "exchange": "ICA",
+      "filename": "LIS-ic1.json"
+    },
+    {
+      "ticker": "LIS",
+      "exchange": "NCC",
+      "filename": "LIS-nc1.json"
+    },
+    {
+      "ticker": "NV1",
+      "exchange": "ANT",
+      "filename": "NV1-ai1.json"
+    },
+    {
+      "ticker": "NV1",
+      "exchange": "CIS",
+      "filename": "NV1-ci1.json"
+    },
+    {
+      "ticker": "NV1",
+      "exchange": "ICA",
+      "filename": "NV1-ic1.json"
+    },
+    {
+      "ticker": "NV1",
+      "exchange": "NCC",
+      "filename": "NV1-nc1.json"
+    },
+    {
+      "ticker": "PDA",
+      "exchange": "ANT",
+      "filename": "PDA-ai1.json"
+    },
+    {
+      "ticker": "PDA",
+      "exchange": "CIS",
+      "filename": "PDA-ci1.json"
+    },
+    {
+      "ticker": "PDA",
+      "exchange": "ICA",
+      "filename": "PDA-ic1.json"
+    },
+    {
+      "ticker": "PDA",
+      "exchange": "NCC",
+      "filename": "PDA-nc1.json"
+    },
+    {
+      "ticker": "FFC",
+      "exchange": "ANT",
+      "filename": "FFC-ai1.json"
+    },
+    {
+      "ticker": "FFC",
+      "exchange": "CIS",
+      "filename": "FFC-ci1.json"
+    },
+    {
+      "ticker": "FFC",
+      "exchange": "ICA",
+      "filename": "FFC-ic1.json"
+    },
+    {
+      "ticker": "FFC",
+      "exchange": "NCC",
+      "filename": "FFC-nc1.json"
+    },
+    {
+      "ticker": "AST",
+      "exchange": "ANT",
+      "filename": "AST-ai1.json"
+    },
+    {
+      "ticker": "AST",
+      "exchange": "CIS",
+      "filename": "AST-ci1.json"
+    },
+    {
+      "ticker": "AST",
+      "exchange": "ICA",
+      "filename": "AST-ic1.json"
+    },
+    {
+      "ticker": "AST",
+      "exchange": "NCC",
+      "filename": "AST-nc1.json"
+    },
+    {
+      "ticker": "FET",
+      "exchange": "ANT",
+      "filename": "FET-ai1.json"
+    },
+    {
+      "ticker": "FET",
+      "exchange": "CIS",
+      "filename": "FET-ci1.json"
+    },
+    {
+      "ticker": "FET",
+      "exchange": "ICA",
+      "filename": "FET-ic1.json"
+    },
+    {
+      "ticker": "FET",
+      "exchange": "NCC",
+      "filename": "FET-nc1.json"
+    },
+    {
+      "ticker": "WAL",
+      "exchange": "ANT",
+      "filename": "WAL-ai1.json"
+    },
+    {
+      "ticker": "WAL",
+      "exchange": "CIS",
+      "filename": "WAL-ci1.json"
+    },
+    {
+      "ticker": "WAL",
+      "exchange": "ICA",
+      "filename": "WAL-ic1.json"
+    },
+    {
+      "ticker": "WAL",
+      "exchange": "NCC",
+      "filename": "WAL-nc1.json"
+    },
+    {
+      "ticker": "CTF",
+      "exchange": "ANT",
+      "filename": "CTF-ai1.json"
+    },
+    {
+      "ticker": "CTF",
+      "exchange": "CIS",
+      "filename": "CTF-ci1.json"
+    },
+    {
+      "ticker": "CTF",
+      "exchange": "ICA",
+      "filename": "CTF-ic1.json"
+    },
+    {
+      "ticker": "CTF",
+      "exchange": "NCC",
+      "filename": "CTF-nc1.json"
+    },
+    {
+      "ticker": "FAL",
+      "exchange": "ANT",
+      "filename": "FAL-ai1.json"
+    },
+    {
+      "ticker": "FAL",
+      "exchange": "CIS",
+      "filename": "FAL-ci1.json"
+    },
+    {
+      "ticker": "FAL",
+      "exchange": "ICA",
+      "filename": "FAL-ic1.json"
+    },
+    {
+      "ticker": "FAL",
+      "exchange": "NCC",
+      "filename": "FAL-nc1.json"
+    },
+    {
+      "ticker": "WRH",
+      "exchange": "ANT",
+      "filename": "WRH-ai1.json"
+    },
+    {
+      "ticker": "WRH",
+      "exchange": "CIS",
+      "filename": "WRH-ci1.json"
+    },
+    {
+      "ticker": "WRH",
+      "exchange": "ICA",
+      "filename": "WRH-ic1.json"
+    },
+    {
+      "ticker": "WRH",
+      "exchange": "NCC",
+      "filename": "WRH-nc1.json"
+    },
+    {
+      "ticker": "ALR",
+      "exchange": "ANT",
+      "filename": "ALR-ai1.json"
+    },
+    {
+      "ticker": "ALR",
+      "exchange": "CIS",
+      "filename": "ALR-ci1.json"
+    },
+    {
+      "ticker": "ALR",
+      "exchange": "ICA",
+      "filename": "ALR-ic1.json"
+    },
+    {
+      "ticker": "ALR",
+      "exchange": "NCC",
+      "filename": "ALR-nc1.json"
+    },
+    {
+      "ticker": "OVE",
+      "exchange": "ANT",
+      "filename": "OVE-ai1.json"
+    },
+    {
+      "ticker": "OVE",
+      "exchange": "CIS",
+      "filename": "OVE-ci1.json"
+    },
+    {
+      "ticker": "OVE",
+      "exchange": "ICA",
+      "filename": "OVE-ic1.json"
+    },
+    {
+      "ticker": "OVE",
+      "exchange": "NCC",
+      "filename": "OVE-nc1.json"
+    },
+    {
+      "ticker": "EXO",
+      "exchange": "ANT",
+      "filename": "EXO-ai1.json"
+    },
+    {
+      "ticker": "EXO",
+      "exchange": "CIS",
+      "filename": "EXO-ci1.json"
+    },
+    {
+      "ticker": "EXO",
+      "exchange": "ICA",
+      "filename": "EXO-ic1.json"
+    },
+    {
+      "ticker": "EXO",
+      "exchange": "NCC",
+      "filename": "EXO-nc1.json"
+    },
+    {
+      "ticker": "PE",
+      "exchange": "ANT",
+      "filename": "PE-ai1.json"
+    },
+    {
+      "ticker": "PE",
+      "exchange": "CIS",
+      "filename": "PE-ci1.json"
+    },
+    {
+      "ticker": "PE",
+      "exchange": "ICA",
+      "filename": "PE-ic1.json"
+    },
+    {
+      "ticker": "PE",
+      "exchange": "NCC",
+      "filename": "PE-nc1.json"
+    },
+    {
+      "ticker": "PWO",
+      "exchange": "ANT",
+      "filename": "PWO-ai1.json"
+    },
+    {
+      "ticker": "PWO",
+      "exchange": "CIS",
+      "filename": "PWO-ci1.json"
+    },
+    {
+      "ticker": "PWO",
+      "exchange": "ICA",
+      "filename": "PWO-ic1.json"
+    },
+    {
+      "ticker": "PWO",
+      "exchange": "NCC",
+      "filename": "PWO-nc1.json"
+    },
+    {
+      "ticker": "REP",
+      "exchange": "ANT",
+      "filename": "REP-ai1.json"
+    },
+    {
+      "ticker": "REP",
+      "exchange": "CIS",
+      "filename": "REP-ci1.json"
+    },
+    {
+      "ticker": "REP",
+      "exchange": "ICA",
+      "filename": "REP-ic1.json"
+    },
+    {
+      "ticker": "REP",
+      "exchange": "NCC",
+      "filename": "REP-nc1.json"
+    },
+    {
+      "ticker": "MG",
+      "exchange": "ANT",
+      "filename": "MG-ai1.json"
+    },
+    {
+      "ticker": "MG",
+      "exchange": "CIS",
+      "filename": "MG-ci1.json"
+    },
+    {
+      "ticker": "MG",
+      "exchange": "ICA",
+      "filename": "MG-ic1.json"
+    },
+    {
+      "ticker": "MG",
+      "exchange": "NCC",
+      "filename": "MG-nc1.json"
+    },
+    {
+      "ticker": "SEA",
+      "exchange": "ANT",
+      "filename": "SEA-ai1.json"
+    },
+    {
+      "ticker": "SEA",
+      "exchange": "CIS",
+      "filename": "SEA-ci1.json"
+    },
+    {
+      "ticker": "SEA",
+      "exchange": "ICA",
+      "filename": "SEA-ic1.json"
+    },
+    {
+      "ticker": "SEA",
+      "exchange": "NCC",
+      "filename": "SEA-nc1.json"
+    },
+    {
+      "ticker": "PT",
+      "exchange": "ANT",
+      "filename": "PT-ai1.json"
+    },
+    {
+      "ticker": "PT",
+      "exchange": "CIS",
+      "filename": "PT-ci1.json"
+    },
+    {
+      "ticker": "PT",
+      "exchange": "ICA",
+      "filename": "PT-ic1.json"
+    },
+    {
+      "ticker": "PT",
+      "exchange": "NCC",
+      "filename": "PT-nc1.json"
+    },
+    {
+      "ticker": "SUN",
+      "exchange": "ANT",
+      "filename": "SUN-ai1.json"
+    },
+    {
+      "ticker": "SUN",
+      "exchange": "CIS",
+      "filename": "SUN-ci1.json"
+    },
+    {
+      "ticker": "SUN",
+      "exchange": "ICA",
+      "filename": "SUN-ic1.json"
+    },
+    {
+      "ticker": "SUN",
+      "exchange": "NCC",
+      "filename": "SUN-nc1.json"
+    },
+    {
+      "ticker": "OFF",
+      "exchange": "ANT",
+      "filename": "OFF-ai1.json"
+    },
+    {
+      "ticker": "OFF",
+      "exchange": "CIS",
+      "filename": "OFF-ci1.json"
+    },
+    {
+      "ticker": "OFF",
+      "exchange": "ICA",
+      "filename": "OFF-ic1.json"
+    },
+    {
+      "ticker": "OFF",
+      "exchange": "NCC",
+      "filename": "OFF-nc1.json"
+    },
+    {
+      "ticker": "I",
+      "exchange": "ANT",
+      "filename": "I-ai1.json"
+    },
+    {
+      "ticker": "I",
+      "exchange": "CIS",
+      "filename": "I-ci1.json"
+    },
+    {
+      "ticker": "I",
+      "exchange": "ICA",
+      "filename": "I-ic1.json"
+    },
+    {
+      "ticker": "I",
+      "exchange": "NCC",
+      "filename": "I-nc1.json"
+    },
+    {
+      "ticker": "MCG",
+      "exchange": "ANT",
+      "filename": "MCG-ai1.json"
+    },
+    {
+      "ticker": "MCG",
+      "exchange": "CIS",
+      "filename": "MCG-ci1.json"
+    },
+    {
+      "ticker": "MCG",
+      "exchange": "ICA",
+      "filename": "MCG-ic1.json"
+    },
+    {
+      "ticker": "MCG",
+      "exchange": "NCC",
+      "filename": "MCG-nc1.json"
+    },
+    {
+      "ticker": "STR",
+      "exchange": "ANT",
+      "filename": "STR-ai1.json"
+    },
+    {
+      "ticker": "STR",
+      "exchange": "CIS",
+      "filename": "STR-ci1.json"
+    },
+    {
+      "ticker": "STR",
+      "exchange": "ICA",
+      "filename": "STR-ic1.json"
+    },
+    {
+      "ticker": "STR",
+      "exchange": "NCC",
+      "filename": "STR-nc1.json"
+    },
+    {
+      "ticker": "PFE",
+      "exchange": "ANT",
+      "filename": "PFE-ai1.json"
+    },
+    {
+      "ticker": "PFE",
+      "exchange": "CIS",
+      "filename": "PFE-ci1.json"
+    },
+    {
+      "ticker": "PFE",
+      "exchange": "ICA",
+      "filename": "PFE-ic1.json"
+    },
+    {
+      "ticker": "PFE",
+      "exchange": "NCC",
+      "filename": "PFE-nc1.json"
+    },
+    {
+      "ticker": "SOI",
+      "exchange": "ANT",
+      "filename": "SOI-ai1.json"
+    },
+    {
+      "ticker": "SOI",
+      "exchange": "CIS",
+      "filename": "SOI-ci1.json"
+    },
+    {
+      "ticker": "SOI",
+      "exchange": "ICA",
+      "filename": "SOI-ic1.json"
+    },
+    {
+      "ticker": "SOI",
+      "exchange": "NCC",
+      "filename": "SOI-nc1.json"
+    },
+    {
+      "ticker": "FLX",
+      "exchange": "ANT",
+      "filename": "FLX-ai1.json"
+    },
+    {
+      "ticker": "FLX",
+      "exchange": "CIS",
+      "filename": "FLX-ci1.json"
+    },
+    {
+      "ticker": "FLX",
+      "exchange": "ICA",
+      "filename": "FLX-ic1.json"
+    },
+    {
+      "ticker": "FLX",
+      "exchange": "NCC",
+      "filename": "FLX-nc1.json"
+    },
+    {
+      "ticker": "CA",
+      "exchange": "ANT",
+      "filename": "CA-ai1.json"
+    },
+    {
+      "ticker": "CA",
+      "exchange": "CIS",
+      "filename": "CA-ci1.json"
+    },
+    {
+      "ticker": "CA",
+      "exchange": "ICA",
+      "filename": "CA-ic1.json"
+    },
+    {
+      "ticker": "CA",
+      "exchange": "NCC",
+      "filename": "CA-nc1.json"
+    },
+    {
+      "ticker": "IND",
+      "exchange": "ANT",
+      "filename": "IND-ai1.json"
+    },
+    {
+      "ticker": "IND",
+      "exchange": "CIS",
+      "filename": "IND-ci1.json"
+    },
+    {
+      "ticker": "IND",
+      "exchange": "ICA",
+      "filename": "IND-ic1.json"
+    },
+    {
+      "ticker": "IND",
+      "exchange": "NCC",
+      "filename": "IND-nc1.json"
+    },
+    {
+      "ticker": "NAB",
+      "exchange": "ANT",
+      "filename": "NAB-ai1.json"
+    },
+    {
+      "ticker": "NAB",
+      "exchange": "CIS",
+      "filename": "NAB-ci1.json"
+    },
+    {
+      "ticker": "NAB",
+      "exchange": "ICA",
+      "filename": "NAB-ic1.json"
+    },
+    {
+      "ticker": "NAB",
+      "exchange": "NCC",
+      "filename": "NAB-nc1.json"
+    },
+    {
+      "ticker": "LCR",
+      "exchange": "ANT",
+      "filename": "LCR-ai1.json"
+    },
+    {
+      "ticker": "LCR",
+      "exchange": "CIS",
+      "filename": "LCR-ci1.json"
+    },
+    {
+      "ticker": "LCR",
+      "exchange": "ICA",
+      "filename": "LCR-ic1.json"
+    },
+    {
+      "ticker": "LCR",
+      "exchange": "NCC",
+      "filename": "LCR-nc1.json"
+    },
+    {
+      "ticker": "REA",
+      "exchange": "ANT",
+      "filename": "REA-ai1.json"
+    },
+    {
+      "ticker": "REA",
+      "exchange": "CIS",
+      "filename": "REA-ci1.json"
+    },
+    {
+      "ticker": "REA",
+      "exchange": "ICA",
+      "filename": "REA-ic1.json"
+    },
+    {
+      "ticker": "REA",
+      "exchange": "NCC",
+      "filename": "REA-nc1.json"
+    },
+    {
+      "ticker": "SC",
+      "exchange": "ANT",
+      "filename": "SC-ai1.json"
+    },
+    {
+      "ticker": "SC",
+      "exchange": "CIS",
+      "filename": "SC-ci1.json"
+    },
+    {
+      "ticker": "SC",
+      "exchange": "ICA",
+      "filename": "SC-ic1.json"
+    },
+    {
+      "ticker": "SC",
+      "exchange": "NCC",
+      "filename": "SC-nc1.json"
+    },
+    {
+      "ticker": "NS",
+      "exchange": "ANT",
+      "filename": "NS-ai1.json"
+    },
+    {
+      "ticker": "NS",
+      "exchange": "CIS",
+      "filename": "NS-ci1.json"
+    },
+    {
+      "ticker": "NS",
+      "exchange": "ICA",
+      "filename": "NS-ic1.json"
+    },
+    {
+      "ticker": "NS",
+      "exchange": "NCC",
+      "filename": "NS-nc1.json"
+    },
+    {
+      "ticker": "CL",
+      "exchange": "ANT",
+      "filename": "CL-ai1.json"
+    },
+    {
+      "ticker": "CL",
+      "exchange": "CIS",
+      "filename": "CL-ci1.json"
+    },
+    {
+      "ticker": "CL",
+      "exchange": "ICA",
+      "filename": "CL-ic1.json"
+    },
+    {
+      "ticker": "CL",
+      "exchange": "NCC",
+      "filename": "CL-nc1.json"
+    },
+    {
+      "ticker": "MED",
+      "exchange": "ANT",
+      "filename": "MED-ai1.json"
+    },
+    {
+      "ticker": "MED",
+      "exchange": "CIS",
+      "filename": "MED-ci1.json"
+    },
+    {
+      "ticker": "MED",
+      "exchange": "ICA",
+      "filename": "MED-ic1.json"
+    },
+    {
+      "ticker": "MED",
+      "exchange": "NCC",
+      "filename": "MED-nc1.json"
+    },
+    {
+      "ticker": "OLF",
+      "exchange": "ANT",
+      "filename": "OLF-ai1.json"
+    },
+    {
+      "ticker": "OLF",
+      "exchange": "CIS",
+      "filename": "OLF-ci1.json"
+    },
+    {
+      "ticker": "OLF",
+      "exchange": "ICA",
+      "filename": "OLF-ic1.json"
+    },
+    {
+      "ticker": "OLF",
+      "exchange": "NCC",
+      "filename": "OLF-nc1.json"
+    },
+    {
+      "ticker": "SPT",
+      "exchange": "ANT",
+      "filename": "SPT-ai1.json"
+    },
+    {
+      "ticker": "SPT",
+      "exchange": "CIS",
+      "filename": "SPT-ci1.json"
+    },
+    {
+      "ticker": "SPT",
+      "exchange": "ICA",
+      "filename": "SPT-ic1.json"
+    },
+    {
+      "ticker": "SPT",
+      "exchange": "NCC",
+      "filename": "SPT-nc1.json"
+    },
+    {
+      "ticker": "HMS",
+      "exchange": "ANT",
+      "filename": "HMS-ai1.json"
+    },
+    {
+      "ticker": "HMS",
+      "exchange": "CIS",
+      "filename": "HMS-ci1.json"
+    },
+    {
+      "ticker": "HMS",
+      "exchange": "ICA",
+      "filename": "HMS-ic1.json"
+    },
+    {
+      "ticker": "HMS",
+      "exchange": "NCC",
+      "filename": "HMS-nc1.json"
+    },
+    {
+      "ticker": "LC",
+      "exchange": "ANT",
+      "filename": "LC-ai1.json"
+    },
+    {
+      "ticker": "LC",
+      "exchange": "CIS",
+      "filename": "LC-ci1.json"
+    },
+    {
+      "ticker": "LC",
+      "exchange": "ICA",
+      "filename": "LC-ic1.json"
+    },
+    {
+      "ticker": "LC",
+      "exchange": "NCC",
+      "filename": "LC-nc1.json"
+    },
+    {
+      "ticker": "HSS",
+      "exchange": "ANT",
+      "filename": "HSS-ai1.json"
+    },
+    {
+      "ticker": "HSS",
+      "exchange": "CIS",
+      "filename": "HSS-ci1.json"
+    },
+    {
+      "ticker": "HSS",
+      "exchange": "ICA",
+      "filename": "HSS-ic1.json"
+    },
+    {
+      "ticker": "HSS",
+      "exchange": "NCC",
+      "filename": "HSS-nc1.json"
+    },
+    {
+      "ticker": "NFI",
+      "exchange": "ANT",
+      "filename": "NFI-ai1.json"
+    },
+    {
+      "ticker": "NFI",
+      "exchange": "CIS",
+      "filename": "NFI-ci1.json"
+    },
+    {
+      "ticker": "NFI",
+      "exchange": "ICA",
+      "filename": "NFI-ic1.json"
+    },
+    {
+      "ticker": "NFI",
+      "exchange": "NCC",
+      "filename": "NFI-nc1.json"
+    },
+    {
+      "ticker": "TRN",
+      "exchange": "ANT",
+      "filename": "TRN-ai1.json"
+    },
+    {
+      "ticker": "TRN",
+      "exchange": "CIS",
+      "filename": "TRN-ci1.json"
+    },
+    {
+      "ticker": "TRN",
+      "exchange": "ICA",
+      "filename": "TRN-ic1.json"
+    },
+    {
+      "ticker": "TRN",
+      "exchange": "NCC",
+      "filename": "TRN-nc1.json"
+    },
+    {
+      "ticker": "TRA",
+      "exchange": "ANT",
+      "filename": "TRA-ai1.json"
+    },
+    {
+      "ticker": "TRA",
+      "exchange": "CIS",
+      "filename": "TRA-ci1.json"
+    },
+    {
+      "ticker": "TRA",
+      "exchange": "ICA",
+      "filename": "TRA-ic1.json"
+    },
+    {
+      "ticker": "TRA",
+      "exchange": "NCC",
+      "filename": "TRA-nc1.json"
+    },
+    {
+      "ticker": "NCS",
+      "exchange": "ANT",
+      "filename": "NCS-ai1.json"
+    },
+    {
+      "ticker": "NCS",
+      "exchange": "CIS",
+      "filename": "NCS-ci1.json"
+    },
+    {
+      "ticker": "NCS",
+      "exchange": "ICA",
+      "filename": "NCS-ic1.json"
+    },
+    {
+      "ticker": "NCS",
+      "exchange": "NCC",
+      "filename": "NCS-nc1.json"
+    },
+    {
+      "ticker": "LDI",
+      "exchange": "ANT",
+      "filename": "LDI-ai1.json"
+    },
+    {
+      "ticker": "LDI",
+      "exchange": "CIS",
+      "filename": "LDI-ci1.json"
+    },
+    {
+      "ticker": "LDI",
+      "exchange": "ICA",
+      "filename": "LDI-ic1.json"
+    },
+    {
+      "ticker": "LDI",
+      "exchange": "NCC",
+      "filename": "LDI-nc1.json"
+    },
+    {
+      "ticker": "SWF",
+      "exchange": "ANT",
+      "filename": "SWF-ai1.json"
+    },
+    {
+      "ticker": "SWF",
+      "exchange": "CIS",
+      "filename": "SWF-ci1.json"
+    },
+    {
+      "ticker": "SWF",
+      "exchange": "ICA",
+      "filename": "SWF-ic1.json"
+    },
+    {
+      "ticker": "SWF",
+      "exchange": "NCC",
+      "filename": "SWF-nc1.json"
+    },
+    {
+      "ticker": "CAP",
+      "exchange": "ANT",
+      "filename": "CAP-ai1.json"
+    },
+    {
+      "ticker": "CAP",
+      "exchange": "CIS",
+      "filename": "CAP-ci1.json"
+    },
+    {
+      "ticker": "CAP",
+      "exchange": "ICA",
+      "filename": "CAP-ic1.json"
+    },
+    {
+      "ticker": "CAP",
+      "exchange": "NCC",
+      "filename": "CAP-nc1.json"
+    },
+    {
+      "ticker": "SFE",
+      "exchange": "ANT",
+      "filename": "SFE-ai1.json"
+    },
+    {
+      "ticker": "SFE",
+      "exchange": "CIS",
+      "filename": "SFE-ci1.json"
+    },
+    {
+      "ticker": "SFE",
+      "exchange": "ICA",
+      "filename": "SFE-ic1.json"
+    },
+    {
+      "ticker": "SFE",
+      "exchange": "NCC",
+      "filename": "SFE-nc1.json"
+    },
+    {
+      "ticker": "MTC",
+      "exchange": "ANT",
+      "filename": "MTC-ai1.json"
+    },
+    {
+      "ticker": "MTC",
+      "exchange": "CIS",
+      "filename": "MTC-ci1.json"
+    },
+    {
+      "ticker": "MTC",
+      "exchange": "ICA",
+      "filename": "MTC-ic1.json"
+    },
+    {
+      "ticker": "MTC",
+      "exchange": "NCC",
+      "filename": "MTC-nc1.json"
+    },
+    {
+      "ticker": "MWF",
+      "exchange": "ANT",
+      "filename": "MWF-ai1.json"
+    },
+    {
+      "ticker": "MWF",
+      "exchange": "CIS",
+      "filename": "MWF-ci1.json"
+    },
+    {
+      "ticker": "MWF",
+      "exchange": "ICA",
+      "filename": "MWF-ic1.json"
+    },
+    {
+      "ticker": "MWF",
+      "exchange": "NCC",
+      "filename": "MWF-nc1.json"
+    },
+    {
+      "ticker": "MFE",
+      "exchange": "ANT",
+      "filename": "MFE-ai1.json"
+    },
+    {
+      "ticker": "MFE",
+      "exchange": "CIS",
+      "filename": "MFE-ci1.json"
+    },
+    {
+      "ticker": "MFE",
+      "exchange": "ICA",
+      "filename": "MFE-ic1.json"
+    },
+    {
+      "ticker": "MFE",
+      "exchange": "NCC",
+      "filename": "MFE-nc1.json"
+    },
+    {
+      "ticker": "CCD",
+      "exchange": "ANT",
+      "filename": "CCD-ai1.json"
+    },
+    {
+      "ticker": "CCD",
+      "exchange": "CIS",
+      "filename": "CCD-ci1.json"
+    },
+    {
+      "ticker": "CCD",
+      "exchange": "ICA",
+      "filename": "CCD-ic1.json"
+    },
+    {
+      "ticker": "CCD",
+      "exchange": "NCC",
+      "filename": "CCD-nc1.json"
+    },
+    {
+      "ticker": "DCH",
+      "exchange": "ANT",
+      "filename": "DCH-ai1.json"
+    },
+    {
+      "ticker": "DCH",
+      "exchange": "CIS",
+      "filename": "DCH-ci1.json"
+    },
+    {
+      "ticker": "DCH",
+      "exchange": "ICA",
+      "filename": "DCH-ic1.json"
+    },
+    {
+      "ticker": "DCH",
+      "exchange": "NCC",
+      "filename": "DCH-nc1.json"
+    },
+    {
+      "ticker": "SUD",
+      "exchange": "ANT",
+      "filename": "SUD-ai1.json"
+    },
+    {
+      "ticker": "SUD",
+      "exchange": "CIS",
+      "filename": "SUD-ci1.json"
+    },
+    {
+      "ticker": "SUD",
+      "exchange": "ICA",
+      "filename": "SUD-ic1.json"
+    },
+    {
+      "ticker": "SUD",
+      "exchange": "NCC",
+      "filename": "SUD-nc1.json"
+    },
+    {
+      "ticker": "RED",
+      "exchange": "ANT",
+      "filename": "RED-ai1.json"
+    },
+    {
+      "ticker": "RED",
+      "exchange": "CIS",
+      "filename": "RED-ci1.json"
+    },
+    {
+      "ticker": "RED",
+      "exchange": "ICA",
+      "filename": "RED-ic1.json"
+    },
+    {
+      "ticker": "RED",
+      "exchange": "NCC",
+      "filename": "RED-nc1.json"
+    },
+    {
+      "ticker": "SRD",
+      "exchange": "ANT",
+      "filename": "SRD-ai1.json"
+    },
+    {
+      "ticker": "SRD",
+      "exchange": "CIS",
+      "filename": "SRD-ci1.json"
+    },
+    {
+      "ticker": "SRD",
+      "exchange": "ICA",
+      "filename": "SRD-ic1.json"
+    },
+    {
+      "ticker": "SRD",
+      "exchange": "NCC",
+      "filename": "SRD-nc1.json"
+    },
+    {
+      "ticker": "SDR",
+      "exchange": "ANT",
+      "filename": "SDR-ai1.json"
+    },
+    {
+      "ticker": "SDR",
+      "exchange": "CIS",
+      "filename": "SDR-ci1.json"
+    },
+    {
+      "ticker": "SDR",
+      "exchange": "ICA",
+      "filename": "SDR-ic1.json"
+    },
+    {
+      "ticker": "SDR",
+      "exchange": "NCC",
+      "filename": "SDR-nc1.json"
+    },
+    {
+      "ticker": "DRF",
+      "exchange": "ANT",
+      "filename": "DRF-ai1.json"
+    },
+    {
+      "ticker": "DRF",
+      "exchange": "CIS",
+      "filename": "DRF-ci1.json"
+    },
+    {
+      "ticker": "DRF",
+      "exchange": "ICA",
+      "filename": "DRF-ic1.json"
+    },
+    {
+      "ticker": "DRF",
+      "exchange": "NCC",
+      "filename": "DRF-nc1.json"
+    },
+    {
+      "ticker": "CBL",
+      "exchange": "ANT",
+      "filename": "CBL-ai1.json"
+    },
+    {
+      "ticker": "CBL",
+      "exchange": "CIS",
+      "filename": "CBL-ci1.json"
+    },
+    {
+      "ticker": "CBL",
+      "exchange": "ICA",
+      "filename": "CBL-ic1.json"
+    },
+    {
+      "ticker": "CBL",
+      "exchange": "NCC",
+      "filename": "CBL-nc1.json"
+    },
+    {
+      "ticker": "POW",
+      "exchange": "ANT",
+      "filename": "POW-ai1.json"
+    },
+    {
+      "ticker": "POW",
+      "exchange": "CIS",
+      "filename": "POW-ci1.json"
+    },
+    {
+      "ticker": "POW",
+      "exchange": "ICA",
+      "filename": "POW-ic1.json"
+    },
+    {
+      "ticker": "POW",
+      "exchange": "NCC",
+      "filename": "POW-nc1.json"
+    },
+    {
+      "ticker": "VOR",
+      "exchange": "ANT",
+      "filename": "VOR-ai1.json"
+    },
+    {
+      "ticker": "VOR",
+      "exchange": "CIS",
+      "filename": "VOR-ci1.json"
+    },
+    {
+      "ticker": "VOR",
+      "exchange": "ICA",
+      "filename": "VOR-ic1.json"
+    },
+    {
+      "ticker": "VOR",
+      "exchange": "NCC",
+      "filename": "VOR-nc1.json"
+    },
+    {
+      "ticker": "SOL",
+      "exchange": "ANT",
+      "filename": "SOL-ai1.json"
+    },
+    {
+      "ticker": "SOL",
+      "exchange": "CIS",
+      "filename": "SOL-ci1.json"
+    },
+    {
+      "ticker": "SOL",
+      "exchange": "ICA",
+      "filename": "SOL-ic1.json"
+    },
+    {
+      "ticker": "SOL",
+      "exchange": "NCC",
+      "filename": "SOL-nc1.json"
+    },
+    {
+      "ticker": "FIR",
+      "exchange": "ANT",
+      "filename": "FIR-ai1.json"
+    },
+    {
+      "ticker": "FIR",
+      "exchange": "CIS",
+      "filename": "FIR-ci1.json"
+    },
+    {
+      "ticker": "FIR",
+      "exchange": "ICA",
+      "filename": "FIR-ic1.json"
+    },
+    {
+      "ticker": "FIR",
+      "exchange": "NCC",
+      "filename": "FIR-nc1.json"
+    },
+    {
+      "ticker": "RAG",
+      "exchange": "ANT",
+      "filename": "RAG-ai1.json"
+    },
+    {
+      "ticker": "RAG",
+      "exchange": "CIS",
+      "filename": "RAG-ci1.json"
+    },
+    {
+      "ticker": "RAG",
+      "exchange": "ICA",
+      "filename": "RAG-ic1.json"
+    },
+    {
+      "ticker": "RAG",
+      "exchange": "NCC",
+      "filename": "RAG-nc1.json"
+    },
+    {
+      "ticker": "CBS",
+      "exchange": "ANT",
+      "filename": "CBS-ai1.json"
+    },
+    {
+      "ticker": "CBS",
+      "exchange": "CIS",
+      "filename": "CBS-ci1.json"
+    },
+    {
+      "ticker": "CBS",
+      "exchange": "ICA",
+      "filename": "CBS-ic1.json"
+    },
+    {
+      "ticker": "CBS",
+      "exchange": "NCC",
+      "filename": "CBS-nc1.json"
+    },
+    {
+      "ticker": "SP",
+      "exchange": "ANT",
+      "filename": "SP-ai1.json"
+    },
+    {
+      "ticker": "SP",
+      "exchange": "CIS",
+      "filename": "SP-ci1.json"
+    },
+    {
+      "ticker": "SP",
+      "exchange": "ICA",
+      "filename": "SP-ic1.json"
+    },
+    {
+      "ticker": "SP",
+      "exchange": "NCC",
+      "filename": "SP-nc1.json"
+    },
+    {
+      "ticker": "CBM",
+      "exchange": "ANT",
+      "filename": "CBM-ai1.json"
+    },
+    {
+      "ticker": "CBM",
+      "exchange": "CIS",
+      "filename": "CBM-ci1.json"
+    },
+    {
+      "ticker": "CBM",
+      "exchange": "ICA",
+      "filename": "CBM-ic1.json"
+    },
+    {
+      "ticker": "CBM",
+      "exchange": "NCC",
+      "filename": "CBM-nc1.json"
+    },
+    {
+      "ticker": "SCN",
+      "exchange": "ANT",
+      "filename": "SCN-ai1.json"
+    },
+    {
+      "ticker": "SCN",
+      "exchange": "CIS",
+      "filename": "SCN-ci1.json"
+    },
+    {
+      "ticker": "SCN",
+      "exchange": "ICA",
+      "filename": "SCN-ic1.json"
+    },
+    {
+      "ticker": "SCN",
+      "exchange": "NCC",
+      "filename": "SCN-nc1.json"
+    },
+    {
+      "ticker": "HOG",
+      "exchange": "ANT",
+      "filename": "HOG-ai1.json"
+    },
+    {
+      "ticker": "HOG",
+      "exchange": "CIS",
+      "filename": "HOG-ci1.json"
+    },
+    {
+      "ticker": "HOG",
+      "exchange": "ICA",
+      "filename": "HOG-ic1.json"
+    },
+    {
+      "ticker": "HOG",
+      "exchange": "NCC",
+      "filename": "HOG-nc1.json"
+    },
+    {
+      "ticker": "RAD",
+      "exchange": "ANT",
+      "filename": "RAD-ai1.json"
+    },
+    {
+      "ticker": "RAD",
+      "exchange": "CIS",
+      "filename": "RAD-ci1.json"
+    },
+    {
+      "ticker": "RAD",
+      "exchange": "ICA",
+      "filename": "RAD-ic1.json"
+    },
+    {
+      "ticker": "RAD",
+      "exchange": "NCC",
+      "filename": "RAD-nc1.json"
+    },
+    {
+      "ticker": "MHP",
+      "exchange": "ANT",
+      "filename": "MHP-ai1.json"
+    },
+    {
+      "ticker": "MHP",
+      "exchange": "CIS",
+      "filename": "MHP-ci1.json"
+    },
+    {
+      "ticker": "MHP",
+      "exchange": "ICA",
+      "filename": "MHP-ic1.json"
+    },
+    {
+      "ticker": "MHP",
+      "exchange": "NCC",
+      "filename": "MHP-nc1.json"
+    },
+    {
+      "ticker": "BID",
+      "exchange": "ANT",
+      "filename": "BID-ai1.json"
+    },
+    {
+      "ticker": "BID",
+      "exchange": "CIS",
+      "filename": "BID-ci1.json"
+    },
+    {
+      "ticker": "BID",
+      "exchange": "ICA",
+      "filename": "BID-ic1.json"
+    },
+    {
+      "ticker": "BID",
+      "exchange": "NCC",
+      "filename": "BID-nc1.json"
+    },
+    {
+      "ticker": "KRE",
+      "exchange": "ANT",
+      "filename": "KRE-ai1.json"
+    },
+    {
+      "ticker": "KRE",
+      "exchange": "CIS",
+      "filename": "KRE-ci1.json"
+    },
+    {
+      "ticker": "KRE",
+      "exchange": "ICA",
+      "filename": "KRE-ic1.json"
+    },
+    {
+      "ticker": "KRE",
+      "exchange": "NCC",
+      "filename": "KRE-nc1.json"
+    },
+    {
+      "ticker": "EES",
+      "exchange": "ANT",
+      "filename": "EES-ai1.json"
+    },
+    {
+      "ticker": "EES",
+      "exchange": "CIS",
+      "filename": "EES-ci1.json"
+    },
+    {
+      "ticker": "EES",
+      "exchange": "ICA",
+      "filename": "EES-ic1.json"
+    },
+    {
+      "ticker": "EES",
+      "exchange": "NCC",
+      "filename": "EES-nc1.json"
+    },
+    {
+      "ticker": "ES",
+      "exchange": "ANT",
+      "filename": "ES-ai1.json"
+    },
+    {
+      "ticker": "ES",
+      "exchange": "CIS",
+      "filename": "ES-ci1.json"
+    },
+    {
+      "ticker": "ES",
+      "exchange": "ICA",
+      "filename": "ES-ic1.json"
+    },
+    {
+      "ticker": "ES",
+      "exchange": "NCC",
+      "filename": "ES-nc1.json"
+    },
+    {
+      "ticker": "SAR",
+      "exchange": "ANT",
+      "filename": "SAR-ai1.json"
+    },
+    {
+      "ticker": "SAR",
+      "exchange": "CIS",
+      "filename": "SAR-ci1.json"
+    },
+    {
+      "ticker": "SAR",
+      "exchange": "ICA",
+      "filename": "SAR-ic1.json"
+    },
+    {
+      "ticker": "SAR",
+      "exchange": "NCC",
+      "filename": "SAR-nc1.json"
+    },
+    {
+      "ticker": "CD",
+      "exchange": "ANT",
+      "filename": "CD-ai1.json"
+    },
+    {
+      "ticker": "CD",
+      "exchange": "CIS",
+      "filename": "CD-ci1.json"
+    },
+    {
+      "ticker": "CD",
+      "exchange": "ICA",
+      "filename": "CD-ic1.json"
+    },
+    {
+      "ticker": "CD",
+      "exchange": "NCC",
+      "filename": "CD-nc1.json"
+    },
+    {
+      "ticker": "AAR",
+      "exchange": "ANT",
+      "filename": "AAR-ai1.json"
+    },
+    {
+      "ticker": "AAR",
+      "exchange": "CIS",
+      "filename": "AAR-ci1.json"
+    },
+    {
+      "ticker": "AAR",
+      "exchange": "ICA",
+      "filename": "AAR-ic1.json"
+    },
+    {
+      "ticker": "AAR",
+      "exchange": "NCC",
+      "filename": "AAR-nc1.json"
+    },
+    {
+      "ticker": "AWF",
+      "exchange": "ANT",
+      "filename": "AWF-ai1.json"
+    },
+    {
+      "ticker": "AWF",
+      "exchange": "CIS",
+      "filename": "AWF-ci1.json"
+    },
+    {
+      "ticker": "AWF",
+      "exchange": "ICA",
+      "filename": "AWF-ic1.json"
+    },
+    {
+      "ticker": "AWF",
+      "exchange": "NCC",
+      "filename": "AWF-nc1.json"
+    },
+    {
+      "ticker": "BWS",
+      "exchange": "ANT",
+      "filename": "BWS-ai1.json"
+    },
+    {
+      "ticker": "BWS",
+      "exchange": "CIS",
+      "filename": "BWS-ci1.json"
+    },
+    {
+      "ticker": "BWS",
+      "exchange": "ICA",
+      "filename": "BWS-ic1.json"
+    },
+    {
+      "ticker": "BWS",
+      "exchange": "NCC",
+      "filename": "BWS-nc1.json"
+    },
+    {
+      "ticker": "HPC",
+      "exchange": "ANT",
+      "filename": "HPC-ai1.json"
+    },
+    {
+      "ticker": "HPC",
+      "exchange": "CIS",
+      "filename": "HPC-ci1.json"
+    },
+    {
+      "ticker": "HPC",
+      "exchange": "ICA",
+      "filename": "HPC-ic1.json"
+    },
+    {
+      "ticker": "HPC",
+      "exchange": "NCC",
+      "filename": "HPC-nc1.json"
+    },
+    {
+      "ticker": "BMF",
+      "exchange": "ANT",
+      "filename": "BMF-ai1.json"
+    },
+    {
+      "ticker": "BMF",
+      "exchange": "CIS",
+      "filename": "BMF-ci1.json"
+    },
+    {
+      "ticker": "BMF",
+      "exchange": "ICA",
+      "filename": "BMF-ic1.json"
+    },
+    {
+      "ticker": "BMF",
+      "exchange": "NCC",
+      "filename": "BMF-nc1.json"
+    },
+    {
+      "ticker": "LFE",
+      "exchange": "ANT",
+      "filename": "LFE-ai1.json"
+    },
+    {
+      "ticker": "LFE",
+      "exchange": "CIS",
+      "filename": "LFE-ci1.json"
+    },
+    {
+      "ticker": "LFE",
+      "exchange": "ICA",
+      "filename": "LFE-ic1.json"
+    },
+    {
+      "ticker": "LFE",
+      "exchange": "NCC",
+      "filename": "LFE-nc1.json"
+    },
+    {
+      "ticker": "VIT",
+      "exchange": "ANT",
+      "filename": "VIT-ai1.json"
+    },
+    {
+      "ticker": "VIT",
+      "exchange": "CIS",
+      "filename": "VIT-ci1.json"
+    },
+    {
+      "ticker": "VIT",
+      "exchange": "ICA",
+      "filename": "VIT-ic1.json"
+    },
+    {
+      "ticker": "VIT",
+      "exchange": "NCC",
+      "filename": "VIT-nc1.json"
+    },
+    {
+      "ticker": "WIN",
+      "exchange": "ANT",
+      "filename": "WIN-ai1.json"
+    },
+    {
+      "ticker": "WIN",
+      "exchange": "CIS",
+      "filename": "WIN-ci1.json"
+    },
+    {
+      "ticker": "WIN",
+      "exchange": "ICA",
+      "filename": "WIN-ic1.json"
+    },
+    {
+      "ticker": "WIN",
+      "exchange": "NCC",
+      "filename": "WIN-nc1.json"
+    },
+    {
+      "ticker": "GIN",
+      "exchange": "ANT",
+      "filename": "GIN-ai1.json"
+    },
+    {
+      "ticker": "GIN",
+      "exchange": "CIS",
+      "filename": "GIN-ci1.json"
+    },
+    {
+      "ticker": "GIN",
+      "exchange": "ICA",
+      "filename": "GIN-ic1.json"
+    },
+    {
+      "ticker": "GIN",
+      "exchange": "NCC",
+      "filename": "GIN-nc1.json"
+    },
+    {
+      "ticker": "ALE",
+      "exchange": "ANT",
+      "filename": "ALE-ai1.json"
+    },
+    {
+      "ticker": "ALE",
+      "exchange": "CIS",
+      "filename": "ALE-ci1.json"
+    },
+    {
+      "ticker": "ALE",
+      "exchange": "ICA",
+      "filename": "ALE-ic1.json"
+    },
+    {
+      "ticker": "ALE",
+      "exchange": "NCC",
+      "filename": "ALE-nc1.json"
+    },
+    {
+      "ticker": "KOM",
+      "exchange": "ANT",
+      "filename": "KOM-ai1.json"
+    },
+    {
+      "ticker": "KOM",
+      "exchange": "CIS",
+      "filename": "KOM-ci1.json"
+    },
+    {
+      "ticker": "KOM",
+      "exchange": "ICA",
+      "filename": "KOM-ic1.json"
+    },
+    {
+      "ticker": "KOM",
+      "exchange": "NCC",
+      "filename": "KOM-nc1.json"
+    },
+    {
+      "ticker": "DW",
+      "exchange": "ANT",
+      "filename": "DW-ai1.json"
+    },
+    {
+      "ticker": "DW",
+      "exchange": "CIS",
+      "filename": "DW-ci1.json"
+    },
+    {
+      "ticker": "DW",
+      "exchange": "ICA",
+      "filename": "DW-ic1.json"
+    },
+    {
+      "ticker": "DW",
+      "exchange": "NCC",
+      "filename": "DW-nc1.json"
+    },
+    {
+      "ticker": "PPA",
+      "exchange": "ANT",
+      "filename": "PPA-ai1.json"
+    },
+    {
+      "ticker": "PPA",
+      "exchange": "CIS",
+      "filename": "PPA-ci1.json"
+    },
+    {
+      "ticker": "PPA",
+      "exchange": "ICA",
+      "filename": "PPA-ic1.json"
+    },
+    {
+      "ticker": "PPA",
+      "exchange": "NCC",
+      "filename": "PPA-nc1.json"
+    },
+    {
+      "ticker": "COF",
+      "exchange": "ANT",
+      "filename": "COF-ai1.json"
+    },
+    {
+      "ticker": "COF",
+      "exchange": "CIS",
+      "filename": "COF-ci1.json"
+    },
+    {
+      "ticker": "COF",
+      "exchange": "ICA",
+      "filename": "COF-ic1.json"
+    },
+    {
+      "ticker": "COF",
+      "exchange": "NCC",
+      "filename": "COF-nc1.json"
+    },
+    {
+      "ticker": "RAT",
+      "exchange": "ANT",
+      "filename": "RAT-ai1.json"
+    },
+    {
+      "ticker": "RAT",
+      "exchange": "CIS",
+      "filename": "RAT-ci1.json"
+    },
+    {
+      "ticker": "RAT",
+      "exchange": "ICA",
+      "filename": "RAT-ic1.json"
+    },
+    {
+      "ticker": "RAT",
+      "exchange": "NCC",
+      "filename": "RAT-nc1.json"
+    },
+    {
+      "ticker": "MEA",
+      "exchange": "ANT",
+      "filename": "MEA-ai1.json"
+    },
+    {
+      "ticker": "MEA",
+      "exchange": "CIS",
+      "filename": "MEA-ci1.json"
+    },
+    {
+      "ticker": "MEA",
+      "exchange": "ICA",
+      "filename": "MEA-ic1.json"
+    },
+    {
+      "ticker": "MEA",
+      "exchange": "NCC",
+      "filename": "MEA-nc1.json"
+    },
+    {
+      "ticker": "FIM",
+      "exchange": "ANT",
+      "filename": "FIM-ai1.json"
+    },
+    {
+      "ticker": "FIM",
+      "exchange": "CIS",
+      "filename": "FIM-ci1.json"
+    },
+    {
+      "ticker": "FIM",
+      "exchange": "ICA",
+      "filename": "FIM-ic1.json"
+    },
+    {
+      "ticker": "FIM",
+      "exchange": "NCC",
+      "filename": "FIM-nc1.json"
+    },
+    {
+      "ticker": "FOD",
+      "exchange": "ANT",
+      "filename": "FOD-ai1.json"
+    },
+    {
+      "ticker": "FOD",
+      "exchange": "CIS",
+      "filename": "FOD-ci1.json"
+    },
+    {
+      "ticker": "FOD",
+      "exchange": "ICA",
+      "filename": "FOD-ic1.json"
+    },
+    {
+      "ticker": "FOD",
+      "exchange": "NCC",
+      "filename": "FOD-nc1.json"
+    },
+    {
+      "ticker": "NUT",
+      "exchange": "ANT",
+      "filename": "NUT-ai1.json"
+    },
+    {
+      "ticker": "NUT",
+      "exchange": "CIS",
+      "filename": "NUT-ci1.json"
+    },
+    {
+      "ticker": "NUT",
+      "exchange": "ICA",
+      "filename": "NUT-ic1.json"
+    },
+    {
+      "ticker": "NUT",
+      "exchange": "NCC",
+      "filename": "NUT-nc1.json"
+    },
+    {
+      "ticker": "BEA",
+      "exchange": "ANT",
+      "filename": "BEA-ai1.json"
+    },
+    {
+      "ticker": "BEA",
+      "exchange": "CIS",
+      "filename": "BEA-ci1.json"
+    },
+    {
+      "ticker": "BEA",
+      "exchange": "ICA",
+      "filename": "BEA-ic1.json"
+    },
+    {
+      "ticker": "BEA",
+      "exchange": "NCC",
+      "filename": "BEA-nc1.json"
+    },
+    {
+      "ticker": "GRN",
+      "exchange": "ANT",
+      "filename": "GRN-ai1.json"
+    },
+    {
+      "ticker": "GRN",
+      "exchange": "CIS",
+      "filename": "GRN-ci1.json"
+    },
+    {
+      "ticker": "GRN",
+      "exchange": "ICA",
+      "filename": "GRN-ic1.json"
+    },
+    {
+      "ticker": "GRN",
+      "exchange": "NCC",
+      "filename": "GRN-nc1.json"
+    },
+    {
+      "ticker": "RCO",
+      "exchange": "ANT",
+      "filename": "RCO-ai1.json"
+    },
+    {
+      "ticker": "RCO",
+      "exchange": "CIS",
+      "filename": "RCO-ci1.json"
+    },
+    {
+      "ticker": "RCO",
+      "exchange": "ICA",
+      "filename": "RCO-ic1.json"
+    },
+    {
+      "ticker": "RCO",
+      "exchange": "NCC",
+      "filename": "RCO-nc1.json"
+    },
+    {
+      "ticker": "HCP",
+      "exchange": "ANT",
+      "filename": "HCP-ai1.json"
+    },
+    {
+      "ticker": "HCP",
+      "exchange": "CIS",
+      "filename": "HCP-ci1.json"
+    },
+    {
+      "ticker": "HCP",
+      "exchange": "ICA",
+      "filename": "HCP-ic1.json"
+    },
+    {
+      "ticker": "HCP",
+      "exchange": "NCC",
+      "filename": "HCP-nc1.json"
+    },
+    {
+      "ticker": "VEG",
+      "exchange": "ANT",
+      "filename": "VEG-ai1.json"
+    },
+    {
+      "ticker": "VEG",
+      "exchange": "CIS",
+      "filename": "VEG-ci1.json"
+    },
+    {
+      "ticker": "VEG",
+      "exchange": "ICA",
+      "filename": "VEG-ic1.json"
+    },
+    {
+      "ticker": "VEG",
+      "exchange": "NCC",
+      "filename": "VEG-nc1.json"
+    },
+    {
+      "ticker": "HER",
+      "exchange": "ANT",
+      "filename": "HER-ai1.json"
+    },
+    {
+      "ticker": "HER",
+      "exchange": "CIS",
+      "filename": "HER-ci1.json"
+    },
+    {
+      "ticker": "HER",
+      "exchange": "ICA",
+      "filename": "HER-ic1.json"
+    },
+    {
+      "ticker": "HER",
+      "exchange": "NCC",
+      "filename": "HER-nc1.json"
+    },
+    {
+      "ticker": "MAI",
+      "exchange": "ANT",
+      "filename": "MAI-ai1.json"
+    },
+    {
+      "ticker": "MAI",
+      "exchange": "CIS",
+      "filename": "MAI-ci1.json"
+    },
+    {
+      "ticker": "MAI",
+      "exchange": "ICA",
+      "filename": "MAI-ic1.json"
+    },
+    {
+      "ticker": "MAI",
+      "exchange": "NCC",
+      "filename": "MAI-nc1.json"
+    },
+    {
+      "ticker": "FLO",
+      "exchange": "ANT",
+      "filename": "FLO-ai1.json"
+    },
+    {
+      "ticker": "FLO",
+      "exchange": "CIS",
+      "filename": "FLO-ci1.json"
+    },
+    {
+      "ticker": "FLO",
+      "exchange": "ICA",
+      "filename": "FLO-ic1.json"
+    },
+    {
+      "ticker": "FLO",
+      "exchange": "NCC",
+      "filename": "FLO-nc1.json"
+    },
+    {
+      "ticker": "BRO",
+      "exchange": "ANT",
+      "filename": "BRO-ai1.json"
+    },
+    {
+      "ticker": "BRO",
+      "exchange": "CIS",
+      "filename": "BRO-ci1.json"
+    },
+    {
+      "ticker": "BRO",
+      "exchange": "ICA",
+      "filename": "BRO-ic1.json"
+    },
+    {
+      "ticker": "BRO",
+      "exchange": "NCC",
+      "filename": "BRO-nc1.json"
+    },
+    {
+      "ticker": "BGC",
+      "exchange": "ANT",
+      "filename": "BGC-ai1.json"
+    },
+    {
+      "ticker": "BGC",
+      "exchange": "CIS",
+      "filename": "BGC-ci1.json"
+    },
+    {
+      "ticker": "BGC",
+      "exchange": "ICA",
+      "filename": "BGC-ic1.json"
+    },
+    {
+      "ticker": "BGC",
+      "exchange": "NCC",
+      "filename": "BGC-nc1.json"
+    },
+    {
+      "ticker": "BCO",
+      "exchange": "ANT",
+      "filename": "BCO-ai1.json"
+    },
+    {
+      "ticker": "BCO",
+      "exchange": "CIS",
+      "filename": "BCO-ci1.json"
+    },
+    {
+      "ticker": "BCO",
+      "exchange": "ICA",
+      "filename": "BCO-ic1.json"
+    },
+    {
+      "ticker": "BCO",
+      "exchange": "NCC",
+      "filename": "BCO-nc1.json"
+    },
+    {
+      "ticker": "SFK",
+      "exchange": "ANT",
+      "filename": "SFK-ai1.json"
+    },
+    {
+      "ticker": "SFK",
+      "exchange": "CIS",
+      "filename": "SFK-ci1.json"
+    },
+    {
+      "ticker": "SFK",
+      "exchange": "ICA",
+      "filename": "SFK-ic1.json"
+    },
+    {
+      "ticker": "SFK",
+      "exchange": "NCC",
+      "filename": "SFK-nc1.json"
+    },
+    {
+      "ticker": "HCC",
+      "exchange": "ANT",
+      "filename": "HCC-ai1.json"
+    },
+    {
+      "ticker": "HCC",
+      "exchange": "CIS",
+      "filename": "HCC-ci1.json"
+    },
+    {
+      "ticker": "HCC",
+      "exchange": "ICA",
+      "filename": "HCC-ic1.json"
+    },
+    {
+      "ticker": "HCC",
+      "exchange": "NCC",
+      "filename": "HCC-nc1.json"
+    },
+    {
+      "ticker": "BFR",
+      "exchange": "ANT",
+      "filename": "BFR-ai1.json"
+    },
+    {
+      "ticker": "BFR",
+      "exchange": "CIS",
+      "filename": "BFR-ci1.json"
+    },
+    {
+      "ticker": "BFR",
+      "exchange": "ICA",
+      "filename": "BFR-ic1.json"
+    },
+    {
+      "ticker": "BFR",
+      "exchange": "NCC",
+      "filename": "BFR-nc1.json"
+    },
+    {
+      "ticker": "MFK",
+      "exchange": "ANT",
+      "filename": "MFK-ai1.json"
+    },
+    {
+      "ticker": "MFK",
+      "exchange": "CIS",
+      "filename": "MFK-ci1.json"
+    },
+    {
+      "ticker": "MFK",
+      "exchange": "ICA",
+      "filename": "MFK-ic1.json"
+    },
+    {
+      "ticker": "MFK",
+      "exchange": "NCC",
+      "filename": "MFK-nc1.json"
+    },
+    {
+      "ticker": "AFR",
+      "exchange": "ANT",
+      "filename": "AFR-ai1.json"
+    },
+    {
+      "ticker": "AFR",
+      "exchange": "CIS",
+      "filename": "AFR-ci1.json"
+    },
+    {
+      "ticker": "AFR",
+      "exchange": "ICA",
+      "filename": "AFR-ic1.json"
+    },
+    {
+      "ticker": "AFR",
+      "exchange": "NCC",
+      "filename": "AFR-nc1.json"
+    },
+    {
+      "ticker": "UTS",
+      "exchange": "ANT",
+      "filename": "UTS-ai1.json"
+    },
+    {
+      "ticker": "UTS",
+      "exchange": "CIS",
+      "filename": "UTS-ci1.json"
+    },
+    {
+      "ticker": "UTS",
+      "exchange": "ICA",
+      "filename": "UTS-ic1.json"
+    },
+    {
+      "ticker": "UTS",
+      "exchange": "NCC",
+      "filename": "UTS-nc1.json"
+    },
+    {
+      "ticker": "SEQ",
+      "exchange": "ANT",
+      "filename": "SEQ-ai1.json"
+    },
+    {
+      "ticker": "SEQ",
+      "exchange": "CIS",
+      "filename": "SEQ-ci1.json"
+    },
+    {
+      "ticker": "SEQ",
+      "exchange": "ICA",
+      "filename": "SEQ-ic1.json"
+    },
+    {
+      "ticker": "SEQ",
+      "exchange": "NCC",
+      "filename": "SEQ-nc1.json"
+    },
+    {
+      "ticker": "RGO",
+      "exchange": "ANT",
+      "filename": "RGO-ai1.json"
+    },
+    {
+      "ticker": "RGO",
+      "exchange": "CIS",
+      "filename": "RGO-ci1.json"
+    },
+    {
+      "ticker": "RGO",
+      "exchange": "ICA",
+      "filename": "RGO-ic1.json"
+    },
+    {
+      "ticker": "RGO",
+      "exchange": "NCC",
+      "filename": "RGO-nc1.json"
+    },
+    {
+      "ticker": "BGO",
+      "exchange": "ANT",
+      "filename": "BGO-ai1.json"
+    },
+    {
+      "ticker": "BGO",
+      "exchange": "CIS",
+      "filename": "BGO-ci1.json"
+    },
+    {
+      "ticker": "BGO",
+      "exchange": "ICA",
+      "filename": "BGO-ic1.json"
+    },
+    {
+      "ticker": "BGO",
+      "exchange": "NCC",
+      "filename": "BGO-nc1.json"
+    },
+    {
+      "ticker": "NG",
+      "exchange": "ANT",
+      "filename": "NG-ai1.json"
+    },
+    {
+      "ticker": "NG",
+      "exchange": "CIS",
+      "filename": "NG-ci1.json"
+    },
+    {
+      "ticker": "NG",
+      "exchange": "ICA",
+      "filename": "NG-ic1.json"
+    },
+    {
+      "ticker": "NG",
+      "exchange": "NCC",
+      "filename": "NG-nc1.json"
+    },
+    {
+      "ticker": "RG",
+      "exchange": "ANT",
+      "filename": "RG-ai1.json"
+    },
+    {
+      "ticker": "RG",
+      "exchange": "CIS",
+      "filename": "RG-ci1.json"
+    },
+    {
+      "ticker": "RG",
+      "exchange": "ICA",
+      "filename": "RG-ic1.json"
+    },
+    {
+      "ticker": "RG",
+      "exchange": "NCC",
+      "filename": "RG-nc1.json"
+    },
+    {
+      "ticker": "TUB",
+      "exchange": "ANT",
+      "filename": "TUB-ai1.json"
+    },
+    {
+      "ticker": "TUB",
+      "exchange": "CIS",
+      "filename": "TUB-ci1.json"
+    },
+    {
+      "ticker": "TUB",
+      "exchange": "ICA",
+      "filename": "TUB-ic1.json"
+    },
+    {
+      "ticker": "TUB",
+      "exchange": "NCC",
+      "filename": "TUB-nc1.json"
+    },
+    {
+      "ticker": "LIT",
+      "exchange": "ANT",
+      "filename": "LIT-ai1.json"
+    },
+    {
+      "ticker": "LIT",
+      "exchange": "CIS",
+      "filename": "LIT-ci1.json"
+    },
+    {
+      "ticker": "LIT",
+      "exchange": "ICA",
+      "filename": "LIT-ic1.json"
+    },
+    {
+      "ticker": "LIT",
+      "exchange": "NCC",
+      "filename": "LIT-nc1.json"
+    },
+    {
+      "ticker": "GCH",
+      "exchange": "ANT",
+      "filename": "GCH-ai1.json"
+    },
+    {
+      "ticker": "GCH",
+      "exchange": "CIS",
+      "filename": "GCH-ci1.json"
+    },
+    {
+      "ticker": "GCH",
+      "exchange": "ICA",
+      "filename": "GCH-ic1.json"
+    },
+    {
+      "ticker": "GCH",
+      "exchange": "NCC",
+      "filename": "GCH-nc1.json"
+    },
+    {
+      "ticker": "GNZ",
+      "exchange": "ANT",
+      "filename": "GNZ-ai1.json"
+    },
+    {
+      "ticker": "GNZ",
+      "exchange": "CIS",
+      "filename": "GNZ-ci1.json"
+    },
+    {
+      "ticker": "GNZ",
+      "exchange": "ICA",
+      "filename": "GNZ-ic1.json"
+    },
+    {
+      "ticker": "GNZ",
+      "exchange": "NCC",
+      "filename": "GNZ-nc1.json"
+    },
+    {
+      "ticker": "GL",
+      "exchange": "ANT",
+      "filename": "GL-ai1.json"
+    },
+    {
+      "ticker": "GL",
+      "exchange": "CIS",
+      "filename": "GL-ci1.json"
+    },
+    {
+      "ticker": "GL",
+      "exchange": "ICA",
+      "filename": "GL-ic1.json"
+    },
+    {
+      "ticker": "GL",
+      "exchange": "NCC",
+      "filename": "GL-nc1.json"
+    },
+    {
+      "ticker": "GEN",
+      "exchange": "ANT",
+      "filename": "GEN-ai1.json"
+    },
+    {
+      "ticker": "GEN",
+      "exchange": "CIS",
+      "filename": "GEN-ci1.json"
+    },
+    {
+      "ticker": "GEN",
+      "exchange": "ICA",
+      "filename": "GEN-ic1.json"
+    },
+    {
+      "ticker": "GEN",
+      "exchange": "NCC",
+      "filename": "GEN-nc1.json"
+    },
+    {
+      "ticker": "LHP",
+      "exchange": "ANT",
+      "filename": "LHP-ai1.json"
+    },
+    {
+      "ticker": "LHP",
+      "exchange": "CIS",
+      "filename": "LHP-ci1.json"
+    },
+    {
+      "ticker": "LHP",
+      "exchange": "ICA",
+      "filename": "LHP-ic1.json"
+    },
+    {
+      "ticker": "LHP",
+      "exchange": "NCC",
+      "filename": "LHP-nc1.json"
+    },
+    {
+      "ticker": "BHP",
+      "exchange": "ANT",
+      "filename": "BHP-ai1.json"
+    },
+    {
+      "ticker": "BHP",
+      "exchange": "CIS",
+      "filename": "BHP-ci1.json"
+    },
+    {
+      "ticker": "BHP",
+      "exchange": "ICA",
+      "filename": "BHP-ic1.json"
+    },
+    {
+      "ticker": "BHP",
+      "exchange": "NCC",
+      "filename": "BHP-nc1.json"
+    },
+    {
+      "ticker": "HHP",
+      "exchange": "ANT",
+      "filename": "HHP-ai1.json"
+    },
+    {
+      "ticker": "HHP",
+      "exchange": "CIS",
+      "filename": "HHP-ci1.json"
+    },
+    {
+      "ticker": "HHP",
+      "exchange": "ICA",
+      "filename": "HHP-ic1.json"
+    },
+    {
+      "ticker": "HHP",
+      "exchange": "NCC",
+      "filename": "HHP-nc1.json"
+    },
+    {
+      "ticker": "RHP",
+      "exchange": "ANT",
+      "filename": "RHP-ai1.json"
+    },
+    {
+      "ticker": "RHP",
+      "exchange": "CIS",
+      "filename": "RHP-ci1.json"
+    },
+    {
+      "ticker": "RHP",
+      "exchange": "ICA",
+      "filename": "RHP-ic1.json"
+    },
+    {
+      "ticker": "RHP",
+      "exchange": "NCC",
+      "filename": "RHP-nc1.json"
+    },
+    {
+      "ticker": "ATP",
+      "exchange": "ANT",
+      "filename": "ATP-ai1.json"
+    },
+    {
+      "ticker": "ATP",
+      "exchange": "CIS",
+      "filename": "ATP-ci1.json"
+    },
+    {
+      "ticker": "ATP",
+      "exchange": "ICA",
+      "filename": "ATP-ic1.json"
+    },
+    {
+      "ticker": "ATP",
+      "exchange": "NCC",
+      "filename": "ATP-nc1.json"
+    },
+    {
+      "ticker": "BWH",
+      "exchange": "ANT",
+      "filename": "BWH-ai1.json"
+    },
+    {
+      "ticker": "BWH",
+      "exchange": "CIS",
+      "filename": "BWH-ci1.json"
+    },
+    {
+      "ticker": "BWH",
+      "exchange": "ICA",
+      "filename": "BWH-ic1.json"
+    },
+    {
+      "ticker": "BWH",
+      "exchange": "NCC",
+      "filename": "BWH-nc1.json"
+    },
+    {
+      "ticker": "AWH",
+      "exchange": "ANT",
+      "filename": "AWH-ai1.json"
+    },
+    {
+      "ticker": "AWH",
+      "exchange": "CIS",
+      "filename": "AWH-ci1.json"
+    },
+    {
+      "ticker": "AWH",
+      "exchange": "ICA",
+      "filename": "AWH-ic1.json"
+    },
+    {
+      "ticker": "AWH",
+      "exchange": "NCC",
+      "filename": "AWH-nc1.json"
+    },
+    {
+      "ticker": "AHP",
+      "exchange": "ANT",
+      "filename": "AHP-ai1.json"
+    },
+    {
+      "ticker": "AHP",
+      "exchange": "CIS",
+      "filename": "AHP-ci1.json"
+    },
+    {
+      "ticker": "AHP",
+      "exchange": "ICA",
+      "filename": "AHP-ic1.json"
+    },
+    {
+      "ticker": "AHP",
+      "exchange": "NCC",
+      "filename": "AHP-nc1.json"
+    },
+    {
+      "ticker": "ALG",
+      "exchange": "ANT",
+      "filename": "ALG-ai1.json"
+    },
+    {
+      "ticker": "ALG",
+      "exchange": "CIS",
+      "filename": "ALG-ci1.json"
+    },
+    {
+      "ticker": "ALG",
+      "exchange": "ICA",
+      "filename": "ALG-ic1.json"
+    },
+    {
+      "ticker": "ALG",
+      "exchange": "NCC",
+      "filename": "ALG-nc1.json"
+    },
+    {
+      "ticker": "MUS",
+      "exchange": "ANT",
+      "filename": "MUS-ai1.json"
+    },
+    {
+      "ticker": "MUS",
+      "exchange": "CIS",
+      "filename": "MUS-ci1.json"
+    },
+    {
+      "ticker": "MUS",
+      "exchange": "ICA",
+      "filename": "MUS-ic1.json"
+    },
+    {
+      "ticker": "MUS",
+      "exchange": "NCC",
+      "filename": "MUS-nc1.json"
+    },
+    {
+      "ticker": "CAF",
+      "exchange": "ANT",
+      "filename": "CAF-ai1.json"
+    },
+    {
+      "ticker": "CAF",
+      "exchange": "CIS",
+      "filename": "CAF-ci1.json"
+    },
+    {
+      "ticker": "CAF",
+      "exchange": "ICA",
+      "filename": "CAF-ic1.json"
+    },
+    {
+      "ticker": "CAF",
+      "exchange": "NCC",
+      "filename": "CAF-nc1.json"
+    },
+    {
+      "ticker": "C",
+      "exchange": "ANT",
+      "filename": "C-ai1.json"
+    },
+    {
+      "ticker": "C",
+      "exchange": "CIS",
+      "filename": "C-ci1.json"
+    },
+    {
+      "ticker": "C",
+      "exchange": "ICA",
+      "filename": "C-ic1.json"
+    },
+    {
+      "ticker": "C",
+      "exchange": "NCC",
+      "filename": "C-nc1.json"
+    },
+    {
+      "ticker": "RSI",
+      "exchange": "ANT",
+      "filename": "RSI-ai1.json"
+    },
+    {
+      "ticker": "RSI",
+      "exchange": "CIS",
+      "filename": "RSI-ci1.json"
+    },
+    {
+      "ticker": "RSI",
+      "exchange": "ICA",
+      "filename": "RSI-ic1.json"
+    },
+    {
+      "ticker": "RSI",
+      "exchange": "NCC",
+      "filename": "RSI-nc1.json"
+    },
+    {
+      "ticker": "MTP",
+      "exchange": "ANT",
+      "filename": "MTP-ai1.json"
+    },
+    {
+      "ticker": "MTP",
+      "exchange": "CIS",
+      "filename": "MTP-ci1.json"
+    },
+    {
+      "ticker": "MTP",
+      "exchange": "ICA",
+      "filename": "MTP-ic1.json"
+    },
+    {
+      "ticker": "MTP",
+      "exchange": "NCC",
+      "filename": "MTP-nc1.json"
+    },
+    {
+      "ticker": "VG",
+      "exchange": "ANT",
+      "filename": "VG-ai1.json"
+    },
+    {
+      "ticker": "VG",
+      "exchange": "CIS",
+      "filename": "VG-ci1.json"
+    },
+    {
+      "ticker": "VG",
+      "exchange": "ICA",
+      "filename": "VG-ic1.json"
+    },
+    {
+      "ticker": "VG",
+      "exchange": "NCC",
+      "filename": "VG-nc1.json"
+    },
+    {
+      "ticker": "JUI",
+      "exchange": "ANT",
+      "filename": "JUI-ai1.json"
+    },
+    {
+      "ticker": "JUI",
+      "exchange": "CIS",
+      "filename": "JUI-ci1.json"
+    },
+    {
+      "ticker": "JUI",
+      "exchange": "ICA",
+      "filename": "JUI-ic1.json"
+    },
+    {
+      "ticker": "JUI",
+      "exchange": "NCC",
+      "filename": "JUI-nc1.json"
+    },
+    {
+      "ticker": "BLE",
+      "exchange": "ANT",
+      "filename": "BLE-ai1.json"
+    },
+    {
+      "ticker": "BLE",
+      "exchange": "CIS",
+      "filename": "BLE-ci1.json"
+    },
+    {
+      "ticker": "BLE",
+      "exchange": "ICA",
+      "filename": "BLE-ic1.json"
+    },
+    {
+      "ticker": "BLE",
+      "exchange": "NCC",
+      "filename": "BLE-nc1.json"
+    },
+    {
+      "ticker": "DDT",
+      "exchange": "ANT",
+      "filename": "DDT-ai1.json"
+    },
+    {
+      "ticker": "DDT",
+      "exchange": "CIS",
+      "filename": "DDT-ci1.json"
+    },
+    {
+      "ticker": "DDT",
+      "exchange": "ICA",
+      "filename": "DDT-ic1.json"
+    },
+    {
+      "ticker": "DDT",
+      "exchange": "NCC",
+      "filename": "DDT-nc1.json"
+    },
+    {
+      "ticker": "TCL",
+      "exchange": "ANT",
+      "filename": "TCL-ai1.json"
+    },
+    {
+      "ticker": "TCL",
+      "exchange": "CIS",
+      "filename": "TCL-ci1.json"
+    },
+    {
+      "ticker": "TCL",
+      "exchange": "ICA",
+      "filename": "TCL-ic1.json"
+    },
+    {
+      "ticker": "TCL",
+      "exchange": "NCC",
+      "filename": "TCL-nc1.json"
+    },
+    {
+      "ticker": "NST",
+      "exchange": "ANT",
+      "filename": "NST-ai1.json"
+    },
+    {
+      "ticker": "NST",
+      "exchange": "CIS",
+      "filename": "NST-ci1.json"
+    },
+    {
+      "ticker": "NST",
+      "exchange": "ICA",
+      "filename": "NST-ic1.json"
+    },
+    {
+      "ticker": "NST",
+      "exchange": "NCC",
+      "filename": "NST-nc1.json"
+    },
+    {
+      "ticker": "BL",
+      "exchange": "ANT",
+      "filename": "BL-ai1.json"
+    },
+    {
+      "ticker": "BL",
+      "exchange": "CIS",
+      "filename": "BL-ci1.json"
+    },
+    {
+      "ticker": "BL",
+      "exchange": "ICA",
+      "filename": "BL-ic1.json"
+    },
+    {
+      "ticker": "BL",
+      "exchange": "NCC",
+      "filename": "BL-nc1.json"
+    },
+    {
+      "ticker": "BAC",
+      "exchange": "ANT",
+      "filename": "BAC-ai1.json"
+    },
+    {
+      "ticker": "BAC",
+      "exchange": "CIS",
+      "filename": "BAC-ci1.json"
+    },
+    {
+      "ticker": "BAC",
+      "exchange": "ICA",
+      "filename": "BAC-ic1.json"
+    },
+    {
+      "ticker": "BAC",
+      "exchange": "NCC",
+      "filename": "BAC-nc1.json"
+    },
+    {
+      "ticker": "CST",
+      "exchange": "ANT",
+      "filename": "CST-ai1.json"
+    },
+    {
+      "ticker": "CST",
+      "exchange": "CIS",
+      "filename": "CST-ci1.json"
+    },
+    {
+      "ticker": "CST",
+      "exchange": "ICA",
+      "filename": "CST-ic1.json"
+    },
+    {
+      "ticker": "CST",
+      "exchange": "NCC",
+      "filename": "CST-nc1.json"
+    },
+    {
+      "ticker": "THF",
+      "exchange": "ANT",
+      "filename": "THF-ai1.json"
+    },
+    {
+      "ticker": "THF",
+      "exchange": "CIS",
+      "filename": "THF-ci1.json"
+    },
+    {
+      "ticker": "THF",
+      "exchange": "ICA",
+      "filename": "THF-ic1.json"
+    },
+    {
+      "ticker": "THF",
+      "exchange": "NCC",
+      "filename": "THF-nc1.json"
+    },
+    {
+      "ticker": "NR",
+      "exchange": "ANT",
+      "filename": "NR-ai1.json"
+    },
+    {
+      "ticker": "NR",
+      "exchange": "CIS",
+      "filename": "NR-ci1.json"
+    },
+    {
+      "ticker": "NR",
+      "exchange": "ICA",
+      "filename": "NR-ic1.json"
+    },
+    {
+      "ticker": "NR",
+      "exchange": "NCC",
+      "filename": "NR-nc1.json"
+    },
+    {
+      "ticker": "FAN",
+      "exchange": "ANT",
+      "filename": "FAN-ai1.json"
+    },
+    {
+      "ticker": "FAN",
+      "exchange": "CIS",
+      "filename": "FAN-ci1.json"
+    },
+    {
+      "ticker": "FAN",
+      "exchange": "ICA",
+      "filename": "FAN-ic1.json"
+    },
+    {
+      "ticker": "FAN",
+      "exchange": "NCC",
+      "filename": "FAN-nc1.json"
+    },
+    {
+      "ticker": "DIS",
+      "exchange": "ANT",
+      "filename": "DIS-ai1.json"
+    },
+    {
+      "ticker": "DIS",
+      "exchange": "CIS",
+      "filename": "DIS-ci1.json"
+    },
+    {
+      "ticker": "DIS",
+      "exchange": "ICA",
+      "filename": "DIS-ic1.json"
+    },
+    {
+      "ticker": "DIS",
+      "exchange": "NCC",
+      "filename": "DIS-nc1.json"
+    },
+    {
+      "ticker": "HD",
+      "exchange": "ANT",
+      "filename": "HD-ai1.json"
+    },
+    {
+      "ticker": "HD",
+      "exchange": "CIS",
+      "filename": "HD-ci1.json"
+    },
+    {
+      "ticker": "HD",
+      "exchange": "ICA",
+      "filename": "HD-ic1.json"
+    },
+    {
+      "ticker": "HD",
+      "exchange": "NCC",
+      "filename": "HD-nc1.json"
+    },
+    {
+      "ticker": "MB",
+      "exchange": "ANT",
+      "filename": "MB-ai1.json"
+    },
+    {
+      "ticker": "MB",
+      "exchange": "CIS",
+      "filename": "MB-ci1.json"
+    },
+    {
+      "ticker": "MB",
+      "exchange": "ICA",
+      "filename": "MB-ic1.json"
+    },
+    {
+      "ticker": "MB",
+      "exchange": "NCC",
+      "filename": "MB-nc1.json"
+    },
+    {
+      "ticker": "PIB",
+      "exchange": "ANT",
+      "filename": "PIB-ai1.json"
+    },
+    {
+      "ticker": "PIB",
+      "exchange": "CIS",
+      "filename": "PIB-ci1.json"
+    },
+    {
+      "ticker": "PIB",
+      "exchange": "ICA",
+      "filename": "PIB-ic1.json"
+    },
+    {
+      "ticker": "PIB",
+      "exchange": "NCC",
+      "filename": "PIB-nc1.json"
+    },
+    {
+      "ticker": "GRA",
+      "exchange": "ANT",
+      "filename": "GRA-ai1.json"
+    },
+    {
+      "ticker": "GRA",
+      "exchange": "CIS",
+      "filename": "GRA-ci1.json"
+    },
+    {
+      "ticker": "GRA",
+      "exchange": "ICA",
+      "filename": "GRA-ic1.json"
+    },
+    {
+      "ticker": "GRA",
+      "exchange": "NCC",
+      "filename": "GRA-nc1.json"
+    },
+    {
+      "ticker": "HOP",
+      "exchange": "ANT",
+      "filename": "HOP-ai1.json"
+    },
+    {
+      "ticker": "HOP",
+      "exchange": "CIS",
+      "filename": "HOP-ci1.json"
+    },
+    {
+      "ticker": "HOP",
+      "exchange": "ICA",
+      "filename": "HOP-ic1.json"
+    },
+    {
+      "ticker": "HOP",
+      "exchange": "NCC",
+      "filename": "HOP-nc1.json"
+    },
+    {
+      "ticker": "EBU",
+      "exchange": "ANT",
+      "filename": "EBU-ai1.json"
+    },
+    {
+      "ticker": "EBU",
+      "exchange": "CIS",
+      "filename": "EBU-ci1.json"
+    },
+    {
+      "ticker": "EBU",
+      "exchange": "ICA",
+      "filename": "EBU-ic1.json"
+    },
+    {
+      "ticker": "EBU",
+      "exchange": "NCC",
+      "filename": "EBU-nc1.json"
+    },
+    {
+      "ticker": "CBU",
+      "exchange": "ANT",
+      "filename": "CBU-ai1.json"
+    },
+    {
+      "ticker": "CBU",
+      "exchange": "CIS",
+      "filename": "CBU-ci1.json"
+    },
+    {
+      "ticker": "CBU",
+      "exchange": "ICA",
+      "filename": "CBU-ic1.json"
+    },
+    {
+      "ticker": "CBU",
+      "exchange": "NCC",
+      "filename": "CBU-nc1.json"
+    },
+    {
+      "ticker": "PBU",
+      "exchange": "ANT",
+      "filename": "PBU-ai1.json"
+    },
+    {
+      "ticker": "PBU",
+      "exchange": "CIS",
+      "filename": "PBU-ci1.json"
+    },
+    {
+      "ticker": "PBU",
+      "exchange": "ICA",
+      "filename": "PBU-ic1.json"
+    },
+    {
+      "ticker": "PBU",
+      "exchange": "NCC",
+      "filename": "PBU-nc1.json"
+    },
+    {
+      "ticker": "SBU",
+      "exchange": "ANT",
+      "filename": "SBU-ai1.json"
+    },
+    {
+      "ticker": "SBU",
+      "exchange": "CIS",
+      "filename": "SBU-ci1.json"
+    },
+    {
+      "ticker": "SBU",
+      "exchange": "ICA",
+      "filename": "SBU-ic1.json"
+    },
+    {
+      "ticker": "SBU",
+      "exchange": "NCC",
+      "filename": "SBU-nc1.json"
+    },
+    {
+      "ticker": "TBU",
+      "exchange": "ANT",
+      "filename": "TBU-ai1.json"
+    },
+    {
+      "ticker": "TBU",
+      "exchange": "CIS",
+      "filename": "TBU-ci1.json"
+    },
+    {
+      "ticker": "TBU",
+      "exchange": "ICA",
+      "filename": "TBU-ic1.json"
+    },
+    {
+      "ticker": "TBU",
+      "exchange": "NCC",
+      "filename": "TBU-nc1.json"
+    },
+    {
+      "ticker": "ADR",
+      "exchange": "ANT",
+      "filename": "ADR-ai1.json"
+    },
+    {
+      "ticker": "ADR",
+      "exchange": "CIS",
+      "filename": "ADR-ci1.json"
+    },
+    {
+      "ticker": "ADR",
+      "exchange": "ICA",
+      "filename": "ADR-ic1.json"
+    },
+    {
+      "ticker": "ADR",
+      "exchange": "NCC",
+      "filename": "ADR-nc1.json"
+    },
+    {
+      "ticker": "BSC",
+      "exchange": "ANT",
+      "filename": "BSC-ai1.json"
+    },
+    {
+      "ticker": "BSC",
+      "exchange": "CIS",
+      "filename": "BSC-ci1.json"
+    },
+    {
+      "ticker": "BSC",
+      "exchange": "ICA",
+      "filename": "BSC-ic1.json"
+    },
+    {
+      "ticker": "BSC",
+      "exchange": "NCC",
+      "filename": "BSC-nc1.json"
+    },
+    {
+      "ticker": "BND",
+      "exchange": "ANT",
+      "filename": "BND-ai1.json"
+    },
+    {
+      "ticker": "BND",
+      "exchange": "CIS",
+      "filename": "BND-ci1.json"
+    },
+    {
+      "ticker": "BND",
+      "exchange": "ICA",
+      "filename": "BND-ic1.json"
+    },
+    {
+      "ticker": "BND",
+      "exchange": "NCC",
+      "filename": "BND-nc1.json"
+    },
+    {
+      "ticker": "PK",
+      "exchange": "ANT",
+      "filename": "PK-ai1.json"
+    },
+    {
+      "ticker": "PK",
+      "exchange": "CIS",
+      "filename": "PK-ci1.json"
+    },
+    {
+      "ticker": "PK",
+      "exchange": "ICA",
+      "filename": "PK-ic1.json"
+    },
+    {
+      "ticker": "PK",
+      "exchange": "NCC",
+      "filename": "PK-nc1.json"
+    },
+    {
+      "ticker": "DEC",
+      "exchange": "ANT",
+      "filename": "DEC-ai1.json"
+    },
+    {
+      "ticker": "DEC",
+      "exchange": "CIS",
+      "filename": "DEC-ci1.json"
+    },
+    {
+      "ticker": "DEC",
+      "exchange": "ICA",
+      "filename": "DEC-ic1.json"
+    },
+    {
+      "ticker": "DEC",
+      "exchange": "NCC",
+      "filename": "DEC-nc1.json"
+    },
+    {
+      "ticker": "EPO",
+      "exchange": "ANT",
+      "filename": "EPO-ai1.json"
+    },
+    {
+      "ticker": "EPO",
+      "exchange": "CIS",
+      "filename": "EPO-ci1.json"
+    },
+    {
+      "ticker": "EPO",
+      "exchange": "ICA",
+      "filename": "EPO-ic1.json"
+    },
+    {
+      "ticker": "EPO",
+      "exchange": "NCC",
+      "filename": "EPO-nc1.json"
+    },
+    {
+      "ticker": "PG",
+      "exchange": "ANT",
+      "filename": "PG-ai1.json"
+    },
+    {
+      "ticker": "PG",
+      "exchange": "CIS",
+      "filename": "PG-ci1.json"
+    },
+    {
+      "ticker": "PG",
+      "exchange": "ICA",
+      "filename": "PG-ic1.json"
+    },
+    {
+      "ticker": "PG",
+      "exchange": "NCC",
+      "filename": "PG-nc1.json"
+    },
+    {
+      "ticker": "BDE",
+      "exchange": "ANT",
+      "filename": "BDE-ai1.json"
+    },
+    {
+      "ticker": "BDE",
+      "exchange": "CIS",
+      "filename": "BDE-ci1.json"
+    },
+    {
+      "ticker": "BDE",
+      "exchange": "ICA",
+      "filename": "BDE-ic1.json"
+    },
+    {
+      "ticker": "BDE",
+      "exchange": "NCC",
+      "filename": "BDE-nc1.json"
+    },
+    {
+      "ticker": "BSE",
+      "exchange": "ANT",
+      "filename": "BSE-ai1.json"
+    },
+    {
+      "ticker": "BSE",
+      "exchange": "CIS",
+      "filename": "BSE-ci1.json"
+    },
+    {
+      "ticker": "BSE",
+      "exchange": "ICA",
+      "filename": "BSE-ic1.json"
+    },
+    {
+      "ticker": "BSE",
+      "exchange": "NCC",
+      "filename": "BSE-nc1.json"
+    },
+    {
+      "ticker": "BTA",
+      "exchange": "ANT",
+      "filename": "BTA-ai1.json"
+    },
+    {
+      "ticker": "BTA",
+      "exchange": "CIS",
+      "filename": "BTA-ci1.json"
+    },
+    {
+      "ticker": "BTA",
+      "exchange": "ICA",
+      "filename": "BTA-ic1.json"
+    },
+    {
+      "ticker": "BTA",
+      "exchange": "NCC",
+      "filename": "BTA-nc1.json"
+    },
+    {
+      "ticker": "BBH",
+      "exchange": "ANT",
+      "filename": "BBH-ai1.json"
+    },
+    {
+      "ticker": "BBH",
+      "exchange": "CIS",
+      "filename": "BBH-ci1.json"
+    },
+    {
+      "ticker": "BBH",
+      "exchange": "ICA",
+      "filename": "BBH-ic1.json"
+    },
+    {
+      "ticker": "BBH",
+      "exchange": "NCC",
+      "filename": "BBH-nc1.json"
+    },
+    {
+      "ticker": "LSE",
+      "exchange": "ANT",
+      "filename": "LSE-ai1.json"
+    },
+    {
+      "ticker": "LSE",
+      "exchange": "CIS",
+      "filename": "LSE-ci1.json"
+    },
+    {
+      "ticker": "LSE",
+      "exchange": "ICA",
+      "filename": "LSE-ic1.json"
+    },
+    {
+      "ticker": "LSE",
+      "exchange": "NCC",
+      "filename": "LSE-nc1.json"
+    },
+    {
+      "ticker": "LTA",
+      "exchange": "ANT",
+      "filename": "LTA-ai1.json"
+    },
+    {
+      "ticker": "LTA",
+      "exchange": "CIS",
+      "filename": "LTA-ci1.json"
+    },
+    {
+      "ticker": "LTA",
+      "exchange": "ICA",
+      "filename": "LTA-ic1.json"
+    },
+    {
+      "ticker": "LTA",
+      "exchange": "NCC",
+      "filename": "LTA-nc1.json"
+    },
+    {
+      "ticker": "LBH",
+      "exchange": "ANT",
+      "filename": "LBH-ai1.json"
+    },
+    {
+      "ticker": "LBH",
+      "exchange": "CIS",
+      "filename": "LBH-ci1.json"
+    },
+    {
+      "ticker": "LBH",
+      "exchange": "ICA",
+      "filename": "LBH-ic1.json"
+    },
+    {
+      "ticker": "LBH",
+      "exchange": "NCC",
+      "filename": "LBH-nc1.json"
+    },
+    {
+      "ticker": "LDE",
+      "exchange": "ANT",
+      "filename": "LDE-ai1.json"
+    },
+    {
+      "ticker": "LDE",
+      "exchange": "CIS",
+      "filename": "LDE-ci1.json"
+    },
+    {
+      "ticker": "LDE",
+      "exchange": "ICA",
+      "filename": "LDE-ic1.json"
+    },
+    {
+      "ticker": "LDE",
+      "exchange": "NCC",
+      "filename": "LDE-nc1.json"
+    },
+    {
+      "ticker": "AEF",
+      "exchange": "ANT",
+      "filename": "AEF-ai1.json"
+    },
+    {
+      "ticker": "AEF",
+      "exchange": "CIS",
+      "filename": "AEF-ci1.json"
+    },
+    {
+      "ticker": "AEF",
+      "exchange": "ICA",
+      "filename": "AEF-ic1.json"
+    },
+    {
+      "ticker": "AEF",
+      "exchange": "NCC",
+      "filename": "AEF-nc1.json"
+    },
+    {
+      "ticker": "INS",
+      "exchange": "ANT",
+      "filename": "INS-ai1.json"
+    },
+    {
+      "ticker": "INS",
+      "exchange": "CIS",
+      "filename": "INS-ci1.json"
+    },
+    {
+      "ticker": "INS",
+      "exchange": "ICA",
+      "filename": "INS-ic1.json"
+    },
+    {
+      "ticker": "INS",
+      "exchange": "NCC",
+      "filename": "INS-nc1.json"
+    },
+    {
+      "ticker": "RBH",
+      "exchange": "ANT",
+      "filename": "RBH-ai1.json"
+    },
+    {
+      "ticker": "RBH",
+      "exchange": "CIS",
+      "filename": "RBH-ci1.json"
+    },
+    {
+      "ticker": "RBH",
+      "exchange": "ICA",
+      "filename": "RBH-ic1.json"
+    },
+    {
+      "ticker": "RBH",
+      "exchange": "NCC",
+      "filename": "RBH-nc1.json"
+    },
+    {
+      "ticker": "RDE",
+      "exchange": "ANT",
+      "filename": "RDE-ai1.json"
+    },
+    {
+      "ticker": "RDE",
+      "exchange": "CIS",
+      "filename": "RDE-ci1.json"
+    },
+    {
+      "ticker": "RDE",
+      "exchange": "ICA",
+      "filename": "RDE-ic1.json"
+    },
+    {
+      "ticker": "RDE",
+      "exchange": "NCC",
+      "filename": "RDE-nc1.json"
+    },
+    {
+      "ticker": "RTA",
+      "exchange": "ANT",
+      "filename": "RTA-ai1.json"
+    },
+    {
+      "ticker": "RTA",
+      "exchange": "CIS",
+      "filename": "RTA-ci1.json"
+    },
+    {
+      "ticker": "RTA",
+      "exchange": "ICA",
+      "filename": "RTA-ic1.json"
+    },
+    {
+      "ticker": "RTA",
+      "exchange": "NCC",
+      "filename": "RTA-nc1.json"
+    },
+    {
+      "ticker": "MGC",
+      "exchange": "ANT",
+      "filename": "MGC-ai1.json"
+    },
+    {
+      "ticker": "MGC",
+      "exchange": "CIS",
+      "filename": "MGC-ci1.json"
+    },
+    {
+      "ticker": "MGC",
+      "exchange": "ICA",
+      "filename": "MGC-ic1.json"
+    },
+    {
+      "ticker": "MGC",
+      "exchange": "NCC",
+      "filename": "MGC-nc1.json"
+    },
+    {
+      "ticker": "PSH",
+      "exchange": "ANT",
+      "filename": "PSH-ai1.json"
+    },
+    {
+      "ticker": "PSH",
+      "exchange": "CIS",
+      "filename": "PSH-ci1.json"
+    },
+    {
+      "ticker": "PSH",
+      "exchange": "ICA",
+      "filename": "PSH-ic1.json"
+    },
+    {
+      "ticker": "PSH",
+      "exchange": "NCC",
+      "filename": "PSH-nc1.json"
+    },
+    {
+      "ticker": "RSE",
+      "exchange": "ANT",
+      "filename": "RSE-ai1.json"
+    },
+    {
+      "ticker": "RSE",
+      "exchange": "CIS",
+      "filename": "RSE-ci1.json"
+    },
+    {
+      "ticker": "RSE",
+      "exchange": "ICA",
+      "filename": "RSE-ic1.json"
+    },
+    {
+      "ticker": "RSE",
+      "exchange": "NCC",
+      "filename": "RSE-nc1.json"
+    },
+    {
+      "ticker": "HSE",
+      "exchange": "ANT",
+      "filename": "HSE-ai1.json"
+    },
+    {
+      "ticker": "HSE",
+      "exchange": "CIS",
+      "filename": "HSE-ci1.json"
+    },
+    {
+      "ticker": "HSE",
+      "exchange": "ICA",
+      "filename": "HSE-ic1.json"
+    },
+    {
+      "ticker": "HSE",
+      "exchange": "NCC",
+      "filename": "HSE-nc1.json"
+    },
+    {
+      "ticker": "TSH",
+      "exchange": "ANT",
+      "filename": "TSH-ai1.json"
+    },
+    {
+      "ticker": "TSH",
+      "exchange": "CIS",
+      "filename": "TSH-ci1.json"
+    },
+    {
+      "ticker": "TSH",
+      "exchange": "ICA",
+      "filename": "TSH-ic1.json"
+    },
+    {
+      "ticker": "TSH",
+      "exchange": "NCC",
+      "filename": "TSH-nc1.json"
+    },
+    {
+      "ticker": "ASE",
+      "exchange": "ANT",
+      "filename": "ASE-ai1.json"
+    },
+    {
+      "ticker": "ASE",
+      "exchange": "CIS",
+      "filename": "ASE-ci1.json"
+    },
+    {
+      "ticker": "ASE",
+      "exchange": "ICA",
+      "filename": "ASE-ic1.json"
+    },
+    {
+      "ticker": "ASE",
+      "exchange": "NCC",
+      "filename": "ASE-nc1.json"
+    },
+    {
+      "ticker": "ATA",
+      "exchange": "ANT",
+      "filename": "ATA-ai1.json"
+    },
+    {
+      "ticker": "ATA",
+      "exchange": "CIS",
+      "filename": "ATA-ci1.json"
+    },
+    {
+      "ticker": "ATA",
+      "exchange": "ICA",
+      "filename": "ATA-ic1.json"
+    },
+    {
+      "ticker": "ATA",
+      "exchange": "NCC",
+      "filename": "ATA-nc1.json"
+    },
+    {
+      "ticker": "RSH",
+      "exchange": "ANT",
+      "filename": "RSH-ai1.json"
+    },
+    {
+      "ticker": "RSH",
+      "exchange": "CIS",
+      "filename": "RSH-ci1.json"
+    },
+    {
+      "ticker": "RSH",
+      "exchange": "ICA",
+      "filename": "RSH-ic1.json"
+    },
+    {
+      "ticker": "RSH",
+      "exchange": "NCC",
+      "filename": "RSH-nc1.json"
+    },
+    {
+      "ticker": "ADE",
+      "exchange": "ANT",
+      "filename": "ADE-ai1.json"
+    },
+    {
+      "ticker": "ADE",
+      "exchange": "CIS",
+      "filename": "ADE-ci1.json"
+    },
+    {
+      "ticker": "ADE",
+      "exchange": "ICA",
+      "filename": "ADE-ic1.json"
+    },
+    {
+      "ticker": "ADE",
+      "exchange": "NCC",
+      "filename": "ADE-nc1.json"
+    },
+    {
+      "ticker": "ABH",
+      "exchange": "ANT",
+      "filename": "ABH-ai1.json"
+    },
+    {
+      "ticker": "ABH",
+      "exchange": "CIS",
+      "filename": "ABH-ci1.json"
+    },
+    {
+      "ticker": "ABH",
+      "exchange": "ICA",
+      "filename": "ABH-ic1.json"
+    },
+    {
+      "ticker": "ABH",
+      "exchange": "NCC",
+      "filename": "ABH-nc1.json"
+    },
+    {
+      "ticker": "TRS",
+      "exchange": "ANT",
+      "filename": "TRS-ai1.json"
+    },
+    {
+      "ticker": "TRS",
+      "exchange": "CIS",
+      "filename": "TRS-ci1.json"
+    },
+    {
+      "ticker": "TRS",
+      "exchange": "ICA",
+      "filename": "TRS-ic1.json"
+    },
+    {
+      "ticker": "TRS",
+      "exchange": "NCC",
+      "filename": "TRS-nc1.json"
+    },
+    {
+      "ticker": "PSS",
+      "exchange": "ANT",
+      "filename": "PSS-ai1.json"
+    },
+    {
+      "ticker": "PSS",
+      "exchange": "CIS",
+      "filename": "PSS-ci1.json"
+    },
+    {
+      "ticker": "PSS",
+      "exchange": "ICA",
+      "filename": "PSS-ic1.json"
+    },
+    {
+      "ticker": "PSS",
+      "exchange": "NCC",
+      "filename": "PSS-nc1.json"
+    },
+    {
+      "ticker": "LFP",
+      "exchange": "ANT",
+      "filename": "LFP-ai1.json"
+    },
+    {
+      "ticker": "LFP",
+      "exchange": "CIS",
+      "filename": "LFP-ci1.json"
+    },
+    {
+      "ticker": "LFP",
+      "exchange": "ICA",
+      "filename": "LFP-ic1.json"
+    },
+    {
+      "ticker": "LFP",
+      "exchange": "NCC",
+      "filename": "LFP-nc1.json"
+    },
+    {
+      "ticker": "PSM",
+      "exchange": "ANT",
+      "filename": "PSM-ai1.json"
+    },
+    {
+      "ticker": "PSM",
+      "exchange": "CIS",
+      "filename": "PSM-ci1.json"
+    },
+    {
+      "ticker": "PSM",
+      "exchange": "ICA",
+      "filename": "PSM-ic1.json"
+    },
+    {
+      "ticker": "PSM",
+      "exchange": "NCC",
+      "filename": "PSM-nc1.json"
+    },
+    {
+      "ticker": "DCL",
+      "exchange": "ANT",
+      "filename": "DCL-ai1.json"
+    },
+    {
+      "ticker": "DCL",
+      "exchange": "CIS",
+      "filename": "DCL-ci1.json"
+    },
+    {
+      "ticker": "DCL",
+      "exchange": "ICA",
+      "filename": "DCL-ic1.json"
+    },
+    {
+      "ticker": "DCL",
+      "exchange": "NCC",
+      "filename": "DCL-nc1.json"
+    },
+    {
+      "ticker": "DCM",
+      "exchange": "ANT",
+      "filename": "DCM-ai1.json"
+    },
+    {
+      "ticker": "DCM",
+      "exchange": "CIS",
+      "filename": "DCM-ci1.json"
+    },
+    {
+      "ticker": "DCM",
+      "exchange": "ICA",
+      "filename": "DCM-ic1.json"
+    },
+    {
+      "ticker": "DCM",
+      "exchange": "NCC",
+      "filename": "DCM-nc1.json"
+    },
+    {
+      "ticker": "PSL",
+      "exchange": "ANT",
+      "filename": "PSL-ai1.json"
+    },
+    {
+      "ticker": "PSL",
+      "exchange": "CIS",
+      "filename": "PSL-ci1.json"
+    },
+    {
+      "ticker": "PSL",
+      "exchange": "ICA",
+      "filename": "PSL-ic1.json"
+    },
+    {
+      "ticker": "PSL",
+      "exchange": "NCC",
+      "filename": "PSL-nc1.json"
+    },
+    {
+      "ticker": "DCS",
+      "exchange": "ANT",
+      "filename": "DCS-ai1.json"
+    },
+    {
+      "ticker": "DCS",
+      "exchange": "CIS",
+      "filename": "DCS-ci1.json"
+    },
+    {
+      "ticker": "DCS",
+      "exchange": "ICA",
+      "filename": "DCS-ic1.json"
+    },
+    {
+      "ticker": "DCS",
+      "exchange": "NCC",
+      "filename": "DCS-nc1.json"
+    },
+    {
+      "ticker": "SF",
+      "exchange": "ANT",
+      "filename": "SF-ai1.json"
+    },
+    {
+      "ticker": "SF",
+      "exchange": "CIS",
+      "filename": "SF-ci1.json"
+    },
+    {
+      "ticker": "SF",
+      "exchange": "ICA",
+      "filename": "SF-ic1.json"
+    },
+    {
+      "ticker": "SF",
+      "exchange": "NCC",
+      "filename": "SF-nc1.json"
+    },
+    {
+      "ticker": "FF",
+      "exchange": "ANT",
+      "filename": "FF-ai1.json"
+    },
+    {
+      "ticker": "FF",
+      "exchange": "CIS",
+      "filename": "FF-ci1.json"
+    },
+    {
+      "ticker": "FF",
+      "exchange": "ICA",
+      "filename": "FF-ic1.json"
+    },
+    {
+      "ticker": "FF",
+      "exchange": "NCC",
+      "filename": "FF-nc1.json"
+    },
+    {
+      "ticker": "VF",
+      "exchange": "ANT",
+      "filename": "VF-ai1.json"
+    },
+    {
+      "ticker": "VF",
+      "exchange": "CIS",
+      "filename": "VF-ci1.json"
+    },
+    {
+      "ticker": "VF",
+      "exchange": "ICA",
+      "filename": "VF-ic1.json"
+    },
+    {
+      "ticker": "VF",
+      "exchange": "NCC",
+      "filename": "VF-nc1.json"
+    },
+    {
+      "ticker": "HE3",
+      "exchange": "ANT",
+      "filename": "HE3-ai1.json"
+    },
+    {
+      "ticker": "HE3",
+      "exchange": "CIS",
+      "filename": "HE3-ci1.json"
+    },
+    {
+      "ticker": "HE3",
+      "exchange": "ICA",
+      "filename": "HE3-ic1.json"
+    },
+    {
+      "ticker": "HE3",
+      "exchange": "NCC",
+      "filename": "HE3-nc1.json"
+    },
+    {
+      "ticker": "ROM",
+      "exchange": "ANT",
+      "filename": "ROM-ai1.json"
+    },
+    {
+      "ticker": "ROM",
+      "exchange": "CIS",
+      "filename": "ROM-ci1.json"
+    },
+    {
+      "ticker": "ROM",
+      "exchange": "ICA",
+      "filename": "ROM-ic1.json"
+    },
+    {
+      "ticker": "ROM",
+      "exchange": "NCC",
+      "filename": "ROM-nc1.json"
+    },
+    {
+      "ticker": "MPC",
+      "exchange": "ANT",
+      "filename": "MPC-ai1.json"
+    },
+    {
+      "ticker": "MPC",
+      "exchange": "CIS",
+      "filename": "MPC-ci1.json"
+    },
+    {
+      "ticker": "MPC",
+      "exchange": "ICA",
+      "filename": "MPC-ic1.json"
+    },
+    {
+      "ticker": "MPC",
+      "exchange": "NCC",
+      "filename": "MPC-nc1.json"
+    },
+    {
+      "ticker": "PCB",
+      "exchange": "ANT",
+      "filename": "PCB-ai1.json"
+    },
+    {
+      "ticker": "PCB",
+      "exchange": "CIS",
+      "filename": "PCB-ci1.json"
+    },
+    {
+      "ticker": "PCB",
+      "exchange": "ICA",
+      "filename": "PCB-ic1.json"
+    },
+    {
+      "ticker": "PCB",
+      "exchange": "NCC",
+      "filename": "PCB-nc1.json"
+    },
+    {
+      "ticker": "SEN",
+      "exchange": "ANT",
+      "filename": "SEN-ai1.json"
+    },
+    {
+      "ticker": "SEN",
+      "exchange": "CIS",
+      "filename": "SEN-ci1.json"
+    },
+    {
+      "ticker": "SEN",
+      "exchange": "ICA",
+      "filename": "SEN-ic1.json"
+    },
+    {
+      "ticker": "SEN",
+      "exchange": "NCC",
+      "filename": "SEN-nc1.json"
+    },
+    {
+      "ticker": "TPU",
+      "exchange": "ANT",
+      "filename": "TPU-ai1.json"
+    },
+    {
+      "ticker": "TPU",
+      "exchange": "CIS",
+      "filename": "TPU-ci1.json"
+    },
+    {
+      "ticker": "TPU",
+      "exchange": "ICA",
+      "filename": "TPU-ic1.json"
+    },
+    {
+      "ticker": "TPU",
+      "exchange": "NCC",
+      "filename": "TPU-nc1.json"
+    },
+    {
+      "ticker": "RAM",
+      "exchange": "ANT",
+      "filename": "RAM-ai1.json"
+    },
+    {
+      "ticker": "RAM",
+      "exchange": "CIS",
+      "filename": "RAM-ci1.json"
+    },
+    {
+      "ticker": "RAM",
+      "exchange": "ICA",
+      "filename": "RAM-ic1.json"
+    },
+    {
+      "ticker": "RAM",
+      "exchange": "NCC",
+      "filename": "RAM-nc1.json"
+    },
+    {
+      "ticker": "BAI",
+      "exchange": "ANT",
+      "filename": "BAI-ai1.json"
+    },
+    {
+      "ticker": "BAI",
+      "exchange": "CIS",
+      "filename": "BAI-ci1.json"
+    },
+    {
+      "ticker": "BAI",
+      "exchange": "ICA",
+      "filename": "BAI-ic1.json"
+    },
+    {
+      "ticker": "BAI",
+      "exchange": "NCC",
+      "filename": "BAI-nc1.json"
+    },
+    {
+      "ticker": "LD",
+      "exchange": "ANT",
+      "filename": "LD-ai1.json"
+    },
+    {
+      "ticker": "LD",
+      "exchange": "CIS",
+      "filename": "LD-ci1.json"
+    },
+    {
+      "ticker": "LD",
+      "exchange": "ICA",
+      "filename": "LD-ic1.json"
+    },
+    {
+      "ticker": "LD",
+      "exchange": "NCC",
+      "filename": "LD-nc1.json"
+    },
+    {
+      "ticker": "MLI",
+      "exchange": "ANT",
+      "filename": "MLI-ai1.json"
+    },
+    {
+      "ticker": "MLI",
+      "exchange": "CIS",
+      "filename": "MLI-ci1.json"
+    },
+    {
+      "ticker": "MLI",
+      "exchange": "ICA",
+      "filename": "MLI-ic1.json"
+    },
+    {
+      "ticker": "MLI",
+      "exchange": "NCC",
+      "filename": "MLI-nc1.json"
+    },
+    {
+      "ticker": "NF",
+      "exchange": "ANT",
+      "filename": "NF-ai1.json"
+    },
+    {
+      "ticker": "NF",
+      "exchange": "CIS",
+      "filename": "NF-ci1.json"
+    },
+    {
+      "ticker": "NF",
+      "exchange": "ICA",
+      "filename": "NF-ic1.json"
+    },
+    {
+      "ticker": "NF",
+      "exchange": "NCC",
+      "filename": "NF-nc1.json"
+    },
+    {
+      "ticker": "SA",
+      "exchange": "ANT",
+      "filename": "SA-ai1.json"
+    },
+    {
+      "ticker": "SA",
+      "exchange": "CIS",
+      "filename": "SA-ci1.json"
+    },
+    {
+      "ticker": "SA",
+      "exchange": "ICA",
+      "filename": "SA-ic1.json"
+    },
+    {
+      "ticker": "SA",
+      "exchange": "NCC",
+      "filename": "SA-nc1.json"
+    },
+    {
+      "ticker": "SAL",
+      "exchange": "ANT",
+      "filename": "SAL-ai1.json"
+    },
+    {
+      "ticker": "SAL",
+      "exchange": "CIS",
+      "filename": "SAL-ci1.json"
+    },
+    {
+      "ticker": "SAL",
+      "exchange": "ICA",
+      "filename": "SAL-ic1.json"
+    },
+    {
+      "ticker": "SAL",
+      "exchange": "NCC",
+      "filename": "SAL-nc1.json"
+    },
+    {
+      "ticker": "WM",
+      "exchange": "ANT",
+      "filename": "WM-ai1.json"
+    },
+    {
+      "ticker": "WM",
+      "exchange": "CIS",
+      "filename": "WM-ci1.json"
+    },
+    {
+      "ticker": "WM",
+      "exchange": "ICA",
+      "filename": "WM-ic1.json"
+    },
+    {
+      "ticker": "WM",
+      "exchange": "NCC",
+      "filename": "WM-nc1.json"
+    },
+    {
+      "ticker": "NN",
+      "exchange": "ANT",
+      "filename": "NN-ai1.json"
+    },
+    {
+      "ticker": "NN",
+      "exchange": "CIS",
+      "filename": "NN-ci1.json"
+    },
+    {
+      "ticker": "NN",
+      "exchange": "ICA",
+      "filename": "NN-ic1.json"
+    },
+    {
+      "ticker": "NN",
+      "exchange": "NCC",
+      "filename": "NN-nc1.json"
+    },
+    {
+      "ticker": "OS",
+      "exchange": "ANT",
+      "filename": "OS-ai1.json"
+    },
+    {
+      "ticker": "OS",
+      "exchange": "CIS",
+      "filename": "OS-ci1.json"
+    },
+    {
+      "ticker": "OS",
+      "exchange": "ICA",
+      "filename": "OS-ic1.json"
+    },
+    {
+      "ticker": "OS",
+      "exchange": "NCC",
+      "filename": "OS-nc1.json"
+    },
+    {
+      "ticker": "DD",
+      "exchange": "ANT",
+      "filename": "DD-ai1.json"
+    },
+    {
+      "ticker": "DD",
+      "exchange": "CIS",
+      "filename": "DD-ci1.json"
+    },
+    {
+      "ticker": "DD",
+      "exchange": "ICA",
+      "filename": "DD-ic1.json"
+    },
+    {
+      "ticker": "DD",
+      "exchange": "NCC",
+      "filename": "DD-nc1.json"
+    },
+    {
+      "ticker": "DA",
+      "exchange": "ANT",
+      "filename": "DA-ai1.json"
+    },
+    {
+      "ticker": "DA",
+      "exchange": "CIS",
+      "filename": "DA-ci1.json"
+    },
+    {
+      "ticker": "DA",
+      "exchange": "ICA",
+      "filename": "DA-ic1.json"
+    },
+    {
+      "ticker": "DA",
+      "exchange": "NCC",
+      "filename": "DA-nc1.json"
+    },
+    {
+      "ticker": "DV",
+      "exchange": "ANT",
+      "filename": "DV-ai1.json"
+    },
+    {
+      "ticker": "DV",
+      "exchange": "CIS",
+      "filename": "DV-ci1.json"
+    },
+    {
+      "ticker": "DV",
+      "exchange": "ICA",
+      "filename": "DV-ic1.json"
+    },
+    {
+      "ticker": "DV",
+      "exchange": "NCC",
+      "filename": "DV-nc1.json"
+    },
+    {
+      "ticker": "EDC",
+      "exchange": "ANT",
+      "filename": "EDC-ai1.json"
+    },
+    {
+      "ticker": "EDC",
+      "exchange": "CIS",
+      "filename": "EDC-ci1.json"
+    },
+    {
+      "ticker": "EDC",
+      "exchange": "ICA",
+      "filename": "EDC-ic1.json"
+    },
+    {
+      "ticker": "EDC",
+      "exchange": "NCC",
+      "filename": "EDC-nc1.json"
+    },
+    {
+      "ticker": "WCB",
+      "exchange": "ANT",
+      "filename": "WCB-ai1.json"
+    },
+    {
+      "ticker": "WCB",
+      "exchange": "CIS",
+      "filename": "WCB-ci1.json"
+    },
+    {
+      "ticker": "WCB",
+      "exchange": "ICA",
+      "filename": "WCB-ic1.json"
+    },
+    {
+      "ticker": "WCB",
+      "exchange": "NCC",
+      "filename": "WCB-nc1.json"
+    },
+    {
+      "ticker": "MCB",
+      "exchange": "ANT",
+      "filename": "MCB-ai1.json"
+    },
+    {
+      "ticker": "MCB",
+      "exchange": "CIS",
+      "filename": "MCB-ci1.json"
+    },
+    {
+      "ticker": "MCB",
+      "exchange": "ICA",
+      "filename": "MCB-ic1.json"
+    },
+    {
+      "ticker": "MCB",
+      "exchange": "NCC",
+      "filename": "MCB-nc1.json"
+    },
+    {
+      "ticker": "MFL",
+      "exchange": "ANT",
+      "filename": "MFL-ai1.json"
+    },
+    {
+      "ticker": "MFL",
+      "exchange": "CIS",
+      "filename": "MFL-ci1.json"
+    },
+    {
+      "ticker": "MFL",
+      "exchange": "ICA",
+      "filename": "MFL-ic1.json"
+    },
+    {
+      "ticker": "MFL",
+      "exchange": "NCC",
+      "filename": "MFL-nc1.json"
+    },
+    {
+      "ticker": "LSL",
+      "exchange": "ANT",
+      "filename": "LSL-ai1.json"
+    },
+    {
+      "ticker": "LSL",
+      "exchange": "CIS",
+      "filename": "LSL-ci1.json"
+    },
+    {
+      "ticker": "LSL",
+      "exchange": "ICA",
+      "filename": "LSL-ic1.json"
+    },
+    {
+      "ticker": "LSL",
+      "exchange": "NCC",
+      "filename": "LSL-nc1.json"
+    },
+    {
+      "ticker": "LCB",
+      "exchange": "ANT",
+      "filename": "LCB-ai1.json"
+    },
+    {
+      "ticker": "LCB",
+      "exchange": "CIS",
+      "filename": "LCB-ci1.json"
+    },
+    {
+      "ticker": "LCB",
+      "exchange": "ICA",
+      "filename": "LCB-ic1.json"
+    },
+    {
+      "ticker": "LCB",
+      "exchange": "NCC",
+      "filename": "LCB-nc1.json"
+    },
+    {
+      "ticker": "VCB",
+      "exchange": "ANT",
+      "filename": "VCB-ai1.json"
+    },
+    {
+      "ticker": "VCB",
+      "exchange": "CIS",
+      "filename": "VCB-ci1.json"
+    },
+    {
+      "ticker": "VCB",
+      "exchange": "ICA",
+      "filename": "VCB-ic1.json"
+    },
+    {
+      "ticker": "VCB",
+      "exchange": "NCC",
+      "filename": "VCB-nc1.json"
+    },
+    {
+      "ticker": "TCB",
+      "exchange": "ANT",
+      "filename": "TCB-ai1.json"
+    },
+    {
+      "ticker": "TCB",
+      "exchange": "CIS",
+      "filename": "TCB-ci1.json"
+    },
+    {
+      "ticker": "TCB",
+      "exchange": "ICA",
+      "filename": "TCB-ic1.json"
+    },
+    {
+      "ticker": "TCB",
+      "exchange": "NCC",
+      "filename": "TCB-nc1.json"
+    },
+    {
+      "ticker": "SSL",
+      "exchange": "ANT",
+      "filename": "SSL-ai1.json"
+    },
+    {
+      "ticker": "SSL",
+      "exchange": "CIS",
+      "filename": "SSL-ci1.json"
+    },
+    {
+      "ticker": "SSL",
+      "exchange": "ICA",
+      "filename": "SSL-ic1.json"
+    },
+    {
+      "ticker": "SSL",
+      "exchange": "NCC",
+      "filename": "SSL-nc1.json"
+    },
+    {
+      "ticker": "LFL",
+      "exchange": "ANT",
+      "filename": "LFL-ai1.json"
+    },
+    {
+      "ticker": "LFL",
+      "exchange": "CIS",
+      "filename": "LFL-ci1.json"
+    },
+    {
+      "ticker": "LFL",
+      "exchange": "ICA",
+      "filename": "LFL-ic1.json"
+    },
+    {
+      "ticker": "LFL",
+      "exchange": "NCC",
+      "filename": "LFL-nc1.json"
+    },
+    {
+      "ticker": "VSC",
+      "exchange": "ANT",
+      "filename": "VSC-ai1.json"
+    },
+    {
+      "ticker": "VSC",
+      "exchange": "CIS",
+      "filename": "VSC-ci1.json"
+    },
+    {
+      "ticker": "VSC",
+      "exchange": "ICA",
+      "filename": "VSC-ic1.json"
+    },
+    {
+      "ticker": "VSC",
+      "exchange": "NCC",
+      "filename": "VSC-nc1.json"
+    },
+    {
+      "ticker": "SCB",
+      "exchange": "ANT",
+      "filename": "SCB-ai1.json"
+    },
+    {
+      "ticker": "SCB",
+      "exchange": "CIS",
+      "filename": "SCB-ci1.json"
+    },
+    {
+      "ticker": "SCB",
+      "exchange": "ICA",
+      "filename": "SCB-ic1.json"
+    },
+    {
+      "ticker": "SCB",
+      "exchange": "NCC",
+      "filename": "SCB-nc1.json"
+    },
+    {
+      "ticker": "MSL",
+      "exchange": "ANT",
+      "filename": "MSL-ai1.json"
+    },
+    {
+      "ticker": "MSL",
+      "exchange": "CIS",
+      "filename": "MSL-ci1.json"
+    },
+    {
+      "ticker": "MSL",
+      "exchange": "ICA",
+      "filename": "MSL-ic1.json"
+    },
+    {
+      "ticker": "MSL",
+      "exchange": "NCC",
+      "filename": "MSL-nc1.json"
+    },
+    {
+      "ticker": "VFT",
+      "exchange": "ANT",
+      "filename": "VFT-ai1.json"
+    },
+    {
+      "ticker": "VFT",
+      "exchange": "CIS",
+      "filename": "VFT-ci1.json"
+    },
+    {
+      "ticker": "VFT",
+      "exchange": "ICA",
+      "filename": "VFT-ic1.json"
+    },
+    {
+      "ticker": "VFT",
+      "exchange": "NCC",
+      "filename": "VFT-nc1.json"
+    },
+    {
+      "ticker": "SFL",
+      "exchange": "ANT",
+      "filename": "SFL-ai1.json"
+    },
+    {
+      "ticker": "SFL",
+      "exchange": "CIS",
+      "filename": "SFL-ci1.json"
+    },
+    {
+      "ticker": "SFL",
+      "exchange": "ICA",
+      "filename": "SFL-ic1.json"
+    },
+    {
+      "ticker": "SFL",
+      "exchange": "NCC",
+      "filename": "SFL-nc1.json"
+    },
+    {
+      "ticker": "HCB",
+      "exchange": "ANT",
+      "filename": "HCB-ai1.json"
+    },
+    {
+      "ticker": "HCB",
+      "exchange": "CIS",
+      "filename": "HCB-ci1.json"
+    },
+    {
+      "ticker": "HCB",
+      "exchange": "ICA",
+      "filename": "HCB-ic1.json"
+    },
+    {
+      "ticker": "HCB",
+      "exchange": "NCC",
+      "filename": "HCB-nc1.json"
+    },
+    {
+      "ticker": "IMM",
+      "exchange": "ANT",
+      "filename": "IMM-ai1.json"
+    },
+    {
+      "ticker": "IMM",
+      "exchange": "CIS",
+      "filename": "IMM-ci1.json"
+    },
+    {
+      "ticker": "IMM",
+      "exchange": "ICA",
+      "filename": "IMM-ic1.json"
+    },
+    {
+      "ticker": "IMM",
+      "exchange": "NCC",
+      "filename": "IMM-nc1.json"
+    },
+    {
+      "ticker": "WAI",
+      "exchange": "ANT",
+      "filename": "WAI-ai1.json"
+    },
+    {
+      "ticker": "WAI",
+      "exchange": "CIS",
+      "filename": "WAI-ci1.json"
+    },
+    {
+      "ticker": "WAI",
+      "exchange": "ICA",
+      "filename": "WAI-ic1.json"
+    },
+    {
+      "ticker": "WAI",
+      "exchange": "NCC",
+      "filename": "WAI-nc1.json"
+    },
+    {
+      "ticker": "SNM",
+      "exchange": "ANT",
+      "filename": "SNM-ai1.json"
+    },
+    {
+      "ticker": "SNM",
+      "exchange": "CIS",
+      "filename": "SNM-ci1.json"
+    },
+    {
+      "ticker": "SNM",
+      "exchange": "ICA",
+      "filename": "SNM-ic1.json"
+    },
+    {
+      "ticker": "SNM",
+      "exchange": "NCC",
+      "filename": "SNM-nc1.json"
+    },
+    {
+      "ticker": "IDC",
+      "exchange": "ANT",
+      "filename": "IDC-ai1.json"
+    },
+    {
+      "ticker": "IDC",
+      "exchange": "CIS",
+      "filename": "IDC-ci1.json"
+    },
+    {
+      "ticker": "IDC",
+      "exchange": "ICA",
+      "filename": "IDC-ic1.json"
+    },
+    {
+      "ticker": "IDC",
+      "exchange": "NCC",
+      "filename": "IDC-nc1.json"
+    },
+    {
+      "ticker": "LI",
+      "exchange": "ANT",
+      "filename": "LI-ai1.json"
+    },
+    {
+      "ticker": "LI",
+      "exchange": "CIS",
+      "filename": "LI-ci1.json"
+    },
+    {
+      "ticker": "LI",
+      "exchange": "ICA",
+      "filename": "LI-ic1.json"
+    },
+    {
+      "ticker": "LI",
+      "exchange": "NCC",
+      "filename": "LI-nc1.json"
+    },
+    {
+      "ticker": "AU",
+      "exchange": "ANT",
+      "filename": "AU-ai1.json"
+    },
+    {
+      "ticker": "AU",
+      "exchange": "CIS",
+      "filename": "AU-ci1.json"
+    },
+    {
+      "ticker": "AU",
+      "exchange": "ICA",
+      "filename": "AU-ic1.json"
+    },
+    {
+      "ticker": "AU",
+      "exchange": "NCC",
+      "filename": "AU-nc1.json"
+    },
+    {
+      "ticker": "S",
+      "exchange": "ANT",
+      "filename": "S-ai1.json"
+    },
+    {
+      "ticker": "S",
+      "exchange": "CIS",
+      "filename": "S-ci1.json"
+    },
+    {
+      "ticker": "S",
+      "exchange": "ICA",
+      "filename": "S-ic1.json"
+    },
+    {
+      "ticker": "S",
+      "exchange": "NCC",
+      "filename": "S-nc1.json"
+    },
+    {
+      "ticker": "STL",
+      "exchange": "ANT",
+      "filename": "STL-ai1.json"
+    },
+    {
+      "ticker": "STL",
+      "exchange": "CIS",
+      "filename": "STL-ci1.json"
+    },
+    {
+      "ticker": "STL",
+      "exchange": "ICA",
+      "filename": "STL-ic1.json"
+    },
+    {
+      "ticker": "STL",
+      "exchange": "NCC",
+      "filename": "STL-nc1.json"
+    },
+    {
+      "ticker": "SI",
+      "exchange": "ANT",
+      "filename": "SI-ai1.json"
+    },
+    {
+      "ticker": "SI",
+      "exchange": "CIS",
+      "filename": "SI-ci1.json"
+    },
+    {
+      "ticker": "SI",
+      "exchange": "ICA",
+      "filename": "SI-ic1.json"
+    },
+    {
+      "ticker": "SI",
+      "exchange": "NCC",
+      "filename": "SI-nc1.json"
+    },
+    {
+      "ticker": "CF",
+      "exchange": "ANT",
+      "filename": "CF-ai1.json"
+    },
+    {
+      "ticker": "CF",
+      "exchange": "CIS",
+      "filename": "CF-ci1.json"
+    },
+    {
+      "ticker": "CF",
+      "exchange": "ICA",
+      "filename": "CF-ic1.json"
+    },
+    {
+      "ticker": "CF",
+      "exchange": "NCC",
+      "filename": "CF-nc1.json"
+    },
+    {
+      "ticker": "TI",
+      "exchange": "ANT",
+      "filename": "TI-ai1.json"
+    },
+    {
+      "ticker": "TI",
+      "exchange": "CIS",
+      "filename": "TI-ci1.json"
+    },
+    {
+      "ticker": "TI",
+      "exchange": "ICA",
+      "filename": "TI-ic1.json"
+    },
+    {
+      "ticker": "TI",
+      "exchange": "NCC",
+      "filename": "TI-nc1.json"
+    },
+    {
+      "ticker": "CU",
+      "exchange": "ANT",
+      "filename": "CU-ai1.json"
+    },
+    {
+      "ticker": "CU",
+      "exchange": "CIS",
+      "filename": "CU-ci1.json"
+    },
+    {
+      "ticker": "CU",
+      "exchange": "ICA",
+      "filename": "CU-ic1.json"
+    },
+    {
+      "ticker": "CU",
+      "exchange": "NCC",
+      "filename": "CU-nc1.json"
+    },
+    {
+      "ticker": "AL",
+      "exchange": "ANT",
+      "filename": "AL-ai1.json"
+    },
+    {
+      "ticker": "AL",
+      "exchange": "CIS",
+      "filename": "AL-ci1.json"
+    },
+    {
+      "ticker": "AL",
+      "exchange": "ICA",
+      "filename": "AL-ic1.json"
+    },
+    {
+      "ticker": "AL",
+      "exchange": "NCC",
+      "filename": "AL-nc1.json"
+    },
+    {
+      "ticker": "FE",
+      "exchange": "ANT",
+      "filename": "FE-ai1.json"
+    },
+    {
+      "ticker": "FE",
+      "exchange": "CIS",
+      "filename": "FE-ci1.json"
+    },
+    {
+      "ticker": "FE",
+      "exchange": "ICA",
+      "filename": "FE-ic1.json"
+    },
+    {
+      "ticker": "FE",
+      "exchange": "NCC",
+      "filename": "FE-nc1.json"
+    },
+    {
+      "ticker": "RE",
+      "exchange": "ANT",
+      "filename": "RE-ai1.json"
+    },
+    {
+      "ticker": "RE",
+      "exchange": "CIS",
+      "filename": "RE-ci1.json"
+    },
+    {
+      "ticker": "RE",
+      "exchange": "ICA",
+      "filename": "RE-ic1.json"
+    },
+    {
+      "ticker": "RE",
+      "exchange": "NCC",
+      "filename": "RE-nc1.json"
+    },
+    {
+      "ticker": "NOZ",
+      "exchange": "ANT",
+      "filename": "NOZ-ai1.json"
+    },
+    {
+      "ticker": "NOZ",
+      "exchange": "CIS",
+      "filename": "NOZ-ci1.json"
+    },
+    {
+      "ticker": "NOZ",
+      "exchange": "ICA",
+      "filename": "NOZ-ic1.json"
+    },
+    {
+      "ticker": "NOZ",
+      "exchange": "NCC",
+      "filename": "NOZ-nc1.json"
+    },
+    {
+      "ticker": "HPR",
+      "exchange": "ANT",
+      "filename": "HPR-ai1.json"
+    },
+    {
+      "ticker": "HPR",
+      "exchange": "CIS",
+      "filename": "HPR-ci1.json"
+    },
+    {
+      "ticker": "HPR",
+      "exchange": "ICA",
+      "filename": "HPR-ic1.json"
+    },
+    {
+      "ticker": "HPR",
+      "exchange": "NCC",
+      "filename": "HPR-nc1.json"
+    },
+    {
+      "ticker": "RCT",
+      "exchange": "ANT",
+      "filename": "RCT-ai1.json"
+    },
+    {
+      "ticker": "RCT",
+      "exchange": "CIS",
+      "filename": "RCT-ci1.json"
+    },
+    {
+      "ticker": "RCT",
+      "exchange": "ICA",
+      "filename": "RCT-ic1.json"
+    },
+    {
+      "ticker": "RCT",
+      "exchange": "NCC",
+      "filename": "RCT-nc1.json"
+    },
+    {
+      "ticker": "QCR",
+      "exchange": "ANT",
+      "filename": "QCR-ai1.json"
+    },
+    {
+      "ticker": "QCR",
+      "exchange": "CIS",
+      "filename": "QCR-ci1.json"
+    },
+    {
+      "ticker": "QCR",
+      "exchange": "ICA",
+      "filename": "QCR-ic1.json"
+    },
+    {
+      "ticker": "QCR",
+      "exchange": "NCC",
+      "filename": "QCR-nc1.json"
+    },
+    {
+      "ticker": "AFP",
+      "exchange": "ANT",
+      "filename": "AFP-ai1.json"
+    },
+    {
+      "ticker": "AFP",
+      "exchange": "CIS",
+      "filename": "AFP-ci1.json"
+    },
+    {
+      "ticker": "AFP",
+      "exchange": "ICA",
+      "filename": "AFP-ic1.json"
+    },
+    {
+      "ticker": "AFP",
+      "exchange": "NCC",
+      "filename": "AFP-nc1.json"
+    },
+    {
+      "ticker": "BFP",
+      "exchange": "ANT",
+      "filename": "BFP-ai1.json"
+    },
+    {
+      "ticker": "BFP",
+      "exchange": "CIS",
+      "filename": "BFP-ci1.json"
+    },
+    {
+      "ticker": "BFP",
+      "exchange": "ICA",
+      "filename": "BFP-ic1.json"
+    },
+    {
+      "ticker": "BFP",
+      "exchange": "NCC",
+      "filename": "BFP-nc1.json"
+    },
+    {
+      "ticker": "VOE",
+      "exchange": "ANT",
+      "filename": "VOE-ai1.json"
+    },
+    {
+      "ticker": "VOE",
+      "exchange": "CIS",
+      "filename": "VOE-ci1.json"
+    },
+    {
+      "ticker": "VOE",
+      "exchange": "ICA",
+      "filename": "VOE-ic1.json"
+    },
+    {
+      "ticker": "VOE",
+      "exchange": "NCC",
+      "filename": "VOE-nc1.json"
+    },
+    {
+      "ticker": "ANZ",
+      "exchange": "ANT",
+      "filename": "ANZ-ai1.json"
+    },
+    {
+      "ticker": "ANZ",
+      "exchange": "CIS",
+      "filename": "ANZ-ci1.json"
+    },
+    {
+      "ticker": "ANZ",
+      "exchange": "ICA",
+      "filename": "ANZ-ic1.json"
+    },
+    {
+      "ticker": "ANZ",
+      "exchange": "NCC",
+      "filename": "ANZ-nc1.json"
+    },
+    {
+      "ticker": "HNZ",
+      "exchange": "ANT",
+      "filename": "HNZ-ai1.json"
+    },
+    {
+      "ticker": "HNZ",
+      "exchange": "CIS",
+      "filename": "HNZ-ci1.json"
+    },
+    {
+      "ticker": "HNZ",
+      "exchange": "ICA",
+      "filename": "HNZ-ic1.json"
+    },
+    {
+      "ticker": "HNZ",
+      "exchange": "NCC",
+      "filename": "HNZ-nc1.json"
+    },
+    {
+      "ticker": "HYR",
+      "exchange": "ANT",
+      "filename": "HYR-ai1.json"
+    },
+    {
+      "ticker": "HYR",
+      "exchange": "CIS",
+      "filename": "HYR-ci1.json"
+    },
+    {
+      "ticker": "HYR",
+      "exchange": "ICA",
+      "filename": "HYR-ic1.json"
+    },
+    {
+      "ticker": "HYR",
+      "exchange": "NCC",
+      "filename": "HYR-nc1.json"
+    },
+    {
+      "ticker": "AEN",
+      "exchange": "ANT",
+      "filename": "AEN-ai1.json"
+    },
+    {
+      "ticker": "AEN",
+      "exchange": "CIS",
+      "filename": "AEN-ci1.json"
+    },
+    {
+      "ticker": "AEN",
+      "exchange": "ICA",
+      "filename": "AEN-ic1.json"
+    },
+    {
+      "ticker": "AEN",
+      "exchange": "NCC",
+      "filename": "AEN-nc1.json"
+    },
+    {
+      "ticker": "ENG",
+      "exchange": "ANT",
+      "filename": "ENG-ai1.json"
+    },
+    {
+      "ticker": "ENG",
+      "exchange": "CIS",
+      "filename": "ENG-ci1.json"
+    },
+    {
+      "ticker": "ENG",
+      "exchange": "ICA",
+      "filename": "ENG-ic1.json"
+    },
+    {
+      "ticker": "ENG",
+      "exchange": "NCC",
+      "filename": "ENG-nc1.json"
+    },
+    {
+      "ticker": "FSE",
+      "exchange": "ANT",
+      "filename": "FSE-ai1.json"
+    },
+    {
+      "ticker": "FSE",
+      "exchange": "CIS",
+      "filename": "FSE-ci1.json"
+    },
+    {
+      "ticker": "FSE",
+      "exchange": "ICA",
+      "filename": "FSE-ic1.json"
+    },
+    {
+      "ticker": "FSE",
+      "exchange": "NCC",
+      "filename": "FSE-nc1.json"
+    },
+    {
+      "ticker": "HTE",
+      "exchange": "ANT",
+      "filename": "HTE-ai1.json"
+    },
+    {
+      "ticker": "HTE",
+      "exchange": "CIS",
+      "filename": "HTE-ci1.json"
+    },
+    {
+      "ticker": "HTE",
+      "exchange": "ICA",
+      "filename": "HTE-ic1.json"
+    },
+    {
+      "ticker": "HTE",
+      "exchange": "NCC",
+      "filename": "HTE-nc1.json"
+    },
+    {
+      "ticker": "AGS",
+      "exchange": "ANT",
+      "filename": "AGS-ai1.json"
+    },
+    {
+      "ticker": "AGS",
+      "exchange": "CIS",
+      "filename": "AGS-ci1.json"
+    },
+    {
+      "ticker": "AGS",
+      "exchange": "ICA",
+      "filename": "AGS-ic1.json"
+    },
+    {
+      "ticker": "AGS",
+      "exchange": "NCC",
+      "filename": "AGS-nc1.json"
+    },
+    {
+      "ticker": "APT",
+      "exchange": "ANT",
+      "filename": "APT-ai1.json"
+    },
+    {
+      "ticker": "APT",
+      "exchange": "CIS",
+      "filename": "APT-ci1.json"
+    },
+    {
+      "ticker": "APT",
+      "exchange": "ICA",
+      "filename": "APT-ic1.json"
+    },
+    {
+      "ticker": "APT",
+      "exchange": "NCC",
+      "filename": "APT-nc1.json"
+    },
+    {
+      "ticker": "BRP",
+      "exchange": "ANT",
+      "filename": "BRP-ai1.json"
+    },
+    {
+      "ticker": "BRP",
+      "exchange": "CIS",
+      "filename": "BRP-ci1.json"
+    },
+    {
+      "ticker": "BRP",
+      "exchange": "ICA",
+      "filename": "BRP-ic1.json"
+    },
+    {
+      "ticker": "BRP",
+      "exchange": "NCC",
+      "filename": "BRP-nc1.json"
+    },
+    {
+      "ticker": "ARP",
+      "exchange": "ANT",
+      "filename": "ARP-ai1.json"
+    },
+    {
+      "ticker": "ARP",
+      "exchange": "CIS",
+      "filename": "ARP-ci1.json"
+    },
+    {
+      "ticker": "ARP",
+      "exchange": "ICA",
+      "filename": "ARP-ic1.json"
+    },
+    {
+      "ticker": "ARP",
+      "exchange": "NCC",
+      "filename": "ARP-nc1.json"
+    },
+    {
+      "ticker": "SRP",
+      "exchange": "ANT",
+      "filename": "SRP-ai1.json"
+    },
+    {
+      "ticker": "SRP",
+      "exchange": "CIS",
+      "filename": "SRP-ci1.json"
+    },
+    {
+      "ticker": "SRP",
+      "exchange": "ICA",
+      "filename": "SRP-ic1.json"
+    },
+    {
+      "ticker": "SRP",
+      "exchange": "NCC",
+      "filename": "SRP-nc1.json"
+    },
+    {
+      "ticker": "BPT",
+      "exchange": "ANT",
+      "filename": "BPT-ai1.json"
+    },
+    {
+      "ticker": "BPT",
+      "exchange": "CIS",
+      "filename": "BPT-ci1.json"
+    },
+    {
+      "ticker": "BPT",
+      "exchange": "ICA",
+      "filename": "BPT-ic1.json"
+    },
+    {
+      "ticker": "BPT",
+      "exchange": "NCC",
+      "filename": "BPT-nc1.json"
+    },
+    {
+      "ticker": "BGS",
+      "exchange": "ANT",
+      "filename": "BGS-ai1.json"
+    },
+    {
+      "ticker": "BGS",
+      "exchange": "CIS",
+      "filename": "BGS-ci1.json"
+    },
+    {
+      "ticker": "BGS",
+      "exchange": "ICA",
+      "filename": "BGS-ic1.json"
+    },
+    {
+      "ticker": "BGS",
+      "exchange": "NCC",
+      "filename": "BGS-nc1.json"
+    },
+    {
+      "ticker": "ETC",
+      "exchange": "ANT",
+      "filename": "ETC-ai1.json"
+    },
+    {
+      "ticker": "ETC",
+      "exchange": "CIS",
+      "filename": "ETC-ci1.json"
+    },
+    {
+      "ticker": "ETC",
+      "exchange": "ICA",
+      "filename": "ETC-ic1.json"
+    },
+    {
+      "ticker": "ETC",
+      "exchange": "NCC",
+      "filename": "ETC-nc1.json"
+    },
+    {
+      "ticker": "TC",
+      "exchange": "ANT",
+      "filename": "TC-ai1.json"
+    },
+    {
+      "ticker": "TC",
+      "exchange": "CIS",
+      "filename": "TC-ci1.json"
+    },
+    {
+      "ticker": "TC",
+      "exchange": "ICA",
+      "filename": "TC-ic1.json"
+    },
+    {
+      "ticker": "TC",
+      "exchange": "NCC",
+      "filename": "TC-nc1.json"
+    },
+    {
+      "ticker": "TCS",
+      "exchange": "ANT",
+      "filename": "TCS-ai1.json"
+    },
+    {
+      "ticker": "TCS",
+      "exchange": "CIS",
+      "filename": "TCS-ci1.json"
+    },
+    {
+      "ticker": "TCS",
+      "exchange": "ICA",
+      "filename": "TCS-ic1.json"
+    },
+    {
+      "ticker": "TCS",
+      "exchange": "NCC",
+      "filename": "TCS-nc1.json"
+    },
+    {
+      "ticker": "CPU",
+      "exchange": "ANT",
+      "filename": "CPU-ai1.json"
+    },
+    {
+      "ticker": "CPU",
+      "exchange": "CIS",
+      "filename": "CPU-ci1.json"
+    },
+    {
+      "ticker": "CPU",
+      "exchange": "ICA",
+      "filename": "CPU-ic1.json"
+    },
+    {
+      "ticker": "CPU",
+      "exchange": "NCC",
+      "filename": "CPU-nc1.json"
+    },
+    {
+      "ticker": "BR1",
+      "exchange": "ANT",
+      "filename": "BR1-ai1.json"
+    },
+    {
+      "ticker": "BR1",
+      "exchange": "CIS",
+      "filename": "BR1-ci1.json"
+    },
+    {
+      "ticker": "BR1",
+      "exchange": "ICA",
+      "filename": "BR1-ic1.json"
+    },
+    {
+      "ticker": "BR1",
+      "exchange": "NCC",
+      "filename": "BR1-nc1.json"
+    },
+    {
+      "ticker": "BR2",
+      "exchange": "ANT",
+      "filename": "BR2-ai1.json"
+    },
+    {
+      "ticker": "BR2",
+      "exchange": "CIS",
+      "filename": "BR2-ci1.json"
+    },
+    {
+      "ticker": "BR2",
+      "exchange": "ICA",
+      "filename": "BR2-ic1.json"
+    },
+    {
+      "ticker": "BR2",
+      "exchange": "NCC",
+      "filename": "BR2-nc1.json"
+    },
+    {
+      "ticker": "CQM",
+      "exchange": "ANT",
+      "filename": "CQM-ai1.json"
+    },
+    {
+      "ticker": "CQM",
+      "exchange": "CIS",
+      "filename": "CQM-ci1.json"
+    },
+    {
+      "ticker": "CQM",
+      "exchange": "ICA",
+      "filename": "CQM-ic1.json"
+    },
+    {
+      "ticker": "CQM",
+      "exchange": "NCC",
+      "filename": "CQM-nc1.json"
+    },
+    {
+      "ticker": "BRS",
+      "exchange": "ANT",
+      "filename": "BRS-ai1.json"
+    },
+    {
+      "ticker": "BRS",
+      "exchange": "CIS",
+      "filename": "BRS-ci1.json"
+    },
+    {
+      "ticker": "BRS",
+      "exchange": "ICA",
+      "filename": "BRS-ic1.json"
+    },
+    {
+      "ticker": "BRS",
+      "exchange": "NCC",
+      "filename": "BRS-nc1.json"
+    },
+    {
+      "ticker": "DOU",
+      "exchange": "ANT",
+      "filename": "DOU-ai1.json"
+    },
+    {
+      "ticker": "DOU",
+      "exchange": "CIS",
+      "filename": "DOU-ci1.json"
+    },
+    {
+      "ticker": "DOU",
+      "exchange": "ICA",
+      "filename": "DOU-ic1.json"
+    },
+    {
+      "ticker": "DOU",
+      "exchange": "NCC",
+      "filename": "DOU-nc1.json"
+    },
+    {
+      "ticker": "TCU",
+      "exchange": "ANT",
+      "filename": "TCU-ai1.json"
+    },
+    {
+      "ticker": "TCU",
+      "exchange": "CIS",
+      "filename": "TCU-ci1.json"
+    },
+    {
+      "ticker": "TCU",
+      "exchange": "ICA",
+      "filename": "TCU-ic1.json"
+    },
+    {
+      "ticker": "TCU",
+      "exchange": "NCC",
+      "filename": "TCU-nc1.json"
+    },
+    {
+      "ticker": "HAM",
+      "exchange": "ANT",
+      "filename": "HAM-ai1.json"
+    },
+    {
+      "ticker": "HAM",
+      "exchange": "CIS",
+      "filename": "HAM-ci1.json"
+    },
+    {
+      "ticker": "HAM",
+      "exchange": "ICA",
+      "filename": "HAM-ic1.json"
+    },
+    {
+      "ticker": "HAM",
+      "exchange": "NCC",
+      "filename": "HAM-nc1.json"
+    },
+    {
+      "ticker": "FUN",
+      "exchange": "ANT",
+      "filename": "FUN-ai1.json"
+    },
+    {
+      "ticker": "FUN",
+      "exchange": "CIS",
+      "filename": "FUN-ci1.json"
+    },
+    {
+      "ticker": "FUN",
+      "exchange": "ICA",
+      "filename": "FUN-ic1.json"
+    },
+    {
+      "ticker": "FUN",
+      "exchange": "NCC",
+      "filename": "FUN-nc1.json"
+    },
+    {
+      "ticker": "BSU",
+      "exchange": "ANT",
+      "filename": "BSU-ai1.json"
+    },
+    {
+      "ticker": "BSU",
+      "exchange": "CIS",
+      "filename": "BSU-ci1.json"
+    },
+    {
+      "ticker": "BSU",
+      "exchange": "ICA",
+      "filename": "BSU-ic1.json"
+    },
+    {
+      "ticker": "BSU",
+      "exchange": "NCC",
+      "filename": "BSU-nc1.json"
+    },
+    {
+      "ticker": "LU",
+      "exchange": "ANT",
+      "filename": "LU-ai1.json"
+    },
+    {
+      "ticker": "LU",
+      "exchange": "CIS",
+      "filename": "LU-ci1.json"
+    },
+    {
+      "ticker": "LU",
+      "exchange": "ICA",
+      "filename": "LU-ic1.json"
+    },
+    {
+      "ticker": "LU",
+      "exchange": "NCC",
+      "filename": "LU-nc1.json"
+    },
+    {
+      "ticker": "CQL",
+      "exchange": "ANT",
+      "filename": "CQL-ai1.json"
+    },
+    {
+      "ticker": "CQL",
+      "exchange": "CIS",
+      "filename": "CQL-ci1.json"
+    },
+    {
+      "ticker": "CQL",
+      "exchange": "ICA",
+      "filename": "CQL-ic1.json"
+    },
+    {
+      "ticker": "CQL",
+      "exchange": "NCC",
+      "filename": "CQL-nc1.json"
+    },
+    {
+      "ticker": "RDS",
+      "exchange": "ANT",
+      "filename": "RDS-ai1.json"
+    },
+    {
+      "ticker": "RDS",
+      "exchange": "CIS",
+      "filename": "RDS-ci1.json"
+    },
+    {
+      "ticker": "RDS",
+      "exchange": "ICA",
+      "filename": "RDS-ic1.json"
+    },
+    {
+      "ticker": "RDS",
+      "exchange": "NCC",
+      "filename": "RDS-nc1.json"
+    },
+    {
+      "ticker": "WOR",
+      "exchange": "ANT",
+      "filename": "WOR-ai1.json"
+    },
+    {
+      "ticker": "WOR",
+      "exchange": "CIS",
+      "filename": "WOR-ci1.json"
+    },
+    {
+      "ticker": "WOR",
+      "exchange": "ICA",
+      "filename": "WOR-ic1.json"
+    },
+    {
+      "ticker": "WOR",
+      "exchange": "NCC",
+      "filename": "WOR-nc1.json"
+    },
+    {
+      "ticker": "CQT",
+      "exchange": "ANT",
+      "filename": "CQT-ai1.json"
+    },
+    {
+      "ticker": "CQT",
+      "exchange": "CIS",
+      "filename": "CQT-ci1.json"
+    },
+    {
+      "ticker": "CQT",
+      "exchange": "ICA",
+      "filename": "CQT-ic1.json"
+    },
+    {
+      "ticker": "CQT",
+      "exchange": "NCC",
+      "filename": "CQT-nc1.json"
+    },
+    {
+      "ticker": "RDL",
+      "exchange": "ANT",
+      "filename": "RDL-ai1.json"
+    },
+    {
+      "ticker": "RDL",
+      "exchange": "CIS",
+      "filename": "RDL-ci1.json"
+    },
+    {
+      "ticker": "RDL",
+      "exchange": "ICA",
+      "filename": "RDL-ic1.json"
+    },
+    {
+      "ticker": "RDL",
+      "exchange": "NCC",
+      "filename": "RDL-nc1.json"
+    },
+    {
+      "ticker": "SU",
+      "exchange": "ANT",
+      "filename": "SU-ai1.json"
+    },
+    {
+      "ticker": "SU",
+      "exchange": "CIS",
+      "filename": "SU-ci1.json"
+    },
+    {
+      "ticker": "SU",
+      "exchange": "ICA",
+      "filename": "SU-ic1.json"
+    },
+    {
+      "ticker": "SU",
+      "exchange": "NCC",
+      "filename": "SU-nc1.json"
+    },
+    {
+      "ticker": "CQS",
+      "exchange": "ANT",
+      "filename": "CQS-ai1.json"
+    },
+    {
+      "ticker": "CQS",
+      "exchange": "CIS",
+      "filename": "CQS-ci1.json"
+    },
+    {
+      "ticker": "CQS",
+      "exchange": "ICA",
+      "filename": "CQS-ic1.json"
+    },
+    {
+      "ticker": "CQS",
+      "exchange": "NCC",
+      "filename": "CQS-nc1.json"
+    },
+    {
+      "ticker": "HAB",
+      "exchange": "ANT",
+      "filename": "HAB-ai1.json"
+    },
+    {
+      "ticker": "HAB",
+      "exchange": "CIS",
+      "filename": "HAB-ci1.json"
+    },
+    {
+      "ticker": "HAB",
+      "exchange": "ICA",
+      "filename": "HAB-ic1.json"
+    },
+    {
+      "ticker": "HAB",
+      "exchange": "NCC",
+      "filename": "HAB-nc1.json"
+    },
+    {
+      "ticker": "CHA",
+      "exchange": "ANT",
+      "filename": "CHA-ai1.json"
+    },
+    {
+      "ticker": "CHA",
+      "exchange": "CIS",
+      "filename": "CHA-ci1.json"
+    },
+    {
+      "ticker": "CHA",
+      "exchange": "ICA",
+      "filename": "CHA-ic1.json"
+    },
+    {
+      "ticker": "CHA",
+      "exchange": "NCC",
+      "filename": "CHA-nc1.json"
+    },
+    {
+      "ticker": "FC",
+      "exchange": "ANT",
+      "filename": "FC-ai1.json"
+    },
+    {
+      "ticker": "FC",
+      "exchange": "CIS",
+      "filename": "FC-ci1.json"
+    },
+    {
+      "ticker": "FC",
+      "exchange": "ICA",
+      "filename": "FC-ic1.json"
+    },
+    {
+      "ticker": "FC",
+      "exchange": "NCC",
+      "filename": "FC-nc1.json"
+    },
+    {
+      "ticker": "GV",
+      "exchange": "ANT",
+      "filename": "GV-ai1.json"
+    },
+    {
+      "ticker": "GV",
+      "exchange": "CIS",
+      "filename": "GV-ci1.json"
+    },
+    {
+      "ticker": "GV",
+      "exchange": "ICA",
+      "filename": "GV-ic1.json"
+    },
+    {
+      "ticker": "GV",
+      "exchange": "NCC",
+      "filename": "GV-nc1.json"
+    },
+    {
+      "ticker": "GC",
+      "exchange": "ANT",
+      "filename": "GC-ai1.json"
+    },
+    {
+      "ticker": "GC",
+      "exchange": "CIS",
+      "filename": "GC-ci1.json"
+    },
+    {
+      "ticker": "GC",
+      "exchange": "ICA",
+      "filename": "GC-ic1.json"
+    },
+    {
+      "ticker": "GC",
+      "exchange": "NCC",
+      "filename": "GC-nc1.json"
+    },
+    {
+      "ticker": "FLP",
+      "exchange": "ANT",
+      "filename": "FLP-ai1.json"
+    },
+    {
+      "ticker": "FLP",
+      "exchange": "CIS",
+      "filename": "FLP-ci1.json"
+    },
+    {
+      "ticker": "FLP",
+      "exchange": "ICA",
+      "filename": "FLP-ic1.json"
+    },
+    {
+      "ticker": "FLP",
+      "exchange": "NCC",
+      "filename": "FLP-nc1.json"
+    },
+    {
+      "ticker": "MHL",
+      "exchange": "ANT",
+      "filename": "MHL-ai1.json"
+    },
+    {
+      "ticker": "MHL",
+      "exchange": "CIS",
+      "filename": "MHL-ci1.json"
+    },
+    {
+      "ticker": "MHL",
+      "exchange": "ICA",
+      "filename": "MHL-ic1.json"
+    },
+    {
+      "ticker": "MHL",
+      "exchange": "NCC",
+      "filename": "MHL-nc1.json"
+    },
+    {
+      "ticker": "TOR",
+      "exchange": "ANT",
+      "filename": "TOR-ai1.json"
+    },
+    {
+      "ticker": "TOR",
+      "exchange": "CIS",
+      "filename": "TOR-ci1.json"
+    },
+    {
+      "ticker": "TOR",
+      "exchange": "ICA",
+      "filename": "TOR-ic1.json"
+    },
+    {
+      "ticker": "TOR",
+      "exchange": "NCC",
+      "filename": "TOR-nc1.json"
+    },
+    {
+      "ticker": "SSC",
+      "exchange": "ANT",
+      "filename": "SSC-ai1.json"
+    },
+    {
+      "ticker": "SSC",
+      "exchange": "CIS",
+      "filename": "SSC-ci1.json"
+    },
+    {
+      "ticker": "SSC",
+      "exchange": "ICA",
+      "filename": "SSC-ic1.json"
+    },
+    {
+      "ticker": "SSC",
+      "exchange": "NCC",
+      "filename": "SSC-nc1.json"
+    },
+    {
+      "ticker": "TRU",
+      "exchange": "ANT",
+      "filename": "TRU-ai1.json"
+    },
+    {
+      "ticker": "TRU",
+      "exchange": "CIS",
+      "filename": "TRU-ci1.json"
+    },
+    {
+      "ticker": "TRU",
+      "exchange": "ICA",
+      "filename": "TRU-ic1.json"
+    },
+    {
+      "ticker": "TRU",
+      "exchange": "NCC",
+      "filename": "TRU-nc1.json"
+    },
+    {
+      "ticker": "THP",
+      "exchange": "ANT",
+      "filename": "THP-ai1.json"
+    },
+    {
+      "ticker": "THP",
+      "exchange": "CIS",
+      "filename": "THP-ci1.json"
+    },
+    {
+      "ticker": "THP",
+      "exchange": "ICA",
+      "filename": "THP-ic1.json"
+    },
+    {
+      "ticker": "THP",
+      "exchange": "NCC",
+      "filename": "THP-nc1.json"
+    },
+    {
+      "ticker": "TK",
+      "exchange": "ANT",
+      "filename": "TK-ai1.json"
+    },
+    {
+      "ticker": "TK",
+      "exchange": "CIS",
+      "filename": "TK-ci1.json"
+    },
+    {
+      "ticker": "TK",
+      "exchange": "ICA",
+      "filename": "TK-ic1.json"
+    },
+    {
+      "ticker": "TK",
+      "exchange": "NCC",
+      "filename": "TK-nc1.json"
+    },
+    {
+      "ticker": "COT",
+      "exchange": "ANT",
+      "filename": "COT-ai1.json"
+    },
+    {
+      "ticker": "COT",
+      "exchange": "CIS",
+      "filename": "COT-ci1.json"
+    },
+    {
+      "ticker": "COT",
+      "exchange": "ICA",
+      "filename": "COT-ic1.json"
+    },
+    {
+      "ticker": "COT",
+      "exchange": "NCC",
+      "filename": "COT-nc1.json"
+    },
+    {
+      "ticker": "SIL",
+      "exchange": "ANT",
+      "filename": "SIL-ai1.json"
+    },
+    {
+      "ticker": "SIL",
+      "exchange": "CIS",
+      "filename": "SIL-ci1.json"
+    },
+    {
+      "ticker": "SIL",
+      "exchange": "ICA",
+      "filename": "SIL-ic1.json"
+    },
+    {
+      "ticker": "SIL",
+      "exchange": "NCC",
+      "filename": "SIL-nc1.json"
+    },
+    {
+      "ticker": "NL",
+      "exchange": "ANT",
+      "filename": "NL-ai1.json"
+    },
+    {
+      "ticker": "NL",
+      "exchange": "CIS",
+      "filename": "NL-ci1.json"
+    },
+    {
+      "ticker": "NL",
+      "exchange": "ICA",
+      "filename": "NL-ic1.json"
+    },
+    {
+      "ticker": "NL",
+      "exchange": "NCC",
+      "filename": "NL-nc1.json"
+    },
+    {
+      "ticker": "KV",
+      "exchange": "ANT",
+      "filename": "KV-ai1.json"
+    },
+    {
+      "ticker": "KV",
+      "exchange": "CIS",
+      "filename": "KV-ci1.json"
+    },
+    {
+      "ticker": "KV",
+      "exchange": "ICA",
+      "filename": "KV-ic1.json"
+    },
+    {
+      "ticker": "KV",
+      "exchange": "NCC",
+      "filename": "KV-nc1.json"
+    }
+  ],
+  "tickerCount": 333,
+  "fileCount": 1332
+}

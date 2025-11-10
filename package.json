@@ -12,6 +12,7 @@
     "upload-missing-gcs": "tsx scripts/upload-missing-to-gcs.ts",
     "move-to-production-gcs": "tsx scripts/move-to-production-gcs.ts",
     "analyze-historical": "tsx scripts/analyze-historical-prices.ts",
+    "generate-manifest": "tsx scripts/generate-historical-manifest.ts",
     "test-production-mode": "tsx scripts/test-production-mode.ts",
     "start": "next start"
   },
