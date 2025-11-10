@@ -49,10 +49,12 @@ jobs:
       - name: Set up Cloud SDK
         uses: google-github-actions/setup-gcloud@v2
 
-      - name: Upload to Google Cloud Storage
+      - name: Upload to Google Cloud Storage and Update Indices
         run: |
-          # Get current timestamp for historical snapshots
-          TIMESTAMP=$(date -u +"%Y-%m-%dT%H-%M-%SZ")
+          # Get current timestamp for historical snapshots (ISO 8601 format)
+          # IMPORTANT: This timestamp is used for BOTH file uploads and index updates
+          # to ensure they reference the same files
+          TIMESTAMP=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
           echo "Snapshot timestamp: ${TIMESTAMP}"
 
           # Upload standard exchange-specific data files (exchange-sellAt combinations)
@@ -117,9 +119,9 @@ jobs:
 
           echo "✅ All files uploaded to GCS"
 
-      - name: Update historical indices
-        run: |
-          TIMESTAMP=$(date -u +"%Y-%m-%dT%H-%M-%SZ")
+          # ============================================================
+          # UPDATE HISTORICAL INDICES (using same TIMESTAMP from above)
+          # ============================================================
 
           # Function to update index for a given configuration
           update_index() {
