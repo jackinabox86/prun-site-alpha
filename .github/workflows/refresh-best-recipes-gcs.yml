@@ -51,8 +51,8 @@ jobs:
 
       - name: Upload to Google Cloud Storage
         run: |
-          # Get current timestamp for historical snapshots
-          TIMESTAMP=$(date -u +"%Y-%m-%dT%H-%M-%SZ")
+          # Get current timestamp for historical snapshots (ISO 8601 format)
+          TIMESTAMP=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
           echo "Snapshot timestamp: ${TIMESTAMP}"
 
           # Upload standard exchange-specific data files (exchange-sellAt combinations)
@@ -119,7 +119,8 @@ jobs:
 
       - name: Update historical indices
         run: |
-          TIMESTAMP=$(date -u +"%Y-%m-%dT%H-%M-%SZ")
+          # Use same timestamp format as snapshots (ISO 8601)
+          TIMESTAMP=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
 
           # Function to update index for a given configuration
           update_index() {

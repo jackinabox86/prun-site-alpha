@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 import type { Exchange, PriceType } from "@/types";
 import type { BestRecipeResult } from "@/server/bestRecipes";
 import { apiCache } from "../lib/cache";
+import { parseTimestamp, getTimestampMillis } from "../lib/timestamp";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -105,16 +106,18 @@ export async function GET(request: Request) {
     let snapshots = indexData.snapshots;
     if (fromParam) {
       const fromDate = new Date(fromParam);
-      snapshots = snapshots.filter(s => new Date(s.timestamp) >= fromDate);
+      const fromMillis = fromDate.getTime();
+      snapshots = snapshots.filter(s => getTimestampMillis(s.timestamp) >= fromMillis);
     }
     if (toParam) {
       const toDate = new Date(toParam);
-      snapshots = snapshots.filter(s => new Date(s.timestamp) <= toDate);
+      const toMillis = toDate.getTime();
+      snapshots = snapshots.filter(s => getTimestampMillis(s.timestamp) <= toMillis);
     }
 
     // Sort by timestamp descending (most recent first) and apply limit
     snapshots = snapshots.sort((a, b) =>
-      new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
+      getTimestampMillis(b.timestamp) - getTimestampMillis(a.timestamp)
     ).slice(0, limit);
 
     // Fetch all snapshots in parallel
@@ -153,7 +156,7 @@ export async function GET(request: Request) {
     // Filter out nulls and sort by timestamp ascending
     const validSnapshots = results
       .filter((r): r is NonNullable<typeof r> => r !== null)
-      .sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime());
+      .sort((a, b) => getTimestampMillis(a.timestamp) - getTimestampMillis(b.timestamp));
 
     // Calculate changes sequentially after data is loaded
     const history: HistoricalSnapshot[] = [];

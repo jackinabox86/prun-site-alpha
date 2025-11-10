@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 import type { Exchange } from "@/types";
 import type { BestRecipeResult } from "@/server/bestRecipes";
 import { apiCache } from "../lib/cache";
+import { parseTimestamp, getTimestampMillis } from "../lib/timestamp";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -63,9 +64,10 @@ function findClosestSnapshot(snapshots: IndexEntry[], targetDate: Date): IndexEn
   if (snapshots.length === 0) return null;
 
   // Find the snapshot closest to (but not after) the target date
+  const targetMillis = targetDate.getTime();
   const beforeOrAt = snapshots
-    .filter(s => new Date(s.timestamp) <= targetDate)
-    .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
+    .filter(s => getTimestampMillis(s.timestamp) <= targetMillis)
+    .sort((a, b) => getTimestampMillis(b.timestamp) - getTimestampMillis(a.timestamp));
 
   return beforeOrAt[0] || null;
 }
@@ -146,10 +148,10 @@ export async function GET(request: Request) {
 
     // Find the most recent snapshot
     const sortedSnapshots = [...indexData.snapshots].sort(
-      (a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
+      (a, b) => getTimestampMillis(b.timestamp) - getTimestampMillis(a.timestamp)
     );
     const currentSnapshot = sortedSnapshots[0];
-    const currentTimestamp = new Date(currentSnapshot.timestamp);
+    const currentTimestamp = parseTimestamp(currentSnapshot.timestamp);
 
     // Find the target timestamp based on period
     const targetTimestamp = getTargetTimestamp(period, currentTimestamp);
