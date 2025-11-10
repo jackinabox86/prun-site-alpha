@@ -362,7 +362,13 @@ export default function BestRecipesClient() {
                     <th
                       key={col}
                       onClick={() => handleSort(col as keyof BestRecipeResult)}
-                      style={{ cursor: "pointer", userSelect: "none" }}
+                      style={{
+                        cursor: "pointer",
+                        userSelect: "none",
+                        textAlign: ["ticker", "recipeId", "profitPA", "buyAllProfitPA"].includes(col) ? "center" : undefined,
+                        width: col !== "scenario" ? "1%" : undefined,
+                        whiteSpace: "nowrap"
+                      }}
                     >
                       {col === "ticker" && "Ticker"}
                       {col === "recipeId" && "RecipeID"}
@@ -376,16 +382,16 @@ export default function BestRecipesClient() {
                       )}
                     </th>
                   ))}
-                  <th>Analysis</th>
+                  <th style={{ textAlign: "center", whiteSpace: "nowrap", width: "1%" }}>Analysis</th>
                 </tr>
               </thead>
               <tbody>
                 {sortedData.map((row, idx) => (
                   <tr key={`${row.ticker}-${idx}`}>
-                    <td style={{ fontWeight: "bold", color: "var(--color-accent-primary)" }}>
+                    <td style={{ fontWeight: "bold", color: "var(--color-accent-primary)", textAlign: "center", width: "1%", whiteSpace: "nowrap" }}>
                       {row.ticker}
                     </td>
-                    <td style={{ fontFamily: "var(--font-mono)" }}>
+                    <td style={{ fontFamily: "var(--font-mono)", textAlign: "center", width: "1%", whiteSpace: "nowrap" }}>
                       {row.recipeId || <span style={{ color: "var(--color-text-muted)" }}>—</span>}
                     </td>
                     <td
@@ -394,19 +400,19 @@ export default function BestRecipesClient() {
                     >
                       {row.scenario ? scenarioDisplayName(row.scenario) : <span style={{ color: "var(--color-text-muted)" }}>—</span>}
                     </td>
-                    <td style={{ textAlign: "right", fontFamily: "var(--font-mono)" }}>
+                    <td style={{ textAlign: "center", fontFamily: "var(--font-mono)", width: "1%", whiteSpace: "nowrap" }}>
                       {typeof row.profitPA === "number" && Number.isFinite(row.profitPA)
-                        ? <span className="status-success">{formatProfitPerArea(row.profitPA, exchange as Exchange)}</span>
+                        ? <span className={row.profitPA >= 0 ? "status-success" : "status-error"}>{formatProfitPerArea(row.profitPA, exchange as Exchange)}</span>
                         : <span style={{ color: "var(--color-text-muted)" }}>—</span>}
                     </td>
-                    <td style={{ textAlign: "right", fontFamily: "var(--font-mono)" }}>
+                    <td style={{ textAlign: "center", fontFamily: "var(--font-mono)", width: "1%", whiteSpace: "nowrap" }}>
                       {row.buyAllProfitPA === null
                         ? <span style={{ fontSize: "0.75rem", color: "var(--color-text-muted)" }}>Input N/A</span>
                         : typeof row.buyAllProfitPA === "number" && Number.isFinite(row.buyAllProfitPA)
-                        ? <span className={row.buyAllProfitPA > 0 ? "status-success" : "status-error"}>{formatProfitPerArea(row.buyAllProfitPA, exchange as Exchange)}</span>
+                        ? <span className={row.buyAllProfitPA >= 0 ? "status-success" : "status-error"}>{formatProfitPerArea(row.buyAllProfitPA, exchange as Exchange)}</span>
                         : <span style={{ color: "var(--color-text-muted)" }}>—</span>}
                     </td>
-                    <td style={{ textAlign: "center" }}>
+                    <td style={{ textAlign: "center", width: "1%", whiteSpace: "nowrap" }}>
                       <a
                         href={`/?ticker=${encodeURIComponent(row.ticker)}`}
                         className="terminal-button"
