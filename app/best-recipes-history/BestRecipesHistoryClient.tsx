@@ -98,6 +98,7 @@ export default function BestRecipesHistoryClient() {
 
   // History state
   const [selectedTicker, setSelectedTicker] = useState<string>("");
+  const [tickerInput, setTickerInput] = useState<string>("");
   const [historyLoading, setHistoryLoading] = useState(false);
   const [historyData, setHistoryData] = useState<HistoricalSnapshot[]>([]);
   const [historyError, setHistoryError] = useState<string | null>(null);
@@ -184,6 +185,19 @@ export default function BestRecipesHistoryClient() {
     }, 100);
   };
 
+  const handleTickerJump = (e: React.FormEvent) => {
+    e.preventDefault();
+    const ticker = tickerInput.trim().toUpperCase();
+    if (ticker) {
+      setSelectedTicker(ticker);
+      setTickerInput("");
+      // Scroll to history section
+      setTimeout(() => {
+        document.getElementById("ticker-history")?.scrollIntoView({ behavior: "smooth" });
+      }, 100);
+    }
+  };
+
   // Handle sorting
   const handleSort = (column: keyof MoverResult) => {
     if (sortColumn === column) {
@@ -259,33 +273,37 @@ export default function BestRecipesHistoryClient() {
   } : null;
 
   return (
-    <div style={{ padding: "20px", maxWidth: "1600px", margin: "0 auto" }}>
-      <h1 style={{ color: "#ff8c00", marginBottom: "10px" }}>Best Recipes Historical Analysis</h1>
-      <p style={{ color: "#ccc", marginBottom: "30px" }}>
-        Track profitability changes over time and identify the biggest movers in the market.
-      </p>
+    <div className="terminal-container">
+      {/* Header Section */}
+      <div className="terminal-box" style={{ marginBottom: "2rem" }}>
+        <h1 className="terminal-header" style={{ fontSize: "1.2rem" }}>
+          BEST RECIPES // HISTORICAL ANALYSIS
+        </h1>
+        <p style={{ color: "var(--color-text-secondary)", fontSize: "0.875rem", lineHeight: "1.6" }}>
+          This page tracks historical changes in best recipe profitability across all tickers.
+          The <strong style={{ color: "var(--color-accent-primary)" }}>Biggest Movers</strong> table below shows which tickers have experienced the largest profit changes over your selected time period.
+          You can sort the table by clicking any column header.
+          To view detailed historical data for a specific ticker, simply <strong style={{ color: "var(--color-accent-primary)" }}>click on a ticker name</strong> in the table,
+          or use the "Jump to Deep Dive" input to search directly.
+        </p>
+      </div>
 
       {/* Movers Section */}
-      <section style={{ marginBottom: "50px" }}>
-        <h2 style={{ color: "#ff8c00", marginBottom: "15px" }}>
-          Biggest Movers - Top Profit/Loss Changes
+      <section className="terminal-box" style={{ marginBottom: "2rem" }}>
+        <h2 className="terminal-header">
+          BIGGEST MOVERS // TOP PROFIT/LOSS CHANGES
         </h2>
 
         {/* Controls */}
-        <div style={{ display: "flex", gap: "15px", marginBottom: "20px", flexWrap: "wrap" }}>
+        <div style={{ display: "flex", gap: "1rem", marginBottom: "1.5rem", flexWrap: "wrap" }}>
           <div>
-            <label style={{ display: "block", marginBottom: "5px", color: "#ccc" }}>
+            <label style={{ display: "block", marginBottom: "0.5rem", color: "var(--color-text-secondary)", fontSize: "0.875rem", fontFamily: "var(--font-mono)", textTransform: "uppercase" }}>
               Period:
             </label>
             <select
               value={period}
               onChange={(e) => setPeriod(e.target.value)}
-              style={{
-                padding: "8px",
-                backgroundColor: "#1a1a1a",
-                color: "#ff8c00",
-                border: "1px solid #ff8c00",
-              }}
+              className="terminal-select"
             >
               {PERIOD_OPTIONS.map((opt) => (
                 <option key={opt.value} value={opt.value}>
@@ -296,18 +314,13 @@ export default function BestRecipesHistoryClient() {
           </div>
 
           <div>
-            <label style={{ display: "block", marginBottom: "5px", color: "#ccc" }}>
+            <label style={{ display: "block", marginBottom: "0.5rem", color: "var(--color-text-secondary)", fontSize: "0.875rem", fontFamily: "var(--font-mono)", textTransform: "uppercase" }}>
               Exchange:
             </label>
             <select
               value={exchange}
               onChange={(e) => setExchange(e.target.value)}
-              style={{
-                padding: "8px",
-                backgroundColor: "#1a1a1a",
-                color: "#ff8c00",
-                border: "1px solid #ff8c00",
-              }}
+              className="terminal-select"
             >
               {EXCHANGE_OPTIONS.map((opt) => (
                 <option key={opt.value} value={opt.value}>
@@ -318,18 +331,13 @@ export default function BestRecipesHistoryClient() {
           </div>
 
           <div>
-            <label style={{ display: "block", marginBottom: "5px", color: "#ccc" }}>
+            <label style={{ display: "block", marginBottom: "0.5rem", color: "var(--color-text-secondary)", fontSize: "0.875rem", fontFamily: "var(--font-mono)", textTransform: "uppercase" }}>
               Sell At:
             </label>
             <select
               value={sellAt}
               onChange={(e) => setSellAt(e.target.value)}
-              style={{
-                padding: "8px",
-                backgroundColor: "#1a1a1a",
-                color: "#ff8c00",
-                border: "1px solid #ff8c00",
-              }}
+              className="terminal-select"
             >
               {SELL_AT_OPTIONS.map((opt) => (
                 <option key={opt.value} value={opt.value}>
@@ -338,10 +346,29 @@ export default function BestRecipesHistoryClient() {
               ))}
             </select>
           </div>
+
+          <div style={{ marginLeft: "auto" }}>
+            <label style={{ display: "block", marginBottom: "0.5rem", color: "var(--color-text-secondary)", fontSize: "0.875rem", fontFamily: "var(--font-mono)", textTransform: "uppercase" }}>
+              Jump to Deep Dive:
+            </label>
+            <form onSubmit={handleTickerJump} style={{ display: "flex", gap: "0.5rem" }}>
+              <input
+                type="text"
+                value={tickerInput}
+                onChange={(e) => setTickerInput(e.target.value.toUpperCase())}
+                placeholder="Ticker..."
+                className="terminal-input"
+                style={{ width: "120px" }}
+              />
+              <button type="submit" className="terminal-button">
+                GO
+              </button>
+            </form>
+          </div>
         </div>
 
         {comparisonTimestamps && (
-          <p style={{ color: "#888", fontSize: "14px", marginBottom: "15px" }}>
+          <p style={{ color: "var(--color-text-secondary)", fontSize: "0.875rem", marginBottom: "1rem", fontFamily: "var(--font-mono)" }}>
             Comparing {formatTimestamp(comparisonTimestamps.current)} with{" "}
             {formatTimestamp(comparisonTimestamps.previous)}
           </p>
@@ -349,64 +376,57 @@ export default function BestRecipesHistoryClient() {
 
         {/* Movers Table */}
         {moversLoading ? (
-          <p style={{ color: "#ccc" }}>Loading movers data...</p>
+          <p className="terminal-loading" style={{ color: "var(--color-text-primary)" }}>Loading movers data</p>
         ) : moversError ? (
-          <p style={{ color: "#ff4444" }}>Error: {moversError}</p>
+          <p className="status-error">Error: {moversError}</p>
         ) : moversData.length > 0 ? (
           <div style={{ overflowX: "auto" }}>
-            <table
-              style={{
-                width: "100%",
-                borderCollapse: "collapse",
-                backgroundColor: "#1a1a1a",
-                color: "#ccc",
-              }}
-            >
+            <table className="terminal-table">
               <thead>
-                <tr style={{ backgroundColor: "#222", color: "#ff8c00" }}>
+                <tr>
                   <th
                     onClick={() => handleSort("ticker")}
-                    style={{ padding: "10px", textAlign: "left", borderBottom: "2px solid #ff8c00", cursor: "pointer", userSelect: "none" }}>
+                    style={{ cursor: "pointer", userSelect: "none" }}>
                     Ticker {sortColumn === "ticker" && (sortDirection === "asc" ? "▲" : "▼")}
                   </th>
                   <th
                     onClick={() => handleSort("currentProfitPA")}
-                    style={{ padding: "10px", textAlign: "right", borderBottom: "2px solid #ff8c00", cursor: "pointer", userSelect: "none" }}>
+                    style={{ textAlign: "right", cursor: "pointer", userSelect: "none" }}>
                     Current P/A {sortColumn === "currentProfitPA" && (sortDirection === "asc" ? "▲" : "▼")}
                   </th>
                   <th
                     onClick={() => handleSort("previousProfitPA")}
-                    style={{ padding: "10px", textAlign: "right", borderBottom: "2px solid #ff8c00", cursor: "pointer", userSelect: "none" }}>
+                    style={{ textAlign: "right", cursor: "pointer", userSelect: "none" }}>
                     Previous P/A {sortColumn === "previousProfitPA" && (sortDirection === "asc" ? "▲" : "▼")}
                   </th>
                   <th
                     onClick={() => handleSort("absoluteChange")}
-                    style={{ padding: "10px", textAlign: "right", borderBottom: "2px solid #ff8c00", cursor: "pointer", userSelect: "none" }}>
+                    style={{ textAlign: "right", cursor: "pointer", userSelect: "none" }}>
                     Change {sortColumn === "absoluteChange" && (sortDirection === "asc" ? "▲" : "▼")}
                   </th>
                   <th
                     onClick={() => handleSort("percentChange")}
-                    style={{ padding: "10px", textAlign: "right", borderBottom: "2px solid #ff8c00", cursor: "pointer", userSelect: "none" }}>
+                    style={{ textAlign: "right", cursor: "pointer", userSelect: "none" }}>
                     % Change {sortColumn === "percentChange" && (sortDirection === "asc" ? "▲" : "▼")}
                   </th>
                   <th
                     onClick={() => handleSort("currentBuyAllProfitPA")}
-                    style={{ padding: "10px", textAlign: "right", borderBottom: "2px solid #ff8c00", cursor: "pointer", userSelect: "none" }}>
+                    style={{ textAlign: "right", cursor: "pointer", userSelect: "none" }}>
                     Buy-All P/A {sortColumn === "currentBuyAllProfitPA" && (sortDirection === "asc" ? "▲" : "▼")}
                   </th>
                   <th
                     onClick={() => handleSort("buyAllAbsoluteChange")}
-                    style={{ padding: "10px", textAlign: "right", borderBottom: "2px solid #ff8c00", cursor: "pointer", userSelect: "none" }}>
+                    style={{ textAlign: "right", cursor: "pointer", userSelect: "none" }}>
                     Buy-All Change {sortColumn === "buyAllAbsoluteChange" && (sortDirection === "asc" ? "▲" : "▼")}
                   </th>
                   <th
                     onClick={() => handleSort("buyAllPercentChange")}
-                    style={{ padding: "10px", textAlign: "right", borderBottom: "2px solid #ff8c00", cursor: "pointer", userSelect: "none" }}>
+                    style={{ textAlign: "right", cursor: "pointer", userSelect: "none" }}>
                     Buy-All % {sortColumn === "buyAllPercentChange" && (sortDirection === "asc" ? "▲" : "▼")}
                   </th>
                   <th
                     onClick={() => handleSort("recipeChanged")}
-                    style={{ padding: "10px", textAlign: "center", borderBottom: "2px solid #ff8c00", cursor: "pointer", userSelect: "none" }}>
+                    style={{ textAlign: "center", cursor: "pointer", userSelect: "none" }}>
                     Recipe Changed {sortColumn === "recipeChanged" && (sortDirection === "asc" ? "▲" : "▼")}
                   </th>
                 </tr>
@@ -415,62 +435,48 @@ export default function BestRecipesHistoryClient() {
                 {sortedMovers.map((mover, idx) => (
                   <tr
                     key={`${mover.ticker}-${idx}`}
-                    style={{
-                      borderBottom: "1px solid #333",
-                      cursor: "pointer",
-                      backgroundColor: selectedTicker === mover.ticker ? "#2a2a2a" : "transparent",
-                    }}
+                    style={{ cursor: "pointer" }}
                     onClick={() => handleTickerClick(mover.ticker)}
-                    onMouseEnter={(e) => {
-                      e.currentTarget.style.backgroundColor = "#2a2a2a";
-                    }}
-                    onMouseLeave={(e) => {
-                      e.currentTarget.style.backgroundColor =
-                        selectedTicker === mover.ticker ? "#2a2a2a" : "transparent";
-                    }}
                   >
-                    <td style={{ padding: "10px", fontWeight: "bold", color: "#ff8c00" }}>
+                    <td style={{ fontWeight: "bold", color: "var(--color-accent-primary)" }}>
                       {mover.ticker}
                     </td>
-                    <td style={{ padding: "10px", textAlign: "right" }}>
+                    <td style={{ textAlign: "right" }}>
                       {formatProfitPerArea(mover.currentProfitPA, exchange as Exchange)}
                     </td>
-                    <td style={{ padding: "10px", textAlign: "right" }}>
+                    <td style={{ textAlign: "right" }}>
                       {mover.previousProfitPA !== null
                         ? formatProfitPerArea(mover.previousProfitPA, exchange as Exchange)
                         : "N/A"}
                     </td>
                     <td
                       style={{
-                        padding: "10px",
                         textAlign: "right",
-                        color: mover.absoluteChange >= 0 ? "#4ade80" : "#f87171",
+                        color: mover.absoluteChange >= 0 ? "var(--color-success)" : "var(--color-error)",
                       }}
                     >
                       {formatChange(mover.absoluteChange)}
                     </td>
                     <td
                       style={{
-                        padding: "10px",
                         textAlign: "right",
                         fontWeight: "bold",
-                        color: mover.percentChange >= 0 ? "#4ade80" : "#f87171",
+                        color: mover.percentChange >= 0 ? "var(--color-success)" : "var(--color-error)",
                       }}
                     >
                       {formatPercent(mover.percentChange)}
                     </td>
-                    <td style={{ padding: "10px", textAlign: "right", color: "#888" }}>
+                    <td style={{ textAlign: "right", color: "var(--color-text-muted)" }}>
                       {mover.currentBuyAllProfitPA !== null
                         ? formatProfitPerArea(mover.currentBuyAllProfitPA, exchange as Exchange)
                         : "N/A"}
                     </td>
                     <td
                       style={{
-                        padding: "10px",
                         textAlign: "right",
                         color: mover.buyAllAbsoluteChange !== null
-                          ? mover.buyAllAbsoluteChange >= 0 ? "#4ade80" : "#f87171"
-                          : "#666",
+                          ? mover.buyAllAbsoluteChange >= 0 ? "var(--color-success)" : "var(--color-error)"
+                          : "var(--color-text-muted)",
                       }}
                     >
                       {mover.buyAllAbsoluteChange !== null
@@ -479,11 +485,10 @@ export default function BestRecipesHistoryClient() {
                     </td>
                     <td
                       style={{
-                        padding: "10px",
                         textAlign: "right",
                         color: mover.buyAllPercentChange !== null
-                          ? mover.buyAllPercentChange >= 0 ? "#4ade80" : "#f87171"
-                          : "#666",
+                          ? mover.buyAllPercentChange >= 0 ? "var(--color-success)" : "var(--color-error)"
+                          : "var(--color-text-muted)",
                       }}
                     >
                       {mover.buyAllPercentChange !== null
@@ -492,9 +497,8 @@ export default function BestRecipesHistoryClient() {
                     </td>
                     <td
                       style={{
-                        padding: "10px",
                         textAlign: "center",
-                        color: mover.recipeChanged ? "#ff8c00" : "#666",
+                        color: mover.recipeChanged ? "var(--color-accent-primary)" : "var(--color-text-muted)",
                       }}
                     >
                       {mover.recipeChanged ? "Yes" : "No"}
@@ -505,24 +509,24 @@ export default function BestRecipesHistoryClient() {
             </table>
           </div>
         ) : (
-          <p style={{ color: "#888" }}>No movers data available.</p>
+          <p style={{ color: "var(--color-text-secondary)" }}>No movers data available.</p>
         )}
       </section>
 
       {/* Ticker History Section */}
-      <section id="ticker-history">
-        <h2 style={{ color: "#ff8c00", marginBottom: "15px" }}>
+      <section id="ticker-history" className="terminal-box" style={{ marginBottom: "2rem" }}>
+        <h2 className="terminal-header">
           Ticker Deep Dive{selectedTicker ? `: ${selectedTicker}` : ""}
         </h2>
 
         {!selectedTicker ? (
-          <p style={{ color: "#888" }}>
+          <p style={{ color: "var(--color-text-secondary)" }}>
             Click on a ticker from the movers table above to view its historical data.
           </p>
         ) : historyLoading ? (
-          <p style={{ color: "#ccc" }}>Loading history for {selectedTicker}...</p>
+          <p className="terminal-loading" style={{ color: "var(--color-text-primary)" }}>Loading history for {selectedTicker}</p>
         ) : historyError ? (
-          <p style={{ color: "#ff4444" }}>Error: {historyError}</p>
+          <p className="status-error">Error: {historyError}</p>
         ) : historyData.length > 0 ? (
           <>
             {/* Stats Box */}
@@ -531,52 +535,53 @@ export default function BestRecipesHistoryClient() {
                 style={{
                   display: "grid",
                   gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))",
-                  gap: "15px",
-                  marginBottom: "25px",
-                  padding: "20px",
-                  backgroundColor: "#1a1a1a",
-                  border: "1px solid #ff8c00",
+                  gap: "1rem",
+                  marginBottom: "1.5rem",
+                  padding: "1.25rem",
+                  backgroundColor: "var(--color-bg-tertiary)",
+                  border: "1px solid var(--color-border-primary)",
+                  borderRadius: "4px",
                 }}
               >
                 <div>
-                  <div style={{ color: "#888", fontSize: "12px" }}>Current P/A</div>
-                  <div style={{ color: "#ff8c00", fontSize: "18px", fontWeight: "bold" }}>
+                  <div style={{ color: "var(--color-text-muted)", fontSize: "0.75rem" }}>Current P/A</div>
+                  <div style={{ color: "var(--color-accent-primary)", fontSize: "1.125rem", fontWeight: "bold" }}>
                     {formatProfitPerArea(historyStats.current, exchange as Exchange)}
                   </div>
                 </div>
                 <div>
-                  <div style={{ color: "#888", fontSize: "12px" }}>Change Since Start</div>
+                  <div style={{ color: "var(--color-text-muted)", fontSize: "0.75rem" }}>Change Since Start</div>
                   <div
                     style={{
-                      fontSize: "18px",
+                      fontSize: "1.125rem",
                       fontWeight: "bold",
-                      color: historyStats.current - historyStats.oldest >= 0 ? "#4ade80" : "#f87171",
+                      color: historyStats.current - historyStats.oldest >= 0 ? "var(--color-success)" : "var(--color-error)",
                     }}
                   >
                     {formatChange(historyStats.current - historyStats.oldest)}
                   </div>
                 </div>
                 <div>
-                  <div style={{ color: "#888", fontSize: "12px" }}>Average P/A</div>
-                  <div style={{ color: "#ccc", fontSize: "18px", fontWeight: "bold" }}>
+                  <div style={{ color: "var(--color-text-muted)", fontSize: "0.75rem" }}>Average P/A</div>
+                  <div style={{ color: "var(--color-text-primary)", fontSize: "1.125rem", fontWeight: "bold" }}>
                     {formatProfitPerArea(historyStats.avg, exchange as Exchange)}
                   </div>
                 </div>
                 <div>
-                  <div style={{ color: "#888", fontSize: "12px" }}>Max P/A</div>
-                  <div style={{ color: "#4ade80", fontSize: "18px", fontWeight: "bold" }}>
+                  <div style={{ color: "var(--color-text-muted)", fontSize: "0.75rem" }}>Max P/A</div>
+                  <div style={{ color: "var(--color-success)", fontSize: "1.125rem", fontWeight: "bold" }}>
                     {formatProfitPerArea(historyStats.max, exchange as Exchange)}
                   </div>
                 </div>
                 <div>
-                  <div style={{ color: "#888", fontSize: "12px" }}>Min P/A</div>
-                  <div style={{ color: "#f87171", fontSize: "18px", fontWeight: "bold" }}>
+                  <div style={{ color: "var(--color-text-muted)", fontSize: "0.75rem" }}>Min P/A</div>
+                  <div style={{ color: "var(--color-error)", fontSize: "1.125rem", fontWeight: "bold" }}>
                     {formatProfitPerArea(historyStats.min, exchange as Exchange)}
                   </div>
                 </div>
                 <div>
-                  <div style={{ color: "#888", fontSize: "12px" }}>Recipe Changes</div>
-                  <div style={{ color: "#ff8c00", fontSize: "18px", fontWeight: "bold" }}>
+                  <div style={{ color: "var(--color-text-muted)", fontSize: "0.75rem" }}>Recipe Changes</div>
+                  <div style={{ color: "var(--color-accent-primary)", fontSize: "1.125rem", fontWeight: "bold" }}>
                     {historyStats.recipeChanges}
                   </div>
                 </div>
@@ -584,7 +589,7 @@ export default function BestRecipesHistoryClient() {
             )}
 
             {/* Chart */}
-            <div style={{ marginBottom: "25px" }}>
+            <div style={{ marginBottom: "1.5rem" }}>
               <Plot
                 data={[
                   {
@@ -592,24 +597,24 @@ export default function BestRecipesHistoryClient() {
                     y: historyData.map((h) => h.profitPA),
                     type: "scatter",
                     mode: "lines+markers",
-                    marker: { color: "#ff8c00", size: 6 },
-                    line: { color: "#ff8c00", width: 2 },
+                    marker: { color: "rgb(255, 149, 0)", size: 6 },
+                    line: { color: "rgb(255, 149, 0)", width: 2 },
                     name: "Profit P/A",
                   },
                 ]}
                 layout={{
-                  paper_bgcolor: "#1a1a1a",
-                  plot_bgcolor: "#1a1a1a",
-                  font: { color: "#ccc" },
+                  paper_bgcolor: "rgb(16, 20, 25)",
+                  plot_bgcolor: "rgb(16, 20, 25)",
+                  font: { color: "rgb(230, 232, 235)" },
                   xaxis: {
                     title: "Timestamp",
-                    gridcolor: "#333",
-                    color: "#ccc",
+                    gridcolor: "rgb(42, 63, 95)",
+                    color: "rgb(230, 232, 235)",
                   },
                   yaxis: {
                     title: "Profit per Area (P/A)",
-                    gridcolor: "#333",
-                    color: "#ccc",
+                    gridcolor: "rgb(42, 63, 95)",
+                    color: "rgb(230, 232, 235)",
                   },
                   margin: { l: 60, r: 40, t: 40, b: 80 },
                   hovermode: "closest",
@@ -621,64 +626,40 @@ export default function BestRecipesHistoryClient() {
 
             {/* History Table */}
             <div style={{ overflowX: "auto" }}>
-              <table
-                style={{
-                  width: "100%",
-                  borderCollapse: "collapse",
-                  backgroundColor: "#1a1a1a",
-                  color: "#ccc",
-                }}
-              >
+              <table className="terminal-table">
                 <thead>
-                  <tr style={{ backgroundColor: "#222", color: "#ff8c00" }}>
-                    <th style={{ padding: "10px", textAlign: "left", borderBottom: "2px solid #ff8c00" }}>
-                      Timestamp
-                    </th>
-                    <th style={{ padding: "10px", textAlign: "left", borderBottom: "2px solid #ff8c00" }}>
-                      Recipe ID
-                    </th>
-                    <th style={{ padding: "10px", textAlign: "right", borderBottom: "2px solid #ff8c00" }}>
-                      Profit P/A
-                    </th>
-                    <th style={{ padding: "10px", textAlign: "right", borderBottom: "2px solid #ff8c00" }}>
-                      Change
-                    </th>
-                    <th style={{ padding: "10px", textAlign: "right", borderBottom: "2px solid #ff8c00" }}>
-                      % Change
-                    </th>
-                    <th style={{ padding: "10px", textAlign: "right", borderBottom: "2px solid #ff8c00" }}>
-                      Buy-All P/A
-                    </th>
-                    <th style={{ padding: "10px", textAlign: "right", borderBottom: "2px solid #ff8c00" }}>
-                      Buy-All Change
-                    </th>
-                    <th style={{ padding: "10px", textAlign: "right", borderBottom: "2px solid #ff8c00" }}>
-                      Buy-All %
-                    </th>
+                  <tr>
+                    <th>Timestamp</th>
+                    <th>Recipe ID</th>
+                    <th style={{ textAlign: "right" }}>Profit P/A</th>
+                    <th style={{ textAlign: "right" }}>Change</th>
+                    <th style={{ textAlign: "right" }}>% Change</th>
+                    <th style={{ textAlign: "right" }}>Buy-All P/A</th>
+                    <th style={{ textAlign: "right" }}>Buy-All Change</th>
+                    <th style={{ textAlign: "right" }}>Buy-All %</th>
                   </tr>
                 </thead>
                 <tbody>
                   {historyData.map((snapshot, idx) => (
-                    <tr key={`${snapshot.timestamp}-${idx}`} style={{ borderBottom: "1px solid #333" }}>
-                      <td style={{ padding: "10px", fontSize: "12px" }}>
+                    <tr key={`${snapshot.timestamp}-${idx}`}>
+                      <td style={{ fontSize: "0.75rem" }}>
                         {formatTimestamp(snapshot.timestamp)}
                       </td>
-                      <td style={{ padding: "10px", fontFamily: "monospace", fontSize: "12px" }}>
+                      <td style={{ fontFamily: "var(--font-mono)", fontSize: "0.75rem" }}>
                         {snapshot.recipeId || "BUY"}
                       </td>
-                      <td style={{ padding: "10px", textAlign: "right" }}>
+                      <td style={{ textAlign: "right" }}>
                         {formatProfitPerArea(snapshot.profitPA, exchange as Exchange)}
                       </td>
                       <td
                         style={{
-                          padding: "10px",
                           textAlign: "right",
                           color:
                             snapshot.changeFromPrevious === undefined
-                              ? "#666"
+                              ? "var(--color-text-muted)"
                               : snapshot.changeFromPrevious >= 0
-                              ? "#4ade80"
-                              : "#f87171",
+                              ? "var(--color-success)"
+                              : "var(--color-error)",
                         }}
                       >
                         {snapshot.changeFromPrevious !== undefined
@@ -687,33 +668,31 @@ export default function BestRecipesHistoryClient() {
                       </td>
                       <td
                         style={{
-                          padding: "10px",
                           textAlign: "right",
                           color:
                             snapshot.percentChange === undefined
-                              ? "#666"
+                              ? "var(--color-text-muted)"
                               : snapshot.percentChange >= 0
-                              ? "#4ade80"
-                              : "#f87171",
+                              ? "var(--color-success)"
+                              : "var(--color-error)",
                         }}
                       >
                         {snapshot.percentChange !== undefined ? formatPercent(snapshot.percentChange) : "-"}
                       </td>
-                      <td style={{ padding: "10px", textAlign: "right", color: "#888" }}>
+                      <td style={{ textAlign: "right", color: "var(--color-text-muted)" }}>
                         {snapshot.buyAllProfitPA !== null
                           ? formatProfitPerArea(snapshot.buyAllProfitPA, exchange as Exchange)
                           : "N/A"}
                       </td>
                       <td
                         style={{
-                          padding: "10px",
                           textAlign: "right",
                           color:
                             snapshot.buyAllChangeFromPrevious === undefined
-                              ? "#666"
+                              ? "var(--color-text-muted)"
                               : snapshot.buyAllChangeFromPrevious >= 0
-                              ? "#4ade80"
-                              : "#f87171",
+                              ? "var(--color-success)"
+                              : "var(--color-error)",
                         }}
                       >
                         {snapshot.buyAllChangeFromPrevious !== undefined
@@ -722,14 +701,13 @@ export default function BestRecipesHistoryClient() {
                       </td>
                       <td
                         style={{
-                          padding: "10px",
                           textAlign: "right",
                           color:
                             snapshot.buyAllPercentChange === undefined
-                              ? "#666"
+                              ? "var(--color-text-muted)"
                               : snapshot.buyAllPercentChange >= 0
-                              ? "#4ade80"
-                              : "#f87171",
+                              ? "var(--color-success)"
+                              : "var(--color-error)",
                         }}
                       >
                         {snapshot.buyAllPercentChange !== undefined
