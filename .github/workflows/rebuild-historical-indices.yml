@@ -1,0 +1,126 @@
+name: Rebuild Historical Indices (One-time Fix)
+
+on:
+  # Manual trigger only - run this once to fix corrupted indices
+  workflow_dispatch:
+
+jobs:
+  rebuild:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Authenticate to Google Cloud
+        uses: google-github-actions/auth@v2
+        with:
+          credentials_json: ${{ secrets.GCP_SA_KEY }}
+
+      - name: Set up Cloud SDK
+        uses: google-github-actions/setup-gcloud@v2
+
+      - name: Rebuild all historical indices
+        run: |
+          echo "🔧 Rebuilding historical indices from actual snapshot files..."
+          echo ""
+
+          rebuild_index() {
+            local config=$1
+            local exchange=$2
+            local sellAt=$3
+
+            echo "📋 Processing ${config}..."
+
+            # List all actual snapshot files for this config
+            local files=$(gsutil ls "gs://prun-site-alpha-bucket/historical/${config}/" | grep -E '\.json$' | grep -v "index.json" || true)
+
+            if [ -z "$files" ]; then
+              echo "  ⚠️  No snapshot files found for ${config}"
+              return
+            fi
+
+            # Start building new index
+            echo '{"snapshots":[],"exchange":"","sellAt":"","lastUpdated":""}' > /tmp/index-${config}.json
+
+            # Process each file
+            local count=0
+            local latest_ts=""
+
+            while IFS= read -r file_path; do
+              # Extract timestamp from filename
+              local filename=$(basename "$file_path")
+              local timestamp="${filename%.json}"
+
+              # Download file to count tickers
+              gsutil -q cp "$file_path" /tmp/snapshot-data.json 2>/dev/null || {
+                echo "    ⚠️  Failed to download $filename, skipping"
+                continue
+              }
+
+              # Count tickers
+              local ticker_count=$(jq 'length' /tmp/snapshot-data.json 2>/dev/null || echo "0")
+
+              # Add entry to index using temporary file for jq output
+              jq --arg ts "$timestamp" \
+                 --argjson count "$ticker_count" \
+                 --arg exch "$exchange" \
+                 --arg sell "$sellAt" \
+                 '.snapshots += [{
+                   timestamp: $ts,
+                   generatedAt: $ts,
+                   tickerCount: $count,
+                   durationSeconds: 0
+                 }] |
+                 .exchange = $exch |
+                 .sellAt = $sell |
+                 .lastUpdated = $ts' \
+                 /tmp/index-${config}.json > /tmp/index-${config}-temp.json
+
+              mv /tmp/index-${config}-temp.json /tmp/index-${config}.json
+
+              latest_ts="$timestamp"
+              count=$((count + 1))
+
+              rm -f /tmp/snapshot-data.json
+            done <<< "$files"
+
+            echo "    ✅ Found $count snapshots"
+
+            if [ $count -gt 0 ]; then
+              # Sort snapshots by timestamp before uploading
+              jq '.snapshots |= sort_by(.timestamp)' /tmp/index-${config}.json > /tmp/index-${config}-sorted.json
+
+              # Upload rebuilt index
+              gsutil -h "Cache-Control:public, max-age=300" \
+                     -h "Content-Type:application/json" \
+                     cp /tmp/index-${config}-sorted.json \
+                     "gs://prun-site-alpha-bucket/historical/${config}/index.json"
+
+              echo "    ✅ Uploaded new index with $count entries"
+            fi
+
+            rm -f /tmp/index-${config}.json /tmp/index-${config}-sorted.json
+          }
+
+          # Rebuild indices for all standard configurations
+          for exchange in ANT CIS ICA NCC; do
+            for sellAt in bid ask pp7; do
+              rebuild_index "best-recipes-${exchange}-${sellAt}" "${exchange}" "${sellAt}"
+            done
+          done
+
+          # Rebuild indices for UNV special cases
+          rebuild_index "best-recipes-UNV7" "UNV" "pp7"
+          rebuild_index "best-recipes-UNV30" "UNV" "pp30"
+
+          echo ""
+          echo "✅ All indices rebuilt successfully!"
+
+      - name: Summary
+        run: |
+          echo "## Rebuild Complete" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "✅ All historical indices have been rebuilt from actual snapshot files." >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "This fixed the timestamp mismatch issue where index entries referenced non-existent files." >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### Verification" >> $GITHUB_STEP_SUMMARY
+          echo "Check sample index: [best-recipes-ANT-bid/index.json](https://storage.googleapis.com/prun-site-alpha-bucket/historical/best-recipes-ANT-bid/index.json)" >> $GITHUB_STEP_SUMMARY
