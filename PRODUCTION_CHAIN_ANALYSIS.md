@@ -4,14 +4,56 @@ This document explains how the production chain analysis engine (`src/core/engin
 
 ## Table of Contents
 
-1. [Core Concepts](#core-concepts)
-2. [Profit Calculation](#profit-calculation)
-3. [Input Analysis and Scenario Branching](#input-analysis-and-scenario-branching)
-4. [Recursive Chain Analysis](#recursive-chain-analysis)
-5. [Normalization: Profit Per Area Per Day](#normalization-profit-per-area-per-day)
-6. [Opportunity Cost](#opportunity-cost)
-7. [Scenario Selection and Pruning](#scenario-selection-and-pruning)
-8. [Examples](#examples)
+1. [Assumptions](#assumptions)
+2. [Core Concepts](#core-concepts)
+3. [Profit Calculation](#profit-calculation)
+4. [Input Analysis and Scenario Branching](#input-analysis-and-scenario-branching)
+5. [Recursive Chain Analysis](#recursive-chain-analysis)
+6. [Normalization: Profit Per Area Per Day](#normalization-profit-per-area-per-day)
+7. [Opportunity Cost](#opportunity-cost)
+8. [Scenario Selection and Pruning](#scenario-selection-and-pruning)
+9. [Examples](#examples)
+
+---
+
+## Assumptions
+
+The production chain analysis is built on several key assumptions about how production operates:
+
+### Production Efficiency
+- Each building runs at **maximum efficiency** with 5 experts assigned
+- All buildings benefit from an **aligned COGC (Company Operating Costs Coefficient)** of 160.5%
+- These efficiency assumptions are baked into the workforce and depreciation costs in the recipe data
+
+### Base Infrastructure
+- Each building is assumed to be on a **PrunPlanner optimal base layout**
+- Associated **Habitation Modules** for workforce are accounted for in the base design
+- A **Core Module** is included in the infrastructure costs
+- The area calculations reflect optimized building placement
+
+### Market and Pricing
+- **Prices are available and stable** for all materials in the selected exchange and price mode
+- Recipes are skipped if the primary output lacks a price for the selected price type
+- Market depth and liquidity are not considered (assumes unlimited buy/sell at listed prices)
+- **No transaction costs, fees, or taxes** are included
+- **Transportation costs** between planets/stations are not included
+
+### Operational Assumptions
+- Buildings run **continuously (24/7)** at their stated `runsPerDay` rate
+- **All inputs are available** when needed (no stockout or supply chain interruptions)
+- Production runs complete exactly on schedule with no delays
+- Byproduct outputs can be sold immediately at market price if not used internally
+
+### Data Accuracy
+- Recipe data (inputs, outputs, production times) is accurate and reflects current game state
+- Building requirements, workforce costs, and depreciation are correctly captured per exchange
+- Price data represents true market conditions at the time of analysis
+
+### Simplifications
+- **No inventory holding costs** beyond the calculated 7-day input buffer
+- **No consideration of market impact** (buying/selling large quantities doesn't move prices)
+- **Recipe selection is static** (doesn't account for expertise progression or tech unlocks)
+- **No pioneer-specific bonuses** or penalties are modeled
 
 ---
 
