@@ -92,6 +92,10 @@ export default function BestRecipesHistoryClient() {
     previous: string;
   } | null>(null);
 
+  // Sorting state for movers table
+  const [sortColumn, setSortColumn] = useState<keyof MoverResult>("percentChange");
+  const [sortDirection, setSortDirection] = useState<"asc" | "desc">("desc");
+
   // History state
   const [selectedTicker, setSelectedTicker] = useState<string>("");
   const [historyLoading, setHistoryLoading] = useState(false);
@@ -180,20 +184,67 @@ export default function BestRecipesHistoryClient() {
     }, 100);
   };
 
+  // Handle sorting
+  const handleSort = (column: keyof MoverResult) => {
+    if (sortColumn === column) {
+      // Toggle direction if same column
+      setSortDirection(sortDirection === "asc" ? "desc" : "asc");
+    } else {
+      // New column, default to descending for numeric columns
+      setSortColumn(column);
+      setSortDirection("desc");
+    }
+  };
+
+  // Parse timestamp that may have hyphens instead of colons
+  const parseTimestamp = (timestamp: string) => {
+    // Convert "2025-11-07T20-01-54Z" to "2025-11-07T20:01:54Z"
+    const malformedPattern = /^(\d{4}-\d{2}-\d{2}T)(\d{2})-(\d{2})-(\d{2})(Z)$/;
+    const match = timestamp.match(malformedPattern);
+    if (match) {
+      const properTimestamp = `${match[1]}${match[2]}:${match[3]}:${match[4]}${match[5]}`;
+      return new Date(properTimestamp);
+    }
+    return new Date(timestamp);
+  };
+
   const formatTimestamp = (timestamp: string) => {
-    const date = new Date(timestamp);
+    const date = parseTimestamp(timestamp);
     return date.toLocaleString();
   };
 
   const formatChange = (change: number) => {
     const sign = change >= 0 ? "+" : "";
-    return `${sign}${change.toFixed(2)}`;
+    return `${sign}${change.toFixed(1)}`;
   };
 
   const formatPercent = (percent: number) => {
     const sign = percent >= 0 ? "+" : "";
-    return `${sign}${percent.toFixed(2)}%`;
+    return `${sign}${percent.toFixed(1)}%`;
   };
+
+  // Sort movers data
+  const sortedMovers = [...moversData].sort((a, b) => {
+    const aVal = a[sortColumn];
+    const bVal = b[sortColumn];
+
+    // Handle null values
+    if (aVal === null && bVal === null) return 0;
+    if (aVal === null) return 1;
+    if (bVal === null) return -1;
+
+    // Compare values
+    let comparison = 0;
+    if (typeof aVal === "number" && typeof bVal === "number") {
+      comparison = aVal - bVal;
+    } else if (typeof aVal === "string" && typeof bVal === "string") {
+      comparison = aVal.localeCompare(bVal);
+    } else if (typeof aVal === "boolean" && typeof bVal === "boolean") {
+      comparison = (aVal === bVal) ? 0 : aVal ? 1 : -1;
+    }
+
+    return sortDirection === "asc" ? comparison : -comparison;
+  });
 
   // Calculate stats for history
   const historyStats = historyData.length > 0 ? {
@@ -313,37 +364,55 @@ export default function BestRecipesHistoryClient() {
             >
               <thead>
                 <tr style={{ backgroundColor: "#222", color: "#ff8c00" }}>
-                  <th style={{ padding: "10px", textAlign: "left", borderBottom: "2px solid #ff8c00" }}>
-                    Ticker
+                  <th
+                    onClick={() => handleSort("ticker")}
+                    style={{ padding: "10px", textAlign: "left", borderBottom: "2px solid #ff8c00", cursor: "pointer", userSelect: "none" }}>
+                    Ticker {sortColumn === "ticker" && (sortDirection === "asc" ? "▲" : "▼")}
                   </th>
-                  <th style={{ padding: "10px", textAlign: "right", borderBottom: "2px solid #ff8c00" }}>
-                    Current P/A
+                  <th
+                    onClick={() => handleSort("currentProfitPA")}
+                    style={{ padding: "10px", textAlign: "right", borderBottom: "2px solid #ff8c00", cursor: "pointer", userSelect: "none" }}>
+                    Current P/A {sortColumn === "currentProfitPA" && (sortDirection === "asc" ? "▲" : "▼")}
                   </th>
-                  <th style={{ padding: "10px", textAlign: "right", borderBottom: "2px solid #ff8c00" }}>
-                    Previous P/A
+                  <th
+                    onClick={() => handleSort("previousProfitPA")}
+                    style={{ padding: "10px", textAlign: "right", borderBottom: "2px solid #ff8c00", cursor: "pointer", userSelect: "none" }}>
+                    Previous P/A {sortColumn === "previousProfitPA" && (sortDirection === "asc" ? "▲" : "▼")}
                   </th>
-                  <th style={{ padding: "10px", textAlign: "right", borderBottom: "2px solid #ff8c00" }}>
-                    Change
+                  <th
+                    onClick={() => handleSort("absoluteChange")}
+                    style={{ padding: "10px", textAlign: "right", borderBottom: "2px solid #ff8c00", cursor: "pointer", userSelect: "none" }}>
+                    Change {sortColumn === "absoluteChange" && (sortDirection === "asc" ? "▲" : "▼")}
                   </th>
-                  <th style={{ padding: "10px", textAlign: "right", borderBottom: "2px solid #ff8c00" }}>
-                    % Change
+                  <th
+                    onClick={() => handleSort("percentChange")}
+                    style={{ padding: "10px", textAlign: "right", borderBottom: "2px solid #ff8c00", cursor: "pointer", userSelect: "none" }}>
+                    % Change {sortColumn === "percentChange" && (sortDirection === "asc" ? "▲" : "▼")}
                   </th>
-                  <th style={{ padding: "10px", textAlign: "right", borderBottom: "2px solid #ff8c00" }}>
-                    Buy-All P/A
+                  <th
+                    onClick={() => handleSort("currentBuyAllProfitPA")}
+                    style={{ padding: "10px", textAlign: "right", borderBottom: "2px solid #ff8c00", cursor: "pointer", userSelect: "none" }}>
+                    Buy-All P/A {sortColumn === "currentBuyAllProfitPA" && (sortDirection === "asc" ? "▲" : "▼")}
                   </th>
-                  <th style={{ padding: "10px", textAlign: "right", borderBottom: "2px solid #ff8c00" }}>
-                    Buy-All Change
+                  <th
+                    onClick={() => handleSort("buyAllAbsoluteChange")}
+                    style={{ padding: "10px", textAlign: "right", borderBottom: "2px solid #ff8c00", cursor: "pointer", userSelect: "none" }}>
+                    Buy-All Change {sortColumn === "buyAllAbsoluteChange" && (sortDirection === "asc" ? "▲" : "▼")}
                   </th>
-                  <th style={{ padding: "10px", textAlign: "right", borderBottom: "2px solid #ff8c00" }}>
-                    Buy-All %
+                  <th
+                    onClick={() => handleSort("buyAllPercentChange")}
+                    style={{ padding: "10px", textAlign: "right", borderBottom: "2px solid #ff8c00", cursor: "pointer", userSelect: "none" }}>
+                    Buy-All % {sortColumn === "buyAllPercentChange" && (sortDirection === "asc" ? "▲" : "▼")}
                   </th>
-                  <th style={{ padding: "10px", textAlign: "center", borderBottom: "2px solid #ff8c00" }}>
-                    Recipe Changed
+                  <th
+                    onClick={() => handleSort("recipeChanged")}
+                    style={{ padding: "10px", textAlign: "center", borderBottom: "2px solid #ff8c00", cursor: "pointer", userSelect: "none" }}>
+                    Recipe Changed {sortColumn === "recipeChanged" && (sortDirection === "asc" ? "▲" : "▼")}
                   </th>
                 </tr>
               </thead>
               <tbody>
-                {moversData.map((mover, idx) => (
+                {sortedMovers.map((mover, idx) => (
                   <tr
                     key={`${mover.ticker}-${idx}`}
                     style={{
