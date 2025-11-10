@@ -93,7 +93,7 @@ export default function BestRecipesHistoryClient() {
   } | null>(null);
 
   // Sorting state for movers table
-  const [sortColumn, setSortColumn] = useState<keyof MoverResult>("percentChange");
+  const [sortColumn, setSortColumn] = useState<keyof MoverResult>("absoluteChange");
   const [sortDirection, setSortDirection] = useState<"asc" | "desc">("desc");
 
   // History state
