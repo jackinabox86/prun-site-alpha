@@ -155,24 +155,36 @@ export default function HistoricalAnalysisClient() {
   };
 
   return (
-    <div style={{ padding: "20px", maxWidth: "1400px", margin: "0 auto" }}>
-      <h1 style={{ color: "#ff8c00", marginBottom: "10px" }}>
-        Historical Trading Data Analysis
-      </h1>
-      <p style={{ color: "#888", marginBottom: "20px", fontSize: "14px" }}>
-        Analyze trading activity for individual tickers or across the entire universe
-      </p>
+    <div className="terminal-container">
+      {/* Header */}
+      <div className="terminal-box" style={{ marginBottom: "2rem" }}>
+        <h1 className="terminal-header" style={{ margin: 0 }}>
+          HISTORICAL TRADING DATA ANALYSIS
+        </h1>
+        <p style={{ color: "var(--color-text-secondary)", fontSize: "0.875rem", margin: 0 }}>
+          Analyze trading activity for individual tickers or across the entire universe
+        </p>
+      </div>
 
-      {/* Input Section */}
-      <div style={{ marginBottom: "30px" }}>
-        <div style={{ display: "flex", gap: "15px", alignItems: "flex-end", flexWrap: "wrap", marginBottom: "15px" }}>
+      {/* Controls */}
+      <div className="terminal-box" style={{ marginBottom: "2rem" }}>
+        <h2 className="terminal-header">ANALYSIS CONTROLS</h2>
+
+        <div style={{ display: "flex", gap: "1rem", alignItems: "flex-end", flexWrap: "wrap" }}>
           {/* Ticker Input with Autocomplete */}
-          <div style={{ position: "relative" }} ref={autocompleteRef}>
+          <div style={{ position: "relative", flex: "0 0 auto" }} ref={autocompleteRef}>
             <label
               htmlFor="ticker-input"
-              style={{ display: "block", color: "#ccc", marginBottom: "5px", fontSize: "14px" }}
+              style={{
+                display: "block",
+                color: "var(--color-text-secondary)",
+                marginBottom: "0.5rem",
+                fontSize: "0.875rem",
+                textTransform: "uppercase",
+                letterSpacing: "0.05em"
+              }}
             >
-              Ticker:
+              Ticker
             </label>
             <input
               id="ticker-input"
@@ -183,14 +195,9 @@ export default function HistoricalAnalysisClient() {
                 setShowAutocomplete(true);
               }}
               onFocus={() => setShowAutocomplete(true)}
-              placeholder="Enter ticker (e.g., RAT)"
+              placeholder="Enter ticker"
+              className="terminal-input"
               style={{
-                padding: "8px 12px",
-                fontSize: "14px",
-                backgroundColor: "#1a1a1a",
-                color: "#ccc",
-                border: "1px solid #444",
-                borderRadius: "4px",
                 width: "180px",
                 textTransform: "uppercase",
               }}
@@ -203,14 +210,12 @@ export default function HistoricalAnalysisClient() {
                   top: "100%",
                   left: 0,
                   right: 0,
-                  backgroundColor: "#1a1a1a",
-                  border: "1px solid #444",
-                  borderTop: "none",
-                  borderRadius: "0 0 4px 4px",
+                  backgroundColor: "var(--color-bg-elevated)",
+                  border: "1px solid var(--color-border-primary)",
                   maxHeight: "200px",
                   overflowY: "auto",
                   zIndex: 1000,
-                  marginTop: "-1px",
+                  marginTop: "0.25rem",
                 }}
               >
                 {filteredTickers.map((t) => (
@@ -218,16 +223,20 @@ export default function HistoricalAnalysisClient() {
                     key={t}
                     onClick={() => handleTickerSelect(t)}
                     style={{
-                      padding: "8px 12px",
+                      padding: "0.5rem 0.75rem",
                       cursor: "pointer",
-                      color: "#ccc",
-                      borderBottom: "1px solid #333",
+                      color: "var(--color-text-primary)",
+                      borderBottom: "1px solid var(--color-border-secondary)",
+                      fontFamily: "var(--font-mono)",
+                      fontSize: "0.875rem",
                     }}
                     onMouseEnter={(e) => {
-                      e.currentTarget.style.backgroundColor = "#2a2a2a";
+                      e.currentTarget.style.backgroundColor = "var(--color-bg-tertiary)";
+                      e.currentTarget.style.color = "var(--color-accent-primary)";
                     }}
                     onMouseLeave={(e) => {
                       e.currentTarget.style.backgroundColor = "transparent";
+                      e.currentTarget.style.color = "var(--color-text-primary)";
                     }}
                   >
                     {t}
@@ -238,12 +247,19 @@ export default function HistoricalAnalysisClient() {
           </div>
 
           {/* Days Input */}
-          <div>
+          <div style={{ flex: "0 0 auto" }}>
             <label
               htmlFor="days-input"
-              style={{ display: "block", color: "#ccc", marginBottom: "5px", fontSize: "14px" }}
+              style={{
+                display: "block",
+                color: "var(--color-text-secondary)",
+                marginBottom: "0.5rem",
+                fontSize: "0.875rem",
+                textTransform: "uppercase",
+                letterSpacing: "0.05em"
+              }}
             >
-              Number of Days:
+              Days
             </label>
             <input
               id="days-input"
@@ -252,50 +268,28 @@ export default function HistoricalAnalysisClient() {
               onChange={(e) => setDays(e.target.value)}
               min="1"
               max="365"
-              style={{
-                padding: "8px 12px",
-                fontSize: "14px",
-                backgroundColor: "#1a1a1a",
-                color: "#ccc",
-                border: "1px solid #444",
-                borderRadius: "4px",
-                width: "120px",
-              }}
+              className="terminal-input"
+              style={{ width: "120px" }}
             />
           </div>
 
           {/* Buttons */}
-          <div style={{ display: "flex", gap: "10px" }}>
+          <div style={{ display: "flex", gap: "0.75rem", flex: "0 0 auto" }}>
             <button
               onClick={() => loadData(false)}
               disabled={loading}
-              style={{
-                padding: "8px 20px",
-                fontSize: "14px",
-                backgroundColor: "#ff8c00",
-                color: "#000",
-                border: "none",
-                borderRadius: "4px",
-                cursor: loading ? "not-allowed" : "pointer",
-                opacity: loading ? 0.6 : 1,
-                fontWeight: "bold",
-              }}
+              className="terminal-button"
             >
               {loading ? "Loading..." : "Analyze Ticker"}
             </button>
             <button
               onClick={() => loadData(true)}
               disabled={loading}
+              className="terminal-button"
               style={{
-                padding: "8px 20px",
-                fontSize: "14px",
-                backgroundColor: "#4a7c4a",
-                color: "#fff",
-                border: "none",
-                borderRadius: "4px",
-                cursor: loading ? "not-allowed" : "pointer",
-                opacity: loading ? 0.6 : 1,
-                fontWeight: "bold",
+                backgroundColor: "var(--color-success)",
+                color: "var(--color-bg-primary)",
+                borderColor: "var(--color-success)",
               }}
             >
               {loading ? "Loading..." : "Analyze Universe"}
@@ -306,18 +300,19 @@ export default function HistoricalAnalysisClient() {
 
       {/* Error Display */}
       {error && (
-        <div
-          style={{
-            padding: "15px",
-            marginBottom: "20px",
-            backgroundColor: "#2a1a1a",
-            border: "1px solid #ff4444",
-            borderRadius: "4px",
-            color: "#ff4444",
+        <div className="terminal-box" style={{
+          marginBottom: "2rem",
+          backgroundColor: "var(--color-bg-tertiary)",
+          borderColor: "var(--color-error)",
+        }}>
+          <div style={{
+            color: "var(--color-error)",
             whiteSpace: "pre-wrap",
-          }}
-        >
-          {error}
+            fontFamily: "var(--font-mono)",
+            fontSize: "0.875rem",
+          }}>
+            {error}
+          </div>
         </div>
       )}
 
@@ -325,53 +320,49 @@ export default function HistoricalAnalysisClient() {
       {data && (
         <>
           {/* Summary Info */}
-          <div
-            style={{
-              padding: "15px",
-              marginBottom: "30px",
-              backgroundColor: "#1a1a1a",
-              border: "1px solid #444",
-              borderRadius: "4px",
-            }}
-          >
-            <h2 style={{ color: "#ff8c00", marginBottom: "15px", fontSize: "18px" }}>
-              Analysis Summary {data.ticker && `- ${data.ticker}`}
+          <div className="terminal-box" style={{ marginBottom: "2rem" }}>
+            <h2 className="terminal-header">
+              ANALYSIS SUMMARY {data.ticker && `// ${data.ticker}`}
             </h2>
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: "15px" }}>
+            <div style={{
+              display: "grid",
+              gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))",
+              gap: "1.5rem"
+            }}>
               <div>
-                <div style={{ color: "#888", fontSize: "12px" }}>Period</div>
-                <div style={{ color: "#ccc", fontSize: "16px", fontWeight: "bold" }}>
+                <div style={{ color: "var(--color-text-muted)", fontSize: "0.75rem", marginBottom: "0.25rem", textTransform: "uppercase", letterSpacing: "0.05em" }}>Period</div>
+                <div style={{ color: "var(--color-text-primary)", fontSize: "1rem", fontWeight: "600", fontFamily: "var(--font-mono)" }}>
                   Last {data.days} days
                 </div>
-                <div style={{ color: "#666", fontSize: "11px" }}>
+                <div style={{ color: "var(--color-text-muted)", fontSize: "0.75rem", marginTop: "0.25rem" }}>
                   Since {new Date(data.cutoffDate).toLocaleDateString()}
                 </div>
               </div>
               {data.ticker && (
                 <div>
-                  <div style={{ color: "#888", fontSize: "12px" }}>Ticker</div>
-                  <div style={{ color: "#ff8c00", fontSize: "16px", fontWeight: "bold" }}>
+                  <div style={{ color: "var(--color-text-muted)", fontSize: "0.75rem", marginBottom: "0.25rem", textTransform: "uppercase", letterSpacing: "0.05em" }}>Ticker</div>
+                  <div style={{ color: "var(--color-accent-primary)", fontSize: "1rem", fontWeight: "600", fontFamily: "var(--font-mono)" }}>
                     {data.ticker}
                   </div>
                 </div>
               )}
               {!data.ticker && (
                 <div>
-                  <div style={{ color: "#888", fontSize: "12px" }}>Tickers Processed</div>
-                  <div style={{ color: "#ccc", fontSize: "16px", fontWeight: "bold" }}>
+                  <div style={{ color: "var(--color-text-muted)", fontSize: "0.75rem", marginBottom: "0.25rem", textTransform: "uppercase", letterSpacing: "0.05em" }}>Tickers Processed</div>
+                  <div style={{ color: "var(--color-text-primary)", fontSize: "1rem", fontWeight: "600", fontFamily: "var(--font-mono)" }}>
                     {data.tickerCount}
                   </div>
                 </div>
               )}
               <div>
-                <div style={{ color: "#888", fontSize: "12px" }}>Files Processed</div>
-                <div style={{ color: "#ccc", fontSize: "16px", fontWeight: "bold" }}>
+                <div style={{ color: "var(--color-text-muted)", fontSize: "0.75rem", marginBottom: "0.25rem", textTransform: "uppercase", letterSpacing: "0.05em" }}>Files Processed</div>
+                <div style={{ color: "var(--color-text-primary)", fontSize: "1rem", fontWeight: "600", fontFamily: "var(--font-mono)" }}>
                   {data.filesProcessed}
                 </div>
               </div>
               <div>
-                <div style={{ color: "#888", fontSize: "12px" }}>Last Updated</div>
-                <div style={{ color: "#ccc", fontSize: "16px", fontWeight: "bold" }}>
+                <div style={{ color: "var(--color-text-muted)", fontSize: "0.75rem", marginBottom: "0.25rem", textTransform: "uppercase", letterSpacing: "0.05em" }}>Last Updated</div>
+                <div style={{ color: "var(--color-text-primary)", fontSize: "1rem", fontWeight: "600", fontFamily: "var(--font-mono)" }}>
                   {new Date(data.lastUpdated).toLocaleTimeString()}
                 </div>
               </div>
@@ -379,121 +370,39 @@ export default function HistoricalAnalysisClient() {
           </div>
 
           {/* Exchange Stats Table */}
-          <div style={{ marginBottom: "30px" }}>
-            <h2 style={{ color: "#ff8c00", marginBottom: "15px", fontSize: "18px" }}>
-              Exchange Statistics
-            </h2>
+          <div className="terminal-box" style={{ marginBottom: "2rem" }}>
+            <h2 className="terminal-header">EXCHANGE STATISTICS</h2>
             <div style={{ overflowX: "auto" }}>
-              <table
-                style={{
-                  width: "100%",
-                  backgroundColor: "#1a1a1a",
-                  color: "#ccc",
-                  borderCollapse: "collapse",
-                  fontSize: "14px",
-                }}
-              >
+              <table className="terminal-table">
                 <thead>
-                  <tr style={{ borderBottom: "2px solid #ff8c00" }}>
-                    <th
-                      style={{
-                        padding: "12px",
-                        textAlign: "left",
-                        color: "#ff8c00",
-                        fontWeight: "bold",
-                        whiteSpace: "nowrap",
-                      }}
-                    >
-                      Exchange
-                    </th>
-                    <th
-                      style={{
-                        padding: "12px",
-                        textAlign: "right",
-                        color: "#ff8c00",
-                        fontWeight: "bold",
-                        whiteSpace: "nowrap",
-                      }}
-                    >
-                      Avg Traded Count
-                    </th>
-                    <th
-                      style={{
-                        padding: "12px",
-                        textAlign: "right",
-                        color: "#ff8c00",
-                        fontWeight: "bold",
-                        whiteSpace: "nowrap",
-                      }}
-                    >
-                      Record Count
-                    </th>
-                    <th
-                      style={{
-                        padding: "12px",
-                        textAlign: "right",
-                        color: "#ff8c00",
-                        fontWeight: "bold",
-                        whiteSpace: "nowrap",
-                      }}
-                    >
-                      Avg Price
-                    </th>
-                    <th
-                      style={{
-                        padding: "12px",
-                        textAlign: "right",
-                        color: "#ff8c00",
-                        fontWeight: "bold",
-                        whiteSpace: "nowrap",
-                      }}
-                    >
-                      Total Volume
-                    </th>
-                    <th
-                      style={{
-                        padding: "12px",
-                        textAlign: "right",
-                        color: "#ff8c00",
-                        fontWeight: "bold",
-                        whiteSpace: "nowrap",
-                      }}
-                    >
-                      Total Traded
-                    </th>
+                  <tr>
+                    <th>Exchange</th>
+                    <th style={{ textAlign: "right" }}>Avg Traded/Day</th>
+                    <th style={{ textAlign: "right" }}>Records</th>
+                    <th style={{ textAlign: "right" }}>Avg Price</th>
+                    <th style={{ textAlign: "right" }}>Total Volume</th>
+                    <th style={{ textAlign: "right" }}>Total Traded</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {data.exchangeStats.map((exchange, idx) => (
-                    <tr
-                      key={exchange.exchange}
-                      style={{
-                        borderBottom: "1px solid #333",
-                        backgroundColor: idx % 2 === 0 ? "#1a1a1a" : "#222",
-                      }}
-                    >
-                      <td
-                        style={{
-                          padding: "12px",
-                          fontWeight: "bold",
-                          color: "#ff8c00",
-                        }}
-                      >
+                  {data.exchangeStats.map((exchange) => (
+                    <tr key={exchange.exchange}>
+                      <td style={{ fontWeight: "600", color: "var(--color-accent-primary)" }}>
                         {exchange.exchange}
                       </td>
-                      <td style={{ padding: "12px", textAlign: "right" }}>
+                      <td style={{ textAlign: "right" }}>
                         {formatNumber(exchange.avgTradedCount)}
                       </td>
-                      <td style={{ padding: "12px", textAlign: "right" }}>
+                      <td style={{ textAlign: "right" }}>
                         {formatInteger(exchange.recordCount)}
                       </td>
-                      <td style={{ padding: "12px", textAlign: "right" }}>
+                      <td style={{ textAlign: "right" }}>
                         {formatNumber(exchange.avgPrice)}
                       </td>
-                      <td style={{ padding: "12px", textAlign: "right" }}>
+                      <td style={{ textAlign: "right" }}>
                         {formatInteger(exchange.totalVolume)}
                       </td>
-                      <td style={{ padding: "12px", textAlign: "right" }}>
+                      <td style={{ textAlign: "right" }}>
                         {formatInteger(exchange.totalTraded)}
                       </td>
                     </tr>
@@ -503,87 +412,39 @@ export default function HistoricalAnalysisClient() {
             </div>
           </div>
 
-          {/* Total Section - Label changes based on mode */}
-          <div style={{ marginBottom: "30px" }}>
-            <h2 style={{ color: "#ff8c00", marginBottom: "15px", fontSize: "18px" }}>
-              {data.ticker ? `${data.ticker} Total` : "Universe Total"}
+          {/* Total Section */}
+          <div className="terminal-box" style={{ marginBottom: "2rem" }}>
+            <h2 className="terminal-header">
+              {data.ticker ? `${data.ticker} TOTAL` : "UNIVERSE TOTAL"}
             </h2>
             <div style={{ overflowX: "auto" }}>
-              <table
-                style={{
-                  width: "100%",
-                  backgroundColor: "#1a1a1a",
-                  color: "#ccc",
-                  borderCollapse: "collapse",
-                  fontSize: "14px",
-                }}
-              >
+              <table className="terminal-table">
                 <thead>
-                  <tr style={{ borderBottom: "2px solid #ff8c00" }}>
-                    <th
-                      style={{
-                        padding: "12px",
-                        textAlign: "left",
-                        color: "#ff8c00",
-                        fontWeight: "bold",
-                        whiteSpace: "nowrap",
-                      }}
-                    >
-                      Metric
-                    </th>
-                    <th
-                      style={{
-                        padding: "12px",
-                        textAlign: "right",
-                        color: "#ff8c00",
-                        fontWeight: "bold",
-                        whiteSpace: "nowrap",
-                      }}
-                    >
-                      Value
-                    </th>
+                  <tr>
+                    <th>Metric</th>
+                    <th style={{ textAlign: "right" }}>Value</th>
                   </tr>
                 </thead>
                 <tbody>
-                  <tr style={{ borderBottom: "1px solid #333", backgroundColor: "#1a1a1a" }}>
-                    <td style={{ padding: "12px", fontWeight: "bold" }}>
-                      Average Traded Count
-                    </td>
-                    <td style={{ padding: "12px", textAlign: "right" }}>
-                      {formatNumber(data.universeTotal.avgTradedCount)}
-                    </td>
+                  <tr>
+                    <td style={{ fontWeight: "600" }}>Average Traded Count (per day)</td>
+                    <td style={{ textAlign: "right" }}>{formatNumber(data.universeTotal.avgTradedCount)}</td>
                   </tr>
-                  <tr style={{ borderBottom: "1px solid #333", backgroundColor: "#222" }}>
-                    <td style={{ padding: "12px", fontWeight: "bold" }}>
-                      Total Records
-                    </td>
-                    <td style={{ padding: "12px", textAlign: "right" }}>
-                      {formatInteger(data.universeTotal.recordCount)}
-                    </td>
+                  <tr>
+                    <td style={{ fontWeight: "600" }}>Total Records</td>
+                    <td style={{ textAlign: "right" }}>{formatInteger(data.universeTotal.recordCount)}</td>
                   </tr>
-                  <tr style={{ borderBottom: "1px solid #333", backgroundColor: "#1a1a1a" }}>
-                    <td style={{ padding: "12px", fontWeight: "bold" }}>
-                      Average Price
-                    </td>
-                    <td style={{ padding: "12px", textAlign: "right" }}>
-                      {formatNumber(data.universeTotal.avgPrice)}
-                    </td>
+                  <tr>
+                    <td style={{ fontWeight: "600" }}>Average Price</td>
+                    <td style={{ textAlign: "right" }}>{formatNumber(data.universeTotal.avgPrice)}</td>
                   </tr>
-                  <tr style={{ borderBottom: "1px solid #333", backgroundColor: "#222" }}>
-                    <td style={{ padding: "12px", fontWeight: "bold" }}>
-                      Total Volume
-                    </td>
-                    <td style={{ padding: "12px", textAlign: "right" }}>
-                      {formatInteger(data.universeTotal.totalVolume)}
-                    </td>
+                  <tr>
+                    <td style={{ fontWeight: "600" }}>Total Volume</td>
+                    <td style={{ textAlign: "right" }}>{formatInteger(data.universeTotal.totalVolume)}</td>
                   </tr>
-                  <tr style={{ borderBottom: "1px solid #333", backgroundColor: "#1a1a1a" }}>
-                    <td style={{ padding: "12px", fontWeight: "bold" }}>
-                      Total Traded
-                    </td>
-                    <td style={{ padding: "12px", textAlign: "right" }}>
-                      {formatInteger(data.universeTotal.totalTraded)}
-                    </td>
+                  <tr>
+                    <td style={{ fontWeight: "600" }}>Total Traded</td>
+                    <td style={{ textAlign: "right" }}>{formatInteger(data.universeTotal.totalTraded)}</td>
                   </tr>
                 </tbody>
               </table>
@@ -591,20 +452,20 @@ export default function HistoricalAnalysisClient() {
           </div>
 
           {/* Info Note */}
-          <div
-            style={{
-              padding: "15px",
-              backgroundColor: "#1a2a1a",
-              border: "1px solid #4a7c4a",
-              borderRadius: "4px",
-              color: "#8ac98a",
-              fontSize: "13px",
-            }}
-          >
-            <strong>Note:</strong> Average Traded Count is the average number of units traded per day
-            over the selected period (Total Traded ÷ Days). Average Price is calculated as Total
-            Volume divided by Total Traded. Record Count represents the number of daily data points
-            available for each exchange (may be less than the period due to missing days).
+          <div className="terminal-box" style={{
+            backgroundColor: "var(--color-bg-tertiary)",
+            borderColor: "var(--color-success)",
+          }}>
+            <div style={{
+              color: "var(--color-text-secondary)",
+              fontSize: "0.875rem",
+              lineHeight: "1.6"
+            }}>
+              <strong style={{ color: "var(--color-success)" }}>Note:</strong> Average Traded Count is the average number of units traded per day
+              over the selected period (Total Traded ÷ Days). Average Price is calculated as Total
+              Volume divided by Total Traded. Record Count represents the number of daily data points
+              available for each exchange (may be less than the period due to missing days).
+            </div>
           </div>
         </>
       )}
