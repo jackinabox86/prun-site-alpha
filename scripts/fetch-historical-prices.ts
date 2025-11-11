@@ -141,25 +141,9 @@ const IS_PRODUCTION = isProductionBranch(CURRENT_BRANCH);
 // Uncomment the one you want to use:
 
 // Option 1: Single ticker for testing (default)
-// const CONFIG: FetchConfig = {
-//   tickers: ["RAT"],
-//   exchanges: ["ANT"], // Just one exchange for quick testing
-//   outputDir: IS_PRODUCTION
-//     ? "public/data/historical-prices"
-//     : `public/data/historical-prices-test`,
-//   gcsBucket: "prun-site-alpha-bucket",
-//   gcsPath: IS_PRODUCTION
-//     ? "historical-prices"
-//     : `historical-prices-test/${CURRENT_BRANCH}`,
-//   batchSize: 1,
-//   delayMs: 500,
-// };
-
-// Option 2: All tickers from file × all exchanges (~1332 endpoints)
-// IMPORTANT: This will take 20-25 minutes and make ~1332 API requests
 const CONFIG: FetchConfig = {
-  tickers: loadTickersFromFile("scripts/config/tickers.txt"),
-  exchanges: ["ANT", "CIS", "ICA", "NCC"], // All 4 exchanges
+  tickers: ["RAT"],
+  exchanges: ["ANT"], // Just one exchange for quick testing
   outputDir: IS_PRODUCTION
     ? "public/data/historical-prices"
     : `public/data/historical-prices-test`,
@@ -167,9 +151,25 @@ const CONFIG: FetchConfig = {
   gcsPath: IS_PRODUCTION
     ? "historical-prices"
     : `historical-prices-test/${CURRENT_BRANCH}`,
-  batchSize: 10, // 10 concurrent requests
-  delayMs: 1000, // 1 second between batches
+  batchSize: 1,
+  delayMs: 500,
 };
+
+// Option 2: All tickers from file × all exchanges (~1332 endpoints)
+// IMPORTANT: This will take 20-25 minutes and make ~1332 API requests
+// const CONFIG: FetchConfig = {
+//   tickers: loadTickersFromFile("scripts/config/tickers.txt"),
+//   exchanges: ["ANT", "CIS", "ICA", "NCC"], // All 4 exchanges
+//   outputDir: IS_PRODUCTION
+//     ? "public/data/historical-prices"
+//     : `public/data/historical-prices-test`,
+//   gcsBucket: "prun-site-alpha-bucket",
+//   gcsPath: IS_PRODUCTION
+//     ? "historical-prices"
+//     : `historical-prices-test/${CURRENT_BRANCH}`,
+//   batchSize: 10, // 10 concurrent requests
+//   delayMs: 1000, // 1 second between batches
+// };
 
 // Future expansion configurations (commented out for now)
 // const ESSENTIALS_CONFIG: FetchConfig = {

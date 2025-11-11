@@ -8,6 +8,7 @@
     "merge-prices": "tsx scripts/merge-prices.ts",
     "fetch-historical": "tsx scripts/fetch-historical-prices.ts",
     "upload-historical": "tsx scripts/upload-historical-to-gcs.ts",
+    "calculate-vwap": "tsx scripts/calculate-vwap.ts",
     "start": "next start"
   },
   "dependencies": {
