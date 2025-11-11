@@ -38,6 +38,8 @@ interface SummaryRow {
   records0to180: number;
   records180to360: number;
   records360to540: number;
+  earliestDate: string;
+  daysSinceEarliest: number;
 }
 
 /**
@@ -50,6 +52,8 @@ interface SummaryRow {
  * - Records Days 0-180 (most recent)
  * - Records Days 180-360
  * - Records Days 360-540
+ * - Earliest Date (date of the earliest data point)
+ * - Days Since Earliest (days from earliest data point to today)
  */
 export async function GET(request: Request) {
   try {
@@ -148,6 +152,18 @@ export async function GET(request: Request) {
             d.DateEpochMs >= cutoff540Ms && d.DateEpochMs < cutoff360Ms
           ).length;
 
+          // Find earliest timestamp
+          let earliestTimestamp = Infinity;
+          for (const record of data.data) {
+            if (record.DateEpochMs < earliestTimestamp) {
+              earliestTimestamp = record.DateEpochMs;
+            }
+          }
+
+          // Calculate earliest date and days since
+          const earliestDate = new Date(earliestTimestamp).toISOString().split('T')[0];
+          const daysSinceEarliest = Math.floor((now - earliestTimestamp) / (1000 * 60 * 60 * 24));
+
           // Convert exchange code to readable name
           const exchangeName = EXCHANGE_CODE_TO_NAME[data.exchange] || data.exchange;
 
@@ -158,6 +174,8 @@ export async function GET(request: Request) {
             records0to180,
             records180to360,
             records360to540,
+            earliestDate,
+            daysSinceEarliest,
           };
         } catch (error) {
           console.error(`Error processing ${entry.filename}:`, error);
@@ -186,7 +204,7 @@ export async function GET(request: Request) {
 
     // Generate CSV
     const csvRows = [
-      ['Ticker', 'Exchange', 'Total Records', 'Records Days 0-180', 'Records Days 180-360', 'Records Days 360-540'].join(',')
+      ['Ticker', 'Exchange', 'Total Records', 'Records Days 0-180', 'Records Days 180-360', 'Records Days 360-540', 'Earliest Date', 'Days Since Earliest'].join(',')
     ];
 
     for (const row of summaryRows) {
@@ -196,7 +214,9 @@ export async function GET(request: Request) {
         row.totalRecords.toString(),
         row.records0to180.toString(),
         row.records180to360.toString(),
-        row.records360to540.toString()
+        row.records360to540.toString(),
+        row.earliestDate,
+        row.daysSinceEarliest.toString()
       ].join(','));
     }
 
