@@ -35,7 +35,9 @@ interface SummaryRow {
   ticker: string;
   exchange: string;
   totalRecords: number;
-  records180Days: number;
+  records0to180: number;
+  records180to360: number;
+  records360to540: number;
 }
 
 /**
@@ -45,16 +47,27 @@ interface SummaryRow {
  * - Ticker
  * - Exchange
  * - Total Records
- * - Records Last 180 Days
+ * - Records Days 0-180 (most recent)
+ * - Records Days 180-360
+ * - Records Days 360-540
  */
 export async function GET(request: Request) {
   try {
     const generatedDate = new Date().toISOString().split('T')[0];
+    const now = Date.now();
 
-    // Calculate 180-day cutoff
-    const cutoffDate = new Date();
-    cutoffDate.setDate(cutoffDate.getDate() - 180);
-    const cutoffMs = cutoffDate.getTime();
+    // Calculate cutoff dates for three 180-day periods
+    const cutoff180 = new Date();
+    cutoff180.setDate(cutoff180.getDate() - 180);
+    const cutoff180Ms = cutoff180.getTime();
+
+    const cutoff360 = new Date();
+    cutoff360.setDate(cutoff360.getDate() - 360);
+    const cutoff360Ms = cutoff360.getTime();
+
+    const cutoff540 = new Date();
+    cutoff540.setDate(cutoff540.getDate() - 540);
+    const cutoff540Ms = cutoff540.getTime();
 
     // Load manifest
     let manifest: Manifest | null = null;
@@ -121,9 +134,19 @@ export async function GET(request: Request) {
           // Count total records
           const totalRecords = data.data.length;
 
-          // Count records in last 180 days
-          const recent180 = data.data.filter((d) => d.DateEpochMs >= cutoffMs);
-          const records180Days = recent180.length;
+          // Count records in three 180-day periods
+          // Period 1: 0-180 days ago (most recent)
+          const records0to180 = data.data.filter((d) => d.DateEpochMs >= cutoff180Ms).length;
+
+          // Period 2: 180-360 days ago
+          const records180to360 = data.data.filter((d) =>
+            d.DateEpochMs >= cutoff360Ms && d.DateEpochMs < cutoff180Ms
+          ).length;
+
+          // Period 3: 360-540 days ago
+          const records360to540 = data.data.filter((d) =>
+            d.DateEpochMs >= cutoff540Ms && d.DateEpochMs < cutoff360Ms
+          ).length;
 
           // Convert exchange code to readable name
           const exchangeName = EXCHANGE_CODE_TO_NAME[data.exchange] || data.exchange;
@@ -132,7 +155,9 @@ export async function GET(request: Request) {
             ticker: data.ticker,
             exchange: exchangeName,
             totalRecords,
-            records180Days,
+            records0to180,
+            records180to360,
+            records360to540,
           };
         } catch (error) {
           console.error(`Error processing ${entry.filename}:`, error);
@@ -161,7 +186,7 @@ export async function GET(request: Request) {
 
     // Generate CSV
     const csvRows = [
-      ['Ticker', 'Exchange', 'Total Records', 'Records Last 180 Days'].join(',')
+      ['Ticker', 'Exchange', 'Total Records', 'Records Days 0-180', 'Records Days 180-360', 'Records Days 360-540'].join(',')
     ];
 
     for (const row of summaryRows) {
@@ -169,7 +194,9 @@ export async function GET(request: Request) {
         row.ticker,
         row.exchange,
         row.totalRecords.toString(),
-        row.records180Days.toString()
+        row.records0to180.toString(),
+        row.records180to360.toString(),
+        row.records360to540.toString()
       ].join(','));
     }
 
