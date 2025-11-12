@@ -1,4 +1,4 @@
-import { writeFileSync, mkdirSync } from "fs";
+import { writeFileSync, mkdirSync, readFileSync } from "fs";
 import { execSync } from "child_process";
 
 /**
@@ -108,6 +108,28 @@ function calculateQuartiles(values: number[]): { q1: number; q3: number } {
   const q3 = sorted[q3Index];
 
   return { q1, q3 };
+}
+
+// Exchange code mapping
+const EXCHANGE_MAP: Record<string, string> = {
+  ANT: "ai1",
+  CIS: "ci1",
+  ICA: "ic1",
+  NCC: "nc1",
+};
+
+// Load tickers from file
+function loadTickersFromFile(filepath: string): string[] {
+  try {
+    const content = readFileSync(filepath, "utf8");
+    return content
+      .split("\n")
+      .map((line) => line.trim())
+      .filter((line) => line.length > 0 && !line.startsWith("#"));
+  } catch (error) {
+    console.error(`❌ Failed to load tickers from ${filepath}`);
+    throw error;
+  }
 }
 
 function calculateVWAP(
@@ -296,6 +318,20 @@ function calculateVWAP(
   };
 }
 
+interface VWAPConfig {
+  tickers: string[];
+  exchanges: Array<keyof typeof EXCHANGE_MAP>;
+  gcsBucket: string;
+  gcsInputPath: string;
+  gcsOutputPath: string;
+  batchSize: number;
+  delayMs: number;
+}
+
+function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
 // Detect branch for output path
 function getCurrentBranch(): string {
   try {
@@ -314,65 +350,184 @@ function isProductionBranch(branch: string): boolean {
 
 async function calculateVWAPForTicker(
   ticker: string,
-  exchange: string,
+  fnarExchange: string,
+  gcsBucket: string,
   gcsInputPath: string,
   gcsOutputPath: string
-) {
+): Promise<{ ticker: string; exchange: string; success: boolean; dataPoints?: number }> {
+  const exchangeCode = Object.keys(EXCHANGE_MAP).find(
+    key => EXCHANGE_MAP[key as keyof typeof EXCHANGE_MAP] === fnarExchange
+  ) || fnarExchange.toUpperCase();
+
+  try {
+    // Load raw historical data from GCS using gsutil
+    const gcsInput = `gs://${gcsBucket}/${gcsInputPath}/${ticker}-${fnarExchange}.json`;
+    const tempInputFile = `/tmp/${ticker}-${fnarExchange}-input.json`;
+
+    execSync(`gsutil cp ${gcsInput} ${tempInputFile}`, {
+      stdio: ["pipe", "pipe", "pipe"] // Suppress output
+    });
+
+    const rawData: RawHistoricalData = JSON.parse(
+      readFileSync(tempInputFile, "utf8")
+    );
+
+    // Calculate VWAP
+    const vwapData = calculateVWAP(ticker, fnarExchange, rawData);
+
+    // Save output to GCS using gsutil
+    const tempFile = `/tmp/${ticker}-${fnarExchange}-vwap.json`;
+    writeFileSync(tempFile, JSON.stringify(vwapData, null, 2));
+
+    const gcsOutput = `gs://${gcsBucket}/${gcsOutputPath}/${ticker}-${fnarExchange}-vwap.json`;
+    execSync(`gsutil -h "Cache-Control:public, max-age=3600" cp ${tempFile} ${gcsOutput}`, {
+      stdio: ["pipe", "pipe", "pipe"] // Suppress output
+    });
+
+    console.log(`   ✅ ${ticker}.${exchangeCode}: ${vwapData.data.length} days, ${vwapData.statistics.forwardFilledDays} forward-filled`);
+    return { ticker, exchange: exchangeCode, success: true, dataPoints: vwapData.data.length };
+  } catch (error) {
+    const errorMsg = error instanceof Error ? error.message : String(error);
+    console.log(`   ❌ ${ticker}.${exchangeCode}: ${errorMsg}`);
+    return { ticker, exchange: exchangeCode, success: false };
+  }
+}
+
+async function calculateAllVWAP(config: VWAPConfig) {
   console.log(`\n${"=".repeat(60)}`);
-  console.log(`Processing: ${ticker}.${exchange}`);
+  console.log(`📊 VWAP Calculation Script`);
   console.log(`${"=".repeat(60)}`);
 
-  // Load raw historical data from GCS using gsutil
-  console.log(`📥 Loading raw data from: ${gcsInputPath}`);
-  const tempInputFile = `/tmp/${ticker}-${exchange}-input.json`;
-  execSync(`gsutil cp ${gcsInputPath} ${tempInputFile}`, { stdio: "inherit" });
+  const startTime = Date.now();
+  const results: Array<{ ticker: string; exchange: string; success: boolean; dataPoints?: number }> = [];
 
-  const rawData: RawHistoricalData = JSON.parse(
-    execSync(`cat ${tempInputFile}`, { encoding: "utf8" })
-  );
+  // Build list of all endpoints to process
+  const endpoints: Array<{ ticker: string; exchange: keyof typeof EXCHANGE_MAP }> = [];
+  for (const ticker of config.tickers) {
+    for (const exchange of config.exchanges) {
+      endpoints.push({ ticker, exchange });
+    }
+  }
 
-  // Calculate VWAP
-  const vwapData = calculateVWAP(ticker, exchange, rawData);
+  console.log(`\n   Tickers: ${config.tickers.length}`);
+  console.log(`   Exchanges: ${config.exchanges.join(", ")}`);
+  console.log(`   Total endpoints: ${endpoints.length}`);
+  console.log(`   Batch size: ${config.batchSize}`);
 
-  // Save output to GCS using gsutil
-  const tempFile = `/tmp/${ticker}-${exchange}-vwap.json`;
-  writeFileSync(tempFile, JSON.stringify(vwapData, null, 2));
+  // Process in batches
+  const totalBatches = Math.ceil(endpoints.length / config.batchSize);
 
-  console.log(`📤 Uploading VWAP data to: ${gcsOutputPath}`);
-  execSync(`gsutil -h "Cache-Control:public, max-age=3600" cp ${tempFile} ${gcsOutputPath}`, {
-    stdio: "inherit",
-  });
-  console.log(`✅ Upload complete`);
+  for (let i = 0; i < endpoints.length; i += config.batchSize) {
+    const batch = endpoints.slice(i, i + config.batchSize);
+    const batchNum = Math.floor(i / config.batchSize) + 1;
+
+    console.log(`\n🔄 Processing batch ${batchNum}/${totalBatches} (${batch.length} endpoints)...`);
+
+    // Process batch in parallel
+    const batchPromises = batch.map(async ({ ticker, exchange }) => {
+      const fnarExchange = EXCHANGE_MAP[exchange];
+      return calculateVWAPForTicker(
+        ticker,
+        fnarExchange,
+        config.gcsBucket,
+        config.gcsInputPath,
+        config.gcsOutputPath
+      );
+    });
+
+    const batchResults = await Promise.all(batchPromises);
+    results.push(...batchResults);
+
+    // Progress update
+    const completed = i + batch.length;
+    const percent = ((completed / endpoints.length) * 100).toFixed(1);
+    console.log(`   Progress: ${completed}/${endpoints.length} (${percent}%)`);
+
+    // Delay between batches (except for last batch)
+    if (i + config.batchSize < endpoints.length) {
+      console.log(`   ⏳ Waiting ${config.delayMs}ms before next batch...`);
+      await sleep(config.delayMs);
+    }
+  }
+
+  const duration = ((Date.now() - startTime) / 1000).toFixed(1);
+
+  console.log("\n" + "=".repeat(60));
+  console.log(`✅ VWAP calculation complete in ${duration}s`);
+  console.log("=".repeat(60));
+
+  // Summary
+  const successful = results.filter((r) => r.success).length;
+  const failed = results.filter((r) => !r.success).length;
+
+  console.log(`\n📊 Summary:`);
+  console.log(`   Total: ${results.length}`);
+  console.log(`   ✅ Successful: ${successful}`);
+  console.log(`   ❌ Failed: ${failed}`);
+
+  if (successful > 0) {
+    const totalDataPoints = results
+      .filter((r) => r.success && r.dataPoints)
+      .reduce((sum, r) => sum + (r.dataPoints || 0), 0);
+    const avgDataPoints = totalDataPoints / successful;
+    console.log(`   📊 Total data points: ${totalDataPoints.toLocaleString()}`);
+    console.log(`   📊 Avg per endpoint: ${avgDataPoints.toFixed(0)} days`);
+  }
+
+  if (failed > 0) {
+    console.log(`\n⚠️  Failed calculations:`);
+    results
+      .filter((r) => !r.success)
+      .slice(0, 10) // Show first 10 failures
+      .forEach((r) => {
+        console.log(`   - ${r.ticker}.${r.exchange}`);
+      });
+    if (failed > 10) {
+      console.log(`   ... and ${failed - 10} more`);
+    }
+  }
+
+  console.log();
 }
 
 // Main execution
 const CURRENT_BRANCH = getCurrentBranch();
 const IS_PRODUCTION = isProductionBranch(CURRENT_BRANCH);
 
-// Configuration
-const ticker = "RAT";
-const exchange = "ai1";
-const GCS_BUCKET = "prun-site-alpha-bucket";
+// Configuration options
+// Uncomment the one you want to use:
 
-const gcsInputPath = `gs://${GCS_BUCKET}/historical-prices/${ticker}-${exchange}.json`;
+// Option 1: Single ticker for testing
+// const CONFIG: VWAPConfig = {
+//   tickers: ["RAT"],
+//   exchanges: ["ANT"],
+//   gcsBucket: "prun-site-alpha-bucket",
+//   gcsInputPath: "historical-prices",
+//   gcsOutputPath: IS_PRODUCTION
+//     ? "historical-prices-vwap"
+//     : `historical-prices-vwap-test/${CURRENT_BRANCH}`,
+//   batchSize: 1,
+//   delayMs: 500,
+// };
 
-const gcsOutputPath = IS_PRODUCTION
-  ? `gs://${GCS_BUCKET}/historical-prices-vwap/${ticker}-${exchange}-vwap.json`
-  : `gs://${GCS_BUCKET}/historical-prices-vwap-test/${CURRENT_BRANCH}/${ticker}-${exchange}-vwap.json`;
+// Option 2: All tickers from file × all exchanges
+const CONFIG: VWAPConfig = {
+  tickers: loadTickersFromFile("scripts/config/tickers.txt"),
+  exchanges: ["ANT", "CIS", "ICA", "NCC"],
+  gcsBucket: "prun-site-alpha-bucket",
+  gcsInputPath: "historical-prices",
+  gcsOutputPath: IS_PRODUCTION
+    ? "historical-prices-vwap"
+    : `historical-prices-vwap-test/${CURRENT_BRANCH}`,
+  batchSize: 10, // 10 concurrent calculations
+  delayMs: 1000, // 1 second between batches
+};
 
 console.log(`\n🚀 VWAP Calculation Script`);
 console.log(`   Branch: ${CURRENT_BRANCH}`);
 console.log(`   Mode: ${IS_PRODUCTION ? "🟢 PRODUCTION" : "🟡 TEST"}`);
-console.log(`   Input: ${gcsInputPath}`);
-console.log(`   Output: ${gcsOutputPath}`);
 
-calculateVWAPForTicker(ticker, exchange, gcsInputPath, gcsOutputPath)
-  .then(() => {
-    console.log(`\n✅ VWAP calculation complete!`);
-    console.log(`   Data uploaded to: ${gcsOutputPath}`);
-    console.log();
-  })
-  .catch((error) => {
-    console.error("❌ Fatal error:", error);
-    process.exit(1);
-  });
+calculateAllVWAP(CONFIG).catch((error) => {
+  console.error("❌ Fatal error:", error);
+  process.exit(1);
+});
