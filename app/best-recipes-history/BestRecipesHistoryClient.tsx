@@ -237,8 +237,25 @@ export default function BestRecipesHistoryClient() {
     return `${sign}${percent.toFixed(1)}%`;
   };
 
-  // Sort movers data
-  const sortedMovers = [...moversData].sort((a, b) => {
+  // Filter and sort movers data
+  const filteredMovers = moversData.filter((mover) => {
+    // Filter out boring entries:
+    // 1. For positive changes: exclude if both previous and current P/A are negative
+    if (mover.absoluteChange > 0) {
+      if (mover.previousProfitPA !== null && mover.previousProfitPA < 0 && mover.currentProfitPA < 0) {
+        return false; // Boring: went from negative to still negative (even if slightly less negative)
+      }
+    }
+    // 2. For negative changes: exclude if previous was negative and current is even more negative
+    else if (mover.absoluteChange < 0) {
+      if (mover.previousProfitPA !== null && mover.previousProfitPA < 0 && mover.currentProfitPA < mover.previousProfitPA) {
+        return false; // Boring: went from negative to more negative
+      }
+    }
+    return true;
+  });
+
+  const sortedMovers = [...filteredMovers].sort((a, b) => {
     const aVal = a[sortColumn];
     const bVal = b[sortColumn];
 
