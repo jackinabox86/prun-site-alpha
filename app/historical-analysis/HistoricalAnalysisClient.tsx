@@ -64,6 +64,7 @@ export default function HistoricalAnalysisClient() {
   const [showAutocomplete, setShowAutocomplete] = useState<boolean>(false);
   const [filteredTickers, setFilteredTickers] = useState<string[]>([]);
   const [loading, setLoading] = useState(false);
+  const [csvLoading, setCsvLoading] = useState(false);
   const [data, setData] = useState<AnalysisResult | null>(null);
   const [error, setError] = useState<string | null>(null);
   const autocompleteRef = useRef<HTMLDivElement>(null);
@@ -141,6 +142,40 @@ export default function HistoricalAnalysisClient() {
   const handleTickerSelect = (selectedTicker: string) => {
     setTicker(selectedTicker);
     setShowAutocomplete(false);
+  };
+
+  const downloadFIOSummary = async () => {
+    setCsvLoading(true);
+    setError(null);
+    try {
+      const res = await fetch('/api/historical-analysis/fio-summary', {
+        cache: "no-store",
+      });
+
+      if (!res.ok) {
+        const json = await res.json();
+        throw new Error(json.error || 'Failed to generate CSV');
+      }
+
+      // Get the CSV blob
+      const blob = await res.blob();
+
+      // Create download link
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `fio-data-summary-${new Date().toISOString().split('T')[0]}.csv`;
+      document.body.appendChild(a);
+      a.click();
+
+      // Cleanup
+      window.URL.revokeObjectURL(url);
+      document.body.removeChild(a);
+    } catch (err: any) {
+      setError(err.message || "Failed to generate CSV");
+    } finally {
+      setCsvLoading(false);
+    }
   };
 
   const formatNumber = (value: number): string => {
@@ -274,7 +309,7 @@ export default function HistoricalAnalysisClient() {
           </div>
 
           {/* Buttons */}
-          <div style={{ display: "flex", gap: "0.75rem", flex: "0 0 auto" }}>
+          <div style={{ display: "flex", gap: "0.75rem", flex: "0 0 auto", flexWrap: "wrap" }}>
             <button
               onClick={() => loadData(false)}
               disabled={loading}
@@ -293,6 +328,18 @@ export default function HistoricalAnalysisClient() {
               }}
             >
               {loading ? "Loading..." : "Analyze Universe"}
+            </button>
+            <button
+              onClick={downloadFIOSummary}
+              disabled={csvLoading}
+              className="terminal-button"
+              style={{
+                backgroundColor: "var(--color-info)",
+                color: "var(--color-bg-primary)",
+                borderColor: "var(--color-info)",
+              }}
+            >
+              {csvLoading ? "Generating..." : "Generate FIO Data Summary"}
             </button>
           </div>
         </div>
