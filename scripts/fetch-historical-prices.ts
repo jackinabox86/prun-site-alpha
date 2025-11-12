@@ -1,4 +1,4 @@
-import { writeFileSync, mkdirSync, readFileSync } from "fs";
+import { writeFileSync, mkdirSync, readFileSync, existsSync } from "fs";
 import { execSync } from "child_process";
 import { ApiRateLimiter } from "./lib/rate-limiter.js";
 import type { HistoricalPriceData } from "../src/types";
@@ -10,11 +10,13 @@ import type { HistoricalPriceData } from "../src/types";
  * from the FNAR exchange API and saves them locally.
  *
  * Branch-aware behavior:
- * - main branch: saves to production folder
- * - other branches: saves to test folder (test-{branch-name})
+ * - main branch: saves to production folder (public/data/historical-prices)
+ *               - skipExisting enabled: only fetches NEW tickers, skips existing files
+ * - other branches: saves to test folder (public/data/historical-prices-test)
+ *                  - skipExisting disabled: re-fetches all data for testing
  *
- * Currently configured to fetch: RAT on AI1 (ANT exchange)
- * Can be expanded later to include more materials and exchanges.
+ * This ensures that when merged to main, the script won't re-download
+ * the 1332 existing files, only new tickers or updates.
  *
  * Usage:
  *   npm run fetch-historical
@@ -131,6 +133,7 @@ interface FetchConfig {
   gcsPath: string;
   batchSize: number;
   delayMs: number;
+  skipExisting?: boolean; // Skip files that already exist locally
 }
 
 // Detect current branch and set paths accordingly
@@ -157,6 +160,7 @@ const IS_PRODUCTION = isProductionBranch(CURRENT_BRANCH);
 
 // Option 2: All tickers from file × all exchanges (~1332 endpoints)
 // IMPORTANT: This will take 20-25 minutes and make ~1332 API requests
+// On production (main branch), skipExisting is enabled to avoid re-downloading existing data
 const CONFIG: FetchConfig = {
   tickers: loadTickersFromFile("scripts/config/tickers.txt"),
   exchanges: ["ANT", "CIS", "ICA", "NCC"], // All 4 exchanges
@@ -169,6 +173,7 @@ const CONFIG: FetchConfig = {
     : `historical-prices-test/${CURRENT_BRANCH}`,
   batchSize: 10, // 10 concurrent requests
   delayMs: 1000, // 1 second between batches
+  skipExisting: IS_PRODUCTION, // Skip existing files on production to save time
 };
 
 // Future expansion configurations (commented out for now)
@@ -195,6 +200,7 @@ async function fetchHistoricalPrices(config: FetchConfig) {
   console.log(`   Tickers: ${config.tickers.join(", ")}`);
   console.log(`   Exchanges: ${config.exchanges.join(", ")}`);
   console.log(`   Total endpoints: ${config.tickers.length * config.exchanges.length}`);
+  console.log(`   Skip existing: ${config.skipExisting ? "✅ YES" : "❌ NO"}`);
   console.log(`   Local output: ${config.outputDir}`);
   console.log(`   GCS path: gs://${config.gcsBucket}/${config.gcsPath}\n`);
 
@@ -215,11 +221,36 @@ async function fetchHistoricalPrices(config: FetchConfig) {
   const results: Array<{ ticker: string; exchange: string; success: boolean; dataPoints?: number }> = [];
 
   // Build list of all endpoints to fetch
-  const endpoints: Array<{ ticker: string; exchange: keyof typeof EXCHANGE_MAP }> = [];
+  const allEndpoints: Array<{ ticker: string; exchange: keyof typeof EXCHANGE_MAP }> = [];
   for (const ticker of config.tickers) {
     for (const exchange of config.exchanges) {
-      endpoints.push({ ticker, exchange });
+      allEndpoints.push({ ticker, exchange });
     }
+  }
+
+  // Filter out existing files if skipExisting is enabled
+  let endpoints = allEndpoints;
+  let skippedCount = 0;
+  if (config.skipExisting) {
+    endpoints = allEndpoints.filter(({ ticker, exchange }) => {
+      const fnarExchange = EXCHANGE_MAP[exchange];
+      const filepath = `${config.outputDir}/${ticker}-${fnarExchange}.json`;
+      const exists = existsSync(filepath);
+      if (exists) {
+        skippedCount++;
+      }
+      return !exists;
+    });
+
+    if (skippedCount > 0) {
+      console.log(`⏭️  Skipping ${skippedCount} existing files`);
+      console.log(`📥 Fetching ${endpoints.length} new/updated files\n`);
+    }
+  }
+
+  if (endpoints.length === 0) {
+    console.log("✅ All files already exist. Nothing to fetch!");
+    return;
   }
 
   // Fetch in batches

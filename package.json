@@ -12,6 +12,12 @@
     "update-daily-vwap": "tsx scripts/update-daily-vwap.ts",
     "backfill-dates": "tsx scripts/backfill-specific-dates.ts",
     "delete-vwap-dates": "tsx scripts/delete-vwap-dates.ts",
+    "update-daily-historical": "tsx scripts/update-daily-historical.ts",
+    "retry-missed-days": "tsx scripts/retry-missed-days.ts",
+    "upload-missing-gcs": "tsx scripts/upload-missing-to-gcs.ts",
+    "move-to-production-gcs": "tsx scripts/move-to-production-gcs.ts",
+    "analyze-historical": "tsx scripts/analyze-historical-prices.ts",
+    "test-production-mode": "tsx scripts/test-production-mode.ts",
     "start": "next start"
   },
   "dependencies": {
