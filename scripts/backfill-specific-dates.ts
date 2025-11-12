@@ -1,4 +1,4 @@
-import { readFileSync, writeFileSync, mkdirSync } from "fs";
+import { readFileSync, writeFileSync, mkdirSync, unlinkSync } from "fs";
 import { execSync } from "child_process";
 import { ApiRateLimiter } from "./lib/rate-limiter.js";
 import type { HistoricalPriceData, MissedDaysLog } from "../src/types";
@@ -245,9 +245,21 @@ async function backfillDate(
 
       // Filter for daily data
       const dailyData = result.data.filter((d: any) => d.Interval === "DAY_ONE");
+      console.log(`   🔍 ${ticker}-${exchange}: API returned ${result.data.length} total points, ${dailyData.length} daily points`);
 
       if (dailyData.length === 0) {
         const errorMsg = "No daily data in response (no trading activity)";
+        logMissedDay(missedDaysLog, ticker, exchange, isoDate, timestamp, errorMsg);
+        return { ticker, exchange, success: false, newDataPoint: false, error: errorMsg };
+      }
+
+      // Filter to ONLY the requested date's data point
+      const matchingData = dailyData.filter((d: any) => d.DateEpochMs === timestamp);
+      console.log(`   🎯 ${ticker}-${exchange}: Filtering for ${isoDate} (timestamp: ${timestamp}) -> ${matchingData.length} matches`);
+
+      if (matchingData.length === 0) {
+        const errorMsg = `No data for requested date ${isoDate} (received ${dailyData.length} other dates)`;
+        console.log(`   ⚠️  ${ticker}-${exchange}: API dates don't match requested date`);
         logMissedDay(missedDaysLog, ticker, exchange, isoDate, timestamp, errorMsg);
         return { ticker, exchange, success: false, newDataPoint: false, error: errorMsg };
       }
@@ -256,12 +268,15 @@ async function backfillDate(
       let existingData = downloadFromGCS(ticker, fnarExchange);
 
       if (!existingData) {
+        console.log(`   📝 ${ticker}-${exchange}: Creating new file (not in GCS)`);
         existingData = {
           ticker,
           exchange: fnarExchange,
           lastUpdated: Date.now(),
           data: [],
         };
+      } else {
+        console.log(`   📥 ${ticker}-${exchange}: Downloaded from GCS (${existingData.data.length} existing points)`);
       }
 
       // Check if this data point already exists
@@ -270,22 +285,27 @@ async function backfillDate(
       );
 
       if (alreadyExists) {
+        console.log(`   ⏭️  ${ticker}-${exchange}: Data point for ${isoDate} already exists, skipping`);
         return { ticker, exchange, success: true, newDataPoint: false };
       }
 
-      // Append new data point(s)
-      for (const dataPoint of dailyData) {
-        if (dataPoint.DateEpochMs === timestamp) {
-          existingData.data.push({
-            DateEpochMs: dataPoint.DateEpochMs,
-            Open: dataPoint.Open,
-            Close: dataPoint.Close,
-            High: dataPoint.High,
-            Low: dataPoint.Low,
-            Volume: dataPoint.Volume,
-            Traded: dataPoint.Traded,
-          });
-        }
+      // Add ONLY the matching data point (should be exactly one)
+      const dataPoint = matchingData[0];
+      existingData.data.push({
+        DateEpochMs: dataPoint.DateEpochMs,
+        Open: dataPoint.Open,
+        Close: dataPoint.Close,
+        High: dataPoint.High,
+        Low: dataPoint.Low,
+        Volume: dataPoint.Volume,
+        Traded: dataPoint.Traded,
+      });
+
+      console.log(`   ✅ ${ticker}-${exchange}: Added data point for ${isoDate} (${existingData.data.length - 1} -> ${existingData.data.length} total points)`);
+
+      // Warn if API returned multiple points for same date (shouldn't happen)
+      if (matchingData.length > 1) {
+        console.warn(`   ⚠️  ${ticker}-${exchange}: API returned ${matchingData.length} data points for ${isoDate}`);
       }
 
       // Sort data by date
@@ -299,12 +319,25 @@ async function backfillDate(
 
       // Upload to GCS (unless dry run)
       if (!dryRun) {
+        console.log(`   📤 ${ticker}-${exchange}: Uploading to GCS...`);
         const uploaded = uploadToGCS(ticker, fnarExchange);
         if (!uploaded) {
           const errorMsg = "Failed to upload to GCS";
+          console.log(`   ❌ ${ticker}-${exchange}: Upload failed`);
           logMissedDay(missedDaysLog, ticker, exchange, isoDate, timestamp, errorMsg);
           return { ticker, exchange, success: false, newDataPoint: true, error: errorMsg };
         }
+        console.log(`   ✅ ${ticker}-${exchange}: Uploaded to GCS successfully`);
+
+        // Clean up local file after successful upload
+        try {
+          unlinkSync(localPath);
+          console.log(`   🗑️  ${ticker}-${exchange}: Deleted local file`);
+        } catch (error) {
+          console.warn(`   ⚠️  ${ticker}-${exchange}: Failed to delete local file: ${error}`);
+        }
+      } else {
+        console.log(`   🔧 ${ticker}-${exchange}: DRY RUN - skipping GCS upload`);
       }
 
       return { ticker, exchange, success: true, newDataPoint: true };
