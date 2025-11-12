@@ -9,6 +9,7 @@
     "fetch-historical": "tsx scripts/fetch-historical-prices.ts",
     "upload-historical": "tsx scripts/upload-historical-to-gcs.ts",
     "calculate-vwap": "tsx scripts/calculate-vwap.ts",
+    "update-daily-vwap": "tsx scripts/update-daily-vwap.ts",
     "backfill-dates": "tsx scripts/backfill-specific-dates.ts",
     "delete-vwap-dates": "tsx scripts/delete-vwap-dates.ts",
     "start": "next start"
