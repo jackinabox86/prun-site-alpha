@@ -190,6 +190,22 @@ function calculateVWAP(
   const expandedData = expandToAllDays(rawData.data);
   console.log(`   Expanded to ${expandedData.length} days (including gaps)`);
 
+  // Calculate cutoff date: stop 4 days before today to allow late-arriving data
+  const today = new Date();
+  today.setUTCHours(0, 0, 0, 0);
+  const cutoffDate = new Date(today);
+  cutoffDate.setUTCDate(cutoffDate.getUTCDate() - 4);
+  const cutoffTimestamp = cutoffDate.getTime();
+
+  // Filter to only include dates up to cutoff
+  const filteredData = expandedData.filter(d => d.DateEpochMs <= cutoffTimestamp);
+
+  if (filteredData.length < expandedData.length) {
+    const excluded = expandedData.length - filteredData.length;
+    console.log(`   ⏸️  Excluded ${excluded} recent days (cutoff: ${cutoffDate.toISOString().split('T')[0]})`);
+    console.log(`   Processing ${filteredData.length} days (up to 4 days before today)`);
+  }
+
   const vwapData: VWAPDataPoint[] = [];
   let clippedDays = 0;
   let forwardFilledDays = 0;
@@ -199,7 +215,7 @@ function calculateVWAP(
   const dailyVWAPs: (number | null)[] = [];
   let lastValidDailyVWAP: number | null = null;
 
-  for (const d of expandedData) {
+  for (const d of filteredData) {
     if (d.Traded > 0 && d.Volume > 0) {
       const vwap = d.Volume / d.Traded;
       dailyVWAPs.push(vwap);
@@ -213,13 +229,13 @@ function calculateVWAP(
     }
   }
 
-  const tradingDaysCount = expandedData.filter(d => d.Traded > 0).length;
-  const forwardFilledDailyCount = dailyVWAPs.filter((v, i) => v !== null && expandedData[i].Traded === 0).length;
+  const tradingDaysCount = filteredData.filter(d => d.Traded > 0).length;
+  const forwardFilledDailyCount = dailyVWAPs.filter((v, i) => v !== null && filteredData[i].Traded === 0).length;
   console.log(`   Days with trading activity: ${tradingDaysCount}`);
 
   // Process each day
-  for (let i = 0; i < expandedData.length; i++) {
-    const day = expandedData[i];
+  for (let i = 0; i < filteredData.length; i++) {
+    const day = filteredData[i];
     const dailyVWAP = dailyVWAPs[i];
 
     // Calculate 30-day rolling statistics (need at least 30 days)
@@ -272,7 +288,7 @@ function calculateVWAP(
 
       // Look at last 7 days
       for (let j = i - 6; j <= i; j++) {
-        const dayData = expandedData[j];
+        const dayData = filteredData[j];
         const dayVWAP = dailyVWAPs[j];
 
         if (dayData.Traded > 0 && dayVWAP !== null) {
