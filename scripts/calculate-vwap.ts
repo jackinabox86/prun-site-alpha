@@ -8,7 +8,7 @@ import { execSync } from "child_process";
  * Methodology:
  * 1. Calculate Daily VWAP = Volume / Traded
  * 2. Establish 30-day rolling median, Q1, Q3, IQR baseline
- * 3. Define UpperCap = Q3 + 1.5*IQR, LowerFloor = Q1 - 1.5*IQR
+ * 3. Define UpperCap = Q3 + 3*IQR, LowerFloor = Q1 - 3*IQR
  * 4. Clip daily prices: Clipped_VWAP = max(LowerFloor, min(DailyVWAP, UpperCap))
  * 5. Reconstruct clipped value: Clipped_Value = Clipped_VWAP × Traded
  * 6. Calculate 7-day VWAP = Σ(Clipped_Value) / Σ(Traded) over 7 days
@@ -172,8 +172,8 @@ function calculateVWAP(
         rollingIQR_30d = q3 - q1;
 
         // Calculate outlier fences
-        lowerFloor = q1 - 1.5 * rollingIQR_30d;
-        upperCap = q3 + 1.5 * rollingIQR_30d;
+        lowerFloor = q1 - 3 * rollingIQR_30d;
+        upperCap = q3 + 3 * rollingIQR_30d;
       }
     }
 
@@ -217,8 +217,8 @@ function calculateVWAP(
             if (window30dForJ.length >= 15) {
               const { q1, q3 } = calculateQuartiles(window30dForJ);
               const iqr = q3 - q1;
-              const lowerFloorJ = q1 - 1.5 * iqr;
-              const upperCapJ = q3 + 1.5 * iqr;
+              const lowerFloorJ = q1 - 3 * iqr;
+              const upperCapJ = q3 + 3 * iqr;
 
               dayClippedVWAP = Math.max(lowerFloorJ, Math.min(dayVWAP, upperCapJ));
             }
