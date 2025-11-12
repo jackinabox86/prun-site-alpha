@@ -132,6 +132,52 @@ function loadTickersFromFile(filepath: string): string[] {
   }
 }
 
+// Expand data to include all calendar days from first to last date
+function expandToAllDays(rawDataPoints: RawDataPoint[]): RawDataPoint[] {
+  if (rawDataPoints.length === 0) return [];
+
+  // Sort by date to ensure chronological order
+  const sorted = [...rawDataPoints].sort((a, b) => a.DateEpochMs - b.DateEpochMs);
+
+  const firstDate = sorted[0].DateEpochMs;
+  const lastDate = sorted[sorted.length - 1].DateEpochMs;
+
+  // Create a map of existing data points by date
+  const dataMap = new Map<number, RawDataPoint>();
+  for (const point of sorted) {
+    // Normalize to start of day (midnight UTC)
+    const dayStart = Math.floor(point.DateEpochMs / 86400000) * 86400000;
+    dataMap.set(dayStart, point);
+  }
+
+  // Generate all days from first to last
+  const expanded: RawDataPoint[] = [];
+  const oneDayMs = 86400000; // 24 hours in milliseconds
+
+  for (let date = Math.floor(firstDate / oneDayMs) * oneDayMs;
+       date <= lastDate;
+       date += oneDayMs) {
+
+    if (dataMap.has(date)) {
+      // Use existing data
+      expanded.push(dataMap.get(date)!);
+    } else {
+      // Create synthetic entry for missing day with zero trading activity
+      expanded.push({
+        DateEpochMs: date,
+        Open: 0,
+        Close: 0,
+        High: 0,
+        Low: 0,
+        Volume: 0,
+        Traded: 0,
+      });
+    }
+  }
+
+  return expanded;
+}
+
 function calculateVWAP(
   ticker: string,
   exchange: string,
@@ -139,6 +185,10 @@ function calculateVWAP(
 ): VWAPHistoricalData {
   console.log(`\n📊 Calculating VWAP for ${ticker}.${exchange}`);
   console.log(`   Raw data points: ${rawData.data.length}`);
+
+  // Expand data to include ALL calendar days from first to last date
+  const expandedData = expandToAllDays(rawData.data);
+  console.log(`   Expanded to ${expandedData.length} days (including gaps)`);
 
   const vwapData: VWAPDataPoint[] = [];
   let clippedDays = 0;
@@ -149,7 +199,7 @@ function calculateVWAP(
   const dailyVWAPs: (number | null)[] = [];
   let lastValidDailyVWAP: number | null = null;
 
-  for (const d of rawData.data) {
+  for (const d of expandedData) {
     if (d.Traded > 0 && d.Volume > 0) {
       const vwap = d.Volume / d.Traded;
       dailyVWAPs.push(vwap);
@@ -163,13 +213,13 @@ function calculateVWAP(
     }
   }
 
-  const tradingDaysCount = rawData.data.filter(d => d.Traded > 0).length;
-  const forwardFilledDailyCount = dailyVWAPs.filter((v, i) => v !== null && rawData.data[i].Traded === 0).length;
+  const tradingDaysCount = expandedData.filter(d => d.Traded > 0).length;
+  const forwardFilledDailyCount = dailyVWAPs.filter((v, i) => v !== null && expandedData[i].Traded === 0).length;
   console.log(`   Days with trading activity: ${tradingDaysCount}`);
 
   // Process each day
-  for (let i = 0; i < rawData.data.length; i++) {
-    const day = rawData.data[i];
+  for (let i = 0; i < expandedData.length; i++) {
+    const day = expandedData[i];
     const dailyVWAP = dailyVWAPs[i];
 
     // Calculate 30-day rolling statistics (need at least 30 days)
@@ -222,7 +272,7 @@ function calculateVWAP(
 
       // Look at last 7 days
       for (let j = i - 6; j <= i; j++) {
-        const dayData = rawData.data[j];
+        const dayData = expandedData[j];
         const dayVWAP = dailyVWAPs[j];
 
         if (dayData.Traded > 0 && dayVWAP !== null) {
