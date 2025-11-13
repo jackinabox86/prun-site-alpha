@@ -108,6 +108,64 @@ export default function InflationClient() {
     setTickers(PRESET_BASKETS[basket].join(", "));
   };
 
+  const handleExportCSV = () => {
+    if (!apiResponse || indexData.length === 0) return;
+
+    // Build CSV content
+    const lines: string[] = [];
+
+    // Metadata section
+    lines.push(`# Inflation Index Export`);
+    lines.push(`# Exchange: ${apiResponse.exchange}`);
+    lines.push(`# Index Date: ${apiResponse.indexDate} (Base = 100)`);
+    lines.push(`# Weight Type: ${apiResponse.weightType}`);
+    lines.push(`# Tickers: ${apiResponse.tickers.join(", ")}`);
+    lines.push(`# Data Points: ${apiResponse.dataPoints}`);
+    lines.push(`# Exported: ${new Date().toISOString()}`);
+    lines.push(``);
+
+    // Weights section
+    lines.push(`# Ticker Weights:`);
+    for (const w of weights) {
+      if (weightType === "volume") {
+        lines.push(`# ${w.ticker}: ${(w.weight * 100).toFixed(4)}% (Volume: ${w.indexDateVolume})`);
+      } else {
+        lines.push(`# ${w.ticker}: ${(w.weight * 100).toFixed(4)}%`);
+      }
+    }
+    lines.push(``);
+
+    // Header row
+    const tickerList = apiResponse.tickers.sort();
+    const headers = ["Date", "Timestamp", "Index Value", ...tickerList.map(t => `${t} Contribution`)];
+    lines.push(headers.join(","));
+
+    // Data rows
+    for (const point of indexData) {
+      const row = [
+        point.date,
+        point.timestamp.toString(),
+        point.indexValue.toFixed(6),
+        ...tickerList.map(ticker => {
+          const contribution = point.contributions[ticker];
+          return contribution !== undefined ? contribution.toFixed(6) : "";
+        })
+      ];
+      lines.push(row.join(","));
+    }
+
+    // Create blob and download
+    const csv = lines.join("\n");
+    const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    const filename = `inflation-index-${apiResponse.exchange}-${apiResponse.indexDate}-${apiResponse.weightType}.csv`;
+    link.download = filename;
+    link.click();
+    URL.revokeObjectURL(url);
+  };
+
   // Prepare chart data
   const chartData = indexData.length > 0 ? [
     {
@@ -277,8 +335,8 @@ export default function InflationClient() {
             </div>
           </div>
 
-          {/* Calculate Button */}
-          <div>
+          {/* Calculate and Export Buttons */}
+          <div style={{ display: "flex", gap: "1rem", flexWrap: "wrap" }}>
             <button
               className="terminal-button"
               onClick={handleCalculate}
@@ -286,6 +344,14 @@ export default function InflationClient() {
               style={{ padding: "0.75rem 2rem" }}
             >
               {loading ? "Calculating..." : "Calculate Index"}
+            </button>
+            <button
+              className="terminal-button"
+              onClick={handleExportCSV}
+              disabled={indexData.length === 0}
+              style={{ padding: "0.75rem 2rem" }}
+            >
+              📥 Export CSV
             </button>
           </div>
         </div>
