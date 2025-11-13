@@ -4,6 +4,8 @@ import { NextRequest, NextResponse } from "next/server";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
+const GCS_BUCKET = "https://storage.googleapis.com/prun-site-alpha-bucket";
+
 interface VWAPDataPoint {
   DateEpochMs: number;
   rawVolume: number;
@@ -51,12 +53,7 @@ interface IndexDataPoint {
  */
 async function fetchVWAPData(ticker: string, exchange: string): Promise<VWAPHistoricalData | null> {
   try {
-    const bucketUrl = process.env.GCS_BUCKET_URL;
-    if (!bucketUrl) {
-      throw new Error("GCS_BUCKET_URL environment variable is not set");
-    }
-
-    const url = `${bucketUrl}/historical-prices-vwap/${ticker}.${exchange}.json`;
+    const url = `${GCS_BUCKET}/historical-prices-vwap/${ticker}.${exchange}.json`;
     const response = await fetch(url, { cache: "no-store" });
 
     if (!response.ok) {
