@@ -184,6 +184,11 @@ export default function InflationClient() {
     },
   ] : [];
 
+  // Calculate y-axis range: 80 to (max + 10)
+  const yAxisRange = indexData.length > 0
+    ? [80, Math.max(...indexData.map(d => d.indexValue)) + 10]
+    : undefined;
+
   const chartLayout = {
     title: {
       text: `${weightType === "equal" ? "Equal-Weighted" : "Volume-Weighted"} Inflation Index (${exchange})`,
@@ -222,15 +227,15 @@ export default function InflationClient() {
       gridcolor: "#2a3f5f",
       showgrid: true,
       color: "#a0a8b5",
+      range: yAxisRange,
     },
     hovermode: "x unified" as const,
     margin: { l: 60, r: 40, t: 80, b: 120 },
   };
 
   const chartConfig = {
-    displayModeBar: true,
+    displayModeBar: false,
     displaylogo: false,
-    modeBarButtonsToRemove: ["lasso2d", "select2d"],
   };
 
   return (
@@ -244,7 +249,7 @@ export default function InflationClient() {
         <div style={{ display: "grid", gap: "1.5rem" }}>
           {/* Preset Baskets */}
           <div style={{ display: "flex", gap: "0.75rem", alignItems: "center", flexWrap: "wrap" }}>
-            <span style={{ fontSize: "0.875rem", color: "var(--color-text-secondary)", textTransform: "uppercase", letterSpacing: "0.05em" }}>
+            <span style={{ fontSize: "0.875rem", fontFamily: "var(--font-display)", color: "var(--color-text-primary)", textTransform: "uppercase", letterSpacing: "0.05em", fontWeight: 500 }}>
               Preset Baskets:
             </span>
             <button
