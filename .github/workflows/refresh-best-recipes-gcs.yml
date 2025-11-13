@@ -2,9 +2,9 @@ name: Refresh Best Recipes (Google Cloud Storage)
 
 on:
   schedule:
-    # Run every hour at minute 10
-    # Note: To run every 30 minutes, change to: '10,40 * * * *'
-    - cron: '10 * * * *'
+    # Run 3 times per day (every 8 hours) at minute 10
+    # Runs at: 00:10, 08:10, 16:10 UTC
+    - cron: '10 0,8,16 * * *'
 
   # Allow manual trigger from GitHub UI
   workflow_dispatch:
