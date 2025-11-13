@@ -187,11 +187,11 @@ export default function InflationClient() {
   const chartLayout = {
     title: {
       text: `${weightType === "equal" ? "Equal-Weighted" : "Volume-Weighted"} Inflation Index (${exchange})`,
-      font: { color: "#e6e8eb", family: "var(--font-display)", size: 18 },
+      font: { color: "#e6e8eb", family: "-apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif", size: 18 },
     },
     paper_bgcolor: "#0a0e14",
     plot_bgcolor: "#101419",
-    font: { color: "#e6e8eb", family: "var(--font-mono)" },
+    font: { color: "#e6e8eb", family: "-apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif" },
     xaxis: {
       title: "Date",
       gridcolor: "#2a3f5f",
@@ -234,43 +234,40 @@ export default function InflationClient() {
   };
 
   return (
-    <div style={{ padding: "2rem 0" }}>
-      <div className="terminal-header">
-        <span>📊</span>
-        <span>Inflation Index Calculator</span>
-      </div>
-
+    <div>
       {/* Input Controls */}
       <div className="terminal-box" style={{ marginBottom: "2rem" }}>
+        <h1 className="terminal-header" style={{ margin: 0, marginBottom: "1.5rem", fontSize: "1.2rem", paddingBottom: 0, borderBottom: "none", fontWeight: "normal" }}>
+          INFLATION INDEX CALCULATOR
+        </h1>
+
         <div style={{ display: "grid", gap: "1.5rem" }}>
           {/* Preset Baskets */}
-          <div>
-            <label className="terminal-header" style={{ fontSize: "0.75rem", marginBottom: "0.5rem" }}>
-              Preset Baskets
-            </label>
-            <div style={{ display: "flex", gap: "0.5rem", flexWrap: "wrap" }}>
-              <button
-                className="terminal-button"
-                onClick={() => handlePresetBasket("frequentlyTraded")}
-                style={{ fontSize: "0.75rem" }}
-              >
-                Frequently Traded
-              </button>
-              <button
-                className="terminal-button"
-                onClick={() => handlePresetBasket("consumables")}
-                style={{ fontSize: "0.75rem" }}
-              >
-                Consumables
-              </button>
-              <button
-                className="terminal-button"
-                onClick={() => handlePresetBasket("lAndRFabs")}
-                style={{ fontSize: "0.75rem" }}
-              >
-                L and R Fabs
-              </button>
-            </div>
+          <div style={{ display: "flex", gap: "0.75rem", alignItems: "center", flexWrap: "wrap" }}>
+            <span style={{ fontSize: "0.875rem", color: "var(--color-text-secondary)", textTransform: "uppercase", letterSpacing: "0.05em" }}>
+              Preset Baskets:
+            </span>
+            <button
+              className="terminal-button"
+              onClick={() => handlePresetBasket("frequentlyTraded")}
+              style={{ fontSize: "0.75rem" }}
+            >
+              Frequently Traded
+            </button>
+            <button
+              className="terminal-button"
+              onClick={() => handlePresetBasket("consumables")}
+              style={{ fontSize: "0.75rem" }}
+            >
+              Consumables
+            </button>
+            <button
+              className="terminal-button"
+              onClick={() => handlePresetBasket("lAndRFabs")}
+              style={{ fontSize: "0.75rem" }}
+            >
+              L and R Fabs
+            </button>
           </div>
 
           {/* Ticker Input */}
@@ -384,7 +381,7 @@ export default function InflationClient() {
       {/* Info Display */}
       {apiResponse && !error && (
         <div className="terminal-box" style={{ marginBottom: "2rem" }}>
-          <div style={{ display: "grid", gap: "0.5rem", fontSize: "0.875rem" }}>
+          <div style={{ display: "grid", gap: "0.5rem", fontSize: "0.875rem", fontFamily: "var(--font-display)" }}>
             <div>
               <span className="text-accent">Tickers Found:</span> {apiResponse.tickers.join(", ")}
             </div>
@@ -417,7 +414,7 @@ export default function InflationClient() {
       )}
 
       {/* Weights Display */}
-      {weights.length > 0 && (
+      {weights.length > 0 && apiResponse && (
         <div className="terminal-box" style={{ marginBottom: "2rem" }}>
           <div className="terminal-header" style={{ fontSize: "0.75rem" }}>
             Ticker Weights
@@ -428,7 +425,7 @@ export default function InflationClient() {
                 <tr>
                   <th>Ticker</th>
                   <th>Weight (%)</th>
-                  {weightType === "volume" && <th>Index Date Volume</th>}
+                  {apiResponse.weightType === "volume" && <th>Index Date Volume</th>}
                 </tr>
               </thead>
               <tbody>
@@ -436,7 +433,7 @@ export default function InflationClient() {
                   <tr key={w.ticker}>
                     <td>{w.ticker}</td>
                     <td>{(w.weight * 100).toFixed(2)}%</td>
-                    {weightType === "volume" && <td>{w.indexDateVolume.toLocaleString()}</td>}
+                    {apiResponse.weightType === "volume" && <td>{w.indexDateVolume.toLocaleString()}</td>}
                   </tr>
                 ))}
               </tbody>
