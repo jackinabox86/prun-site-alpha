@@ -23,7 +23,10 @@ export async function GET(req: Request) {
     const forceRecipe = url.searchParams.get("forceRecipe") || undefined;
     const excludeRecipe = url.searchParams.get("excludeRecipe") || undefined;
 
-    const report = await buildReport({ ticker, exchange, priceType, priceSource, forceMake, forceBuy, forceRecipe, excludeRecipe });
+    // Extract extraction mode flag (ANT only)
+    const extractionMode = url.searchParams.get("extractionMode") === "true";
+
+    const report = await buildReport({ ticker, exchange, priceType, priceSource, forceMake, forceBuy, forceRecipe, excludeRecipe, extractionMode });
     const status = (report as any)?.ok === false ? 500 : 200;
     return NextResponse.json(report, { status });
   } catch (err: any) {

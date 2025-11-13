@@ -4,7 +4,7 @@ import { findAllMakeOptions, buildScenarioRows } from "@/core/engine";
 import { computeRoiNarrow, computeRoiBroad } from "@/core/roi";
 import { computeInputPayback } from "@/core/inputPayback";
 import { cachedBestRecipes } from "@/server/cachedBestRecipes";
-import { LOCAL_DATA_SOURCES, GCS_DATA_SOURCES } from "@/lib/config";
+import { LOCAL_DATA_SOURCES, GCS_DATA_SOURCES, GCS_STATIC_BASE } from "@/lib/config";
 import { scenarioDisplayName } from "@/core/scenario";
 import type { PriceMode, Exchange, PriceType } from "@/types";
 
@@ -30,8 +30,9 @@ export async function buildReport(opts: {
   forceBuy?: string;
   forceRecipe?: string;
   excludeRecipe?: string;
+  extractionMode?: boolean;
 }) {
-  const { ticker, exchange, priceType, priceSource = "local", forceMake, forceBuy, forceRecipe, excludeRecipe } = opts;
+  const { ticker, exchange, priceType, priceSource = "local", forceMake, forceBuy, forceRecipe, excludeRecipe, extractionMode = false } = opts;
 
   // Parse force constraints into sets
   const forceMakeSet = forceMake
@@ -61,6 +62,33 @@ export async function buildReport(opts: {
     { recipes: dataSources.recipes, prices: dataSources.prices },
     { bestMap }
   );
+
+  // If extraction mode is enabled for ANT, merge expanded recipes
+  if (extractionMode && exchange === "ANT") {
+    const expandedRecipeUrl = priceSource === "gcs"
+      ? `${GCS_STATIC_BASE}/ANT-expandedrecipes-dynamic.csv`
+      : "public/data/ANT-expandedrecipes-dynamic.csv";
+
+    try {
+      const expandedData = await loadAllFromCsv(
+        { recipes: expandedRecipeUrl, prices: dataSources.prices },
+        { bestMap }
+      );
+
+      // Merge expanded recipes into the main recipeMap
+      // For each ticker in expanded recipes, add those recipes to the existing ticker's recipe list
+      for (const [ticker, recipes] of Object.entries(expandedData.recipeMap.map)) {
+        if (!recipeMap.map[ticker]) {
+          // If ticker doesn't exist in main map, create it
+          recipeMap.map[ticker] = [];
+        }
+        // Add all expanded recipes for this ticker
+        recipeMap.map[ticker].push(...recipes);
+      }
+    } catch (error: any) {
+      throw new Error(`Failed to load ANT expanded recipes: ${error.message || error}`);
+    }
+  }
 
   // Check if the ticker exists in price data
   const tickerPrices = pricesMap[ticker];

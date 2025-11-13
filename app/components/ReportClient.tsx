@@ -37,6 +37,7 @@ export default function ReportClient() {
   const [analysisCollapsed, setAnalysisCollapsed] = useState(false);
   const [systemControlsCollapsed, setSystemControlsCollapsed] = useState(true);
   const [showTickerDropdown, setShowTickerDropdown] = useState(false);
+  const [extractionMode, setExtractionMode] = useState(false);
 
   const [loading, setLoading] = useState(false);
   const [report, setReport] = useState<ApiReport | null>(null);
@@ -75,6 +76,7 @@ export default function ReportClient() {
         exchange,
         priceType,
         priceSource,
+        extractionMode: extractionMode ? "true" : "false",
       };
 
       // Only include forceMake and forceBuy if they're not empty
@@ -292,6 +294,31 @@ export default function ReportClient() {
               <option value="NCC">NCC</option>
               <option value="UNV">UNV</option>
             </select>
+          </div>
+
+          <div>
+            <label
+              style={{ display: "block", fontSize: "0.75rem", marginBottom: "0.5rem", color: "var(--color-accent-primary)", textTransform: "uppercase" }}
+              title={exchange !== "ANT" ? "Extraction mode only available for ANT exchange" : "Include planet-specific extraction recipes"}
+            >
+              Extraction
+            </label>
+            <button
+              onClick={() => setExtractionMode(!extractionMode)}
+              disabled={exchange !== "ANT"}
+              className="terminal-button"
+              style={{
+                width: "100%",
+                padding: "0.65rem 1rem",
+                backgroundColor: extractionMode ? "var(--color-accent-primary)" : "transparent",
+                color: extractionMode ? "var(--color-bg-primary)" : "var(--color-text-primary)",
+                opacity: exchange !== "ANT" ? 0.4 : 1,
+                cursor: exchange !== "ANT" ? "not-allowed" : "pointer"
+              }}
+              title={exchange !== "ANT" ? "Extraction mode only available for ANT exchange" : ""}
+            >
+              {extractionMode ? "ON" : "OFF"}
+            </button>
           </div>
 
           <div>

@@ -1,4 +1,9 @@
 /**
+ * GCS static base URL for static files (planet conditions, expanded recipes, etc.)
+ */
+export const GCS_STATIC_BASE = "https://storage.googleapis.com/prun-site-alpha-bucket/static";
+
+/**
  * Local data sources - uses legacy static files from public/data
  * These are frozen snapshots for testing/comparison purposes
  */
@@ -20,27 +25,15 @@ export const LOCAL_DATA_SOURCES = {
 
 /**
  * Determine if we should use test files based on environment
- * Uses -test suffix for preview deployments (non-production branches)
+ * Always returns empty string - no -test suffix needed
  */
 function getFileSuffix(): string {
-  // In production (main branch), use no suffix
-  // In preview deployments (other branches), use -test suffix
-
-  // Check Vercel environment
-  const isVercelProduction = process.env.VERCEL_ENV === 'production' ||
-                             process.env.VERCEL_GIT_COMMIT_REF === 'main';
-
-  // Check GitHub Actions environment
-  const isGitHubMain = process.env.GITHUB_REF === 'refs/heads/main';
-
-  const isProduction = isVercelProduction || isGitHubMain;
-  return isProduction ? '' : '-test';
+  return '';
 }
 
 /**
  * GCS data sources - requires environment variables to be set
- * Automatically uses -test suffix for recipes/prices in preview deployments
- * Best recipes always uses production file (no -test version generated)
+ * Always uses production files (no -test suffix)
  * Throws explicit errors if environment variables are missing
  */
 export const GCS_DATA_SOURCES = {
