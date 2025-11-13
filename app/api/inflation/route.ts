@@ -1,12 +1,11 @@
 // app/api/inflation/route.ts
 import { NextRequest, NextResponse } from "next/server";
-import { readFileSync } from "fs";
-import { execSync } from "child_process";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 const GCS_BUCKET = "https://storage.googleapis.com/prun-site-alpha-bucket";
+const GCS_VWAP_PATH = "historical-prices-vwap-test/claude/explore-feature-implementation-011CUw3txifyKMabjhhL1oFr";
 
 // Exchange code mapping
 const EXCHANGE_MAP: Record<string, string> = {
@@ -15,59 +14,6 @@ const EXCHANGE_MAP: Record<string, string> = {
   ICA: "ic1",
   NCC: "nc1",
 };
-
-/**
- * Detect current git branch with multiple fallback methods
- */
-function getCurrentBranch(): string {
-  try {
-    // Method 1: git rev-parse (local development)
-    const branch = execSync("git rev-parse --abbrev-ref HEAD", {
-      encoding: "utf8",
-      stdio: ["pipe", "pipe", "pipe"],
-    }).trim();
-    if (branch && branch !== "HEAD") return branch;
-  } catch {}
-
-  try {
-    // Method 2: GITHUB_REF environment variable (GitHub Actions/deployments)
-    if (process.env.GITHUB_REF) {
-      const match = process.env.GITHUB_REF.match(/refs\/heads\/(.+)/);
-      if (match && match[1]) return match[1];
-    }
-  } catch {}
-
-  try {
-    // Method 3: Read .git/HEAD directly
-    const gitHead = readFileSync(".git/HEAD", "utf8").trim();
-    const match = gitHead.match(/ref: refs\/heads\/(.+)/);
-    if (match && match[1]) return match[1];
-  } catch {}
-
-  // Fallback
-  return "unknown";
-}
-
-/**
- * Check if branch is production
- */
-function isProductionBranch(branch: string): boolean {
-  return branch === "main";
-}
-
-/**
- * Get GCS path for VWAP data based on current branch
- */
-function getVWAPPath(): string {
-  const currentBranch = getCurrentBranch();
-  const isProduction = isProductionBranch(currentBranch);
-
-  if (isProduction) {
-    return "historical-prices-vwap";
-  } else {
-    return `historical-prices-vwap-test/${currentBranch}`;
-  }
-}
 
 interface VWAPDataPoint {
   DateEpochMs: number;
@@ -116,10 +62,9 @@ interface IndexDataPoint {
  */
 async function fetchVWAPData(ticker: string, exchange: string): Promise<VWAPHistoricalData | null> {
   try {
-    const vwapPath = getVWAPPath();
     const shortExchange = EXCHANGE_MAP[exchange] || exchange.toLowerCase();
     const filename = `${ticker}-${shortExchange}-vwap.json`;
-    const url = `${GCS_BUCKET}/${vwapPath}/${filename}`;
+    const url = `${GCS_BUCKET}/${GCS_VWAP_PATH}/${filename}`;
 
     console.log(`Fetching VWAP data: ${url}`);
     const response = await fetch(url, { cache: "no-store" });
