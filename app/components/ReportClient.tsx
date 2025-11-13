@@ -45,11 +45,17 @@ export default function ReportClient() {
   const [readmeHidden, setReadmeHidden] = useState(false);
 
   useEffect(() => {
-    fetch("/api/tickers", { cache: "no-store" })
+    const params = new URLSearchParams();
+    if (extractionMode) {
+      params.set("extractionMode", "true");
+    }
+    const url = params.toString() ? `/api/tickers?${params}` : "/api/tickers";
+
+    fetch(url, { cache: "no-store" })
       .then((r) => (r.ok ? r.json() : Promise.reject(new Error("Failed to load tickers"))))
       .then((data: { tickers: string[] }) => setTickers(data.tickers ?? []))
       .catch(() => setTickers([]));
-  }, []);
+  }, [extractionMode]);
 
   // Read ticker from URL params on mount
   useEffect(() => {
