@@ -9,6 +9,8 @@ const Plot = dynamic(() => import("react-plotly.js"), { ssr: false });
 // Preset baskets
 const PRESET_BASKETS = {
   consumables: ["DW", "PWO", "COF", "KOM", "PT", "REP", "EXO", "HMS", "MED", "SCN", "ALE", "SC", "FIM", "HSS", "GIN", "VG", "PDA", "MEA"],
+  frequentlyTraded: ["AL", "ALE", "C", "COF", "CU", "DW", "EPO", "EXO", "FE", "FF", "FIM", "FLP", "FLX", "GIN", "GRN", "HCP", "HMS", "HSE", "HSS", "INS", "KOM", "LBH", "LSE", "LTA", "MAI", "MED", "MFK", "MG", "NL", "NS", "OFF", "PE", "PG", "PSL", "PT", "PWO", "RBH", "RCO", "RDE", "REP", "RSE", "SC", "SCN", "SEA", "SF", "SFK", "SI", "SSC", "STL", "TRN", "TRU", "VG"],
+  lAndRFabs: ["LBH", "LDE", "LSE", "LTA", "RBH", "RDE", "RSE", "RTA"],
 };
 
 interface IndexDataPoint {
@@ -245,13 +247,27 @@ export default function InflationClient() {
             <label className="terminal-header" style={{ fontSize: "0.75rem", marginBottom: "0.5rem" }}>
               Preset Baskets
             </label>
-            <div style={{ display: "flex", gap: "0.5rem" }}>
+            <div style={{ display: "flex", gap: "0.5rem", flexWrap: "wrap" }}>
               <button
                 className="terminal-button"
                 onClick={() => handlePresetBasket("consumables")}
                 style={{ fontSize: "0.75rem" }}
               >
                 Consumables
+              </button>
+              <button
+                className="terminal-button"
+                onClick={() => handlePresetBasket("frequentlyTraded")}
+                style={{ fontSize: "0.75rem" }}
+              >
+                Frequently Traded
+              </button>
+              <button
+                className="terminal-button"
+                onClick={() => handlePresetBasket("lAndRFabs")}
+                style={{ fontSize: "0.75rem" }}
+              >
+                L and R Fabs
               </button>
             </div>
           </div>
