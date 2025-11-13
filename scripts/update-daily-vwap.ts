@@ -489,6 +489,7 @@ async function updateDailyVWAP(dryRun: boolean = false) {
     exchange: string;
     success: boolean;
     updated: boolean;
+    replacedForwardFill?: boolean;
     newDataPoints?: number;
     error?: string;
   }> = [];
@@ -543,10 +544,12 @@ async function updateDailyVWAP(dryRun: boolean = false) {
         // Download existing VWAP data
         const existingVWAP = downloadVWAPFromGCS(ticker, fnarExchange);
 
-        // Check if VWAP already has target date
+        // Check if VWAP already has target date with REAL data (not forward-filled)
+        let isReplacingForwardFill = false;
         if (existingVWAP) {
-          const alreadyHasDate = existingVWAP.data.some((d) => d.DateEpochMs === targetTimestamp);
-          if (alreadyHasDate) {
+          const existingPoint = existingVWAP.data.find((d) => d.DateEpochMs === targetTimestamp);
+          if (existingPoint && !existingPoint.wasForwardFilled) {
+            // Has real data, safe to skip
             results.push({
               ticker,
               exchange,
@@ -554,7 +557,12 @@ async function updateDailyVWAP(dryRun: boolean = false) {
               updated: false,
             });
             continue;
+          } else if (existingPoint && existingPoint.wasForwardFilled) {
+            // Has forward-filled data, will replace with real data
+            isReplacingForwardFill = true;
+            console.log(`   🔄 ${ticker}.${exchange}: Replacing forward-filled data with real data`);
           }
+          // Either no data or forward-filled, proceed with recalculation
         }
 
         // Calculate VWAP for recent dates
@@ -598,6 +606,7 @@ async function updateDailyVWAP(dryRun: boolean = false) {
           exchange,
           success: true,
           updated: true,
+          replacedForwardFill: isReplacingForwardFill,
           newDataPoints: newData.length,
         });
       } catch (error) {
@@ -634,6 +643,7 @@ async function updateDailyVWAP(dryRun: boolean = false) {
   const failed = results.filter((r) => !r.success).length;
   const updated = results.filter((r) => r.updated).length;
   const skipped = results.filter((r) => r.success && !r.updated).length;
+  const replacedForwardFill = results.filter((r) => r.replacedForwardFill).length;
 
   console.log(`\n📊 Summary:`);
   console.log(`   Target date: ${targetDate}`);
@@ -641,7 +651,8 @@ async function updateDailyVWAP(dryRun: boolean = false) {
   console.log(`   ✅ Successful: ${successful}`);
   console.log(`   ❌ Failed: ${failed}`);
   console.log(`   📥 Updated: ${updated}`);
-  console.log(`   ⏭️  Skipped (already have data): ${skipped}`);
+  console.log(`   🔄 Replaced forward-filled: ${replacedForwardFill}`);
+  console.log(`   ⏭️  Skipped (already have real data): ${skipped}`);
 
   if (failed > 0) {
     console.log(`\n⚠️  Failed updates:`);
