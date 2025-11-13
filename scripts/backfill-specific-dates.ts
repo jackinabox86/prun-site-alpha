@@ -1,24 +1,17 @@
-import { readFileSync, writeFileSync, mkdirSync, existsSync } from "fs";
+import { readFileSync, writeFileSync, mkdirSync, unlinkSync } from "fs";
 import { execSync } from "child_process";
 import { ApiRateLimiter } from "./lib/rate-limiter.js";
-import type { HistoricalPriceData, MissedDaysLog, MissedDayEntry } from "../src/types";
+import type { HistoricalPriceData, MissedDaysLog } from "../src/types";
 
 /**
- * Daily Historical Price Data Update Script
+ * Backfill Historical Price Data for Specific Dates
  *
- * Fetches yesterday's price data for all tickers and appends to existing files.
- * Uses the FNAR API endpoint: /exchange/cxpc/{ticker}/{timestamp}
- *
- * Features:
- * - Fetches specific day using timestamp parameter
- * - Downloads existing files from GCS
- * - Appends new data points
- * - Tracks missed/failed fetches in GCS
- * - Retries with exponential backoff
+ * Fetches data for specific dates to fill gaps caused by the previous
+ * bug where tickers with no trading activity weren't being logged.
  *
  * Usage:
- *   npm run update-daily-historical
- *   npm run update-daily-historical -- --dry-run  # Test without uploading
+ *   npm run backfill-dates -- 2024-11-09 2024-11-10 2024-11-11
+ *   npm run backfill-dates -- 2024-11-09 2024-11-10 2024-11-11 --dry-run
  */
 
 // Exchange code mapping
@@ -50,16 +43,18 @@ function loadTickersFromFile(filepath: string): string[] {
 }
 
 /**
- * Calculate yesterday's timestamp at 00:00 UTC
+ * Parse ISO date to timestamp at 00:00 UTC
  */
-function getYesterdayTimestamp(): { timestamp: number; isoDate: string } {
-  const yesterday = new Date();
-  yesterday.setUTCDate(yesterday.getUTCDate() - 1);
-  yesterday.setUTCHours(0, 0, 0, 0);
+function parseISODate(isoDate: string): { timestamp: number; isoDate: string } {
+  const date = new Date(isoDate + "T00:00:00.000Z");
+
+  if (isNaN(date.getTime())) {
+    throw new Error(`Invalid date format: ${isoDate}. Expected YYYY-MM-DD`);
+  }
 
   return {
-    timestamp: yesterday.getTime(),
-    isoDate: yesterday.toISOString().split("T")[0],
+    timestamp: date.getTime(),
+    isoDate,
   };
 }
 
@@ -83,7 +78,6 @@ function downloadFromGCS(
     const content = readFileSync(localPath, "utf8");
     return JSON.parse(content);
   } catch (error) {
-    // File might not exist yet (new ticker)
     return null;
   }
 }
@@ -123,7 +117,6 @@ function loadMissedDaysLog(): MissedDaysLog {
     const content = readFileSync(LOCAL_MISSED_DAYS_FILE, "utf8");
     return JSON.parse(content);
   } catch (error) {
-    // File doesn't exist yet, create new log
     return {
       lastUpdated: Date.now(),
       failures: [],
@@ -165,12 +158,10 @@ function logMissedDay(
   );
 
   if (existingIndex >= 0) {
-    // Update existing entry
     log.failures[existingIndex].attempts++;
     log.failures[existingIndex].lastAttempt = Date.now();
     log.failures[existingIndex].error = error;
   } else {
-    // Add new entry
     log.failures.push({
       ticker,
       exchange,
@@ -185,37 +176,25 @@ function logMissedDay(
 }
 
 /**
- * Main update function
+ * Backfill data for specific date
  */
-async function updateDailyHistoricalPrices(dryRun: boolean = false) {
-  console.log("\n🔄 Daily Historical Price Data Update");
-  console.log("=".repeat(60));
+async function backfillDate(
+  isoDate: string,
+  timestamp: number,
+  tickers: string[],
+  missedDaysLog: MissedDaysLog,
+  dryRun: boolean
+) {
+  console.log(`\n${"=".repeat(60)}`);
+  console.log(`📅 Backfilling: ${isoDate}`);
+  console.log(`${"=".repeat(60)}`);
 
-  const { timestamp, isoDate } = getYesterdayTimestamp();
-  console.log(`📅 Target date: ${isoDate} (timestamp: ${timestamp})`);
-  console.log(`🔧 Dry run: ${dryRun ? "YES" : "NO"}`);
-  console.log();
-
-  // Create local directory
-  mkdirSync(LOCAL_DATA_DIR, { recursive: true });
-
-  // Load tickers
-  const tickers = loadTickersFromFile("scripts/config/tickers.txt");
-  const totalEndpoints = tickers.length * EXCHANGES.length;
-  console.log(`📊 Processing ${tickers.length} tickers × ${EXCHANGES.length} exchanges = ${totalEndpoints} endpoints\n`);
-
-  // Initialize rate limiter
   const rateLimiter = new ApiRateLimiter({
     maxRetries: 3,
     requestTimeout: 15000,
     backoffMultiplier: 2,
   });
 
-  // Load missed days log
-  const missedDaysLog = loadMissedDaysLog();
-  console.log(`📋 Loaded missed days log: ${missedDaysLog.failures.length} previous failures\n`);
-
-  // Track results
   const results: Array<{
     ticker: string;
     exchange: string;
@@ -223,8 +202,6 @@ async function updateDailyHistoricalPrices(dryRun: boolean = false) {
     newDataPoint: boolean;
     error?: string;
   }> = [];
-
-  const startTime = Date.now();
 
   // Build list of all endpoints
   const endpoints: Array<{ ticker: string; exchange: keyof typeof EXCHANGE_MAP }> = [];
@@ -234,6 +211,9 @@ async function updateDailyHistoricalPrices(dryRun: boolean = false) {
     }
   }
 
+  const totalEndpoints = endpoints.length;
+  console.log(`📊 Processing ${totalEndpoints} endpoints\n`);
+
   // Process in batches
   const batchSize = 10;
   const totalBatches = Math.ceil(endpoints.length / batchSize);
@@ -242,48 +222,45 @@ async function updateDailyHistoricalPrices(dryRun: boolean = false) {
     const batch = endpoints.slice(i, i + batchSize);
     const batchNum = Math.floor(i / batchSize) + 1;
 
-    console.log(`\n🔄 Processing batch ${batchNum}/${totalBatches} (${batch.length} endpoints)...`);
+    console.log(`🔄 Batch ${batchNum}/${totalBatches} (${batch.length} endpoints)...`);
 
     const batchPromises = batch.map(async ({ ticker, exchange }) => {
       const fnarExchange = EXCHANGE_MAP[exchange];
       const url = `https://rest.fnar.net/exchange/cxpc/${ticker.toLowerCase()}.${fnarExchange}/${timestamp}`;
 
-      console.log(`   📡 Fetching ${ticker}.${exchange} for ${isoDate}...`);
-
-      // Fetch data from API
       const result = await rateLimiter.fetchWithRateLimit(url, ticker, exchange);
 
       if (!result.success) {
         const errorMsg = result.error || "Unknown error";
-        console.log(`   ❌ ${ticker}.${exchange}: ${errorMsg}`);
-
-        // Log missed day
         logMissedDay(missedDaysLog, ticker, exchange, isoDate, timestamp, errorMsg);
-
         return { ticker, exchange, success: false, newDataPoint: false, error: errorMsg };
       }
 
       // Check if API returned data
       if (!result.data || result.data.length === 0) {
         const errorMsg = "No data returned (no trading activity)";
-        console.log(`   ⚠️  ${ticker}.${exchange}: ${errorMsg}`);
-
-        // Log as missed so we can retry for a few days
         logMissedDay(missedDaysLog, ticker, exchange, isoDate, timestamp, errorMsg);
-
         return { ticker, exchange, success: false, newDataPoint: false, error: errorMsg };
       }
 
       // Filter for daily data
       const dailyData = result.data.filter((d: any) => d.Interval === "DAY_ONE");
+      console.log(`   🔍 ${ticker}-${exchange}: API returned ${result.data.length} total points, ${dailyData.length} daily points`);
 
       if (dailyData.length === 0) {
         const errorMsg = "No daily data in response (no trading activity)";
-        console.log(`   ⚠️  ${ticker}.${exchange}: ${errorMsg}`);
-
-        // Log as missed so we can retry for a few days
         logMissedDay(missedDaysLog, ticker, exchange, isoDate, timestamp, errorMsg);
+        return { ticker, exchange, success: false, newDataPoint: false, error: errorMsg };
+      }
 
+      // Filter to ONLY the requested date's data point
+      const matchingData = dailyData.filter((d: any) => d.DateEpochMs === timestamp);
+      console.log(`   🎯 ${ticker}-${exchange}: Filtering for ${isoDate} (timestamp: ${timestamp}) -> ${matchingData.length} matches`);
+
+      if (matchingData.length === 0) {
+        const errorMsg = `No data for requested date ${isoDate} (received ${dailyData.length} other dates)`;
+        console.log(`   ⚠️  ${ticker}-${exchange}: API dates don't match requested date`);
+        logMissedDay(missedDaysLog, ticker, exchange, isoDate, timestamp, errorMsg);
         return { ticker, exchange, success: false, newDataPoint: false, error: errorMsg };
       }
 
@@ -291,13 +268,15 @@ async function updateDailyHistoricalPrices(dryRun: boolean = false) {
       let existingData = downloadFromGCS(ticker, fnarExchange);
 
       if (!existingData) {
-        // No existing file, create new one
+        console.log(`   📝 ${ticker}-${exchange}: Creating new file (not in GCS)`);
         existingData = {
           ticker,
           exchange: fnarExchange,
           lastUpdated: Date.now(),
           data: [],
         };
+      } else {
+        console.log(`   📥 ${ticker}-${exchange}: Downloaded from GCS (${existingData.data.length} existing points)`);
       }
 
       // Check if this data point already exists
@@ -306,29 +285,31 @@ async function updateDailyHistoricalPrices(dryRun: boolean = false) {
       );
 
       if (alreadyExists) {
-        console.log(`   ✓ ${ticker}.${exchange}: Data already exists, skipping`);
+        console.log(`   ⏭️  ${ticker}-${exchange}: Data point for ${isoDate} already exists, skipping`);
         return { ticker, exchange, success: true, newDataPoint: false };
       }
 
-      // Append new data point(s)
-      for (const dataPoint of dailyData) {
-        if (dataPoint.DateEpochMs === timestamp) {
-          existingData.data.push({
-            DateEpochMs: dataPoint.DateEpochMs,
-            Open: dataPoint.Open,
-            Close: dataPoint.Close,
-            High: dataPoint.High,
-            Low: dataPoint.Low,
-            Volume: dataPoint.Volume,
-            Traded: dataPoint.Traded,
-          });
-        }
+      // Add ONLY the matching data point (should be exactly one)
+      const dataPoint = matchingData[0];
+      existingData.data.push({
+        DateEpochMs: dataPoint.DateEpochMs,
+        Open: dataPoint.Open,
+        Close: dataPoint.Close,
+        High: dataPoint.High,
+        Low: dataPoint.Low,
+        Volume: dataPoint.Volume,
+        Traded: dataPoint.Traded,
+      });
+
+      console.log(`   ✅ ${ticker}-${exchange}: Added data point for ${isoDate} (${existingData.data.length - 1} -> ${existingData.data.length} total points)`);
+
+      // Warn if API returned multiple points for same date (shouldn't happen)
+      if (matchingData.length > 1) {
+        console.warn(`   ⚠️  ${ticker}-${exchange}: API returned ${matchingData.length} data points for ${isoDate}`);
       }
 
       // Sort data by date
       existingData.data.sort((a, b) => a.DateEpochMs - b.DateEpochMs);
-
-      // Update timestamp
       existingData.lastUpdated = Date.now();
 
       // Save locally
@@ -338,15 +319,26 @@ async function updateDailyHistoricalPrices(dryRun: boolean = false) {
 
       // Upload to GCS (unless dry run)
       if (!dryRun) {
+        console.log(`   📤 ${ticker}-${exchange}: Uploading to GCS...`);
         const uploaded = uploadToGCS(ticker, fnarExchange);
         if (!uploaded) {
           const errorMsg = "Failed to upload to GCS";
+          console.log(`   ❌ ${ticker}-${exchange}: Upload failed`);
           logMissedDay(missedDaysLog, ticker, exchange, isoDate, timestamp, errorMsg);
           return { ticker, exchange, success: false, newDataPoint: true, error: errorMsg };
         }
-      }
+        console.log(`   ✅ ${ticker}-${exchange}: Uploaded to GCS successfully`);
 
-      console.log(`   ✅ ${ticker}.${exchange}: Added data point, total: ${existingData.data.length} days`);
+        // Clean up local file after successful upload
+        try {
+          unlinkSync(localPath);
+          console.log(`   🗑️  ${ticker}-${exchange}: Deleted local file`);
+        } catch (error) {
+          console.warn(`   ⚠️  ${ticker}-${exchange}: Failed to delete local file: ${error}`);
+        }
+      } else {
+        console.log(`   🔧 ${ticker}-${exchange}: DRY RUN - skipping GCS upload`);
+      }
 
       return { ticker, exchange, success: true, newDataPoint: true };
     });
@@ -365,7 +357,58 @@ async function updateDailyHistoricalPrices(dryRun: boolean = false) {
     }
   }
 
-  const duration = ((Date.now() - startTime) / 1000).toFixed(1);
+  // Print summary for this date
+  const successful = results.filter((r) => r.success).length;
+  const failed = results.filter((r) => !r.success).length;
+  const newDataPoints = results.filter((r) => r.newDataPoint).length;
+  const skipped = results.filter((r) => r.success && !r.newDataPoint).length;
+
+  console.log(`\n📊 Summary for ${isoDate}:`);
+  console.log(`   ✅ Successful: ${successful}`);
+  console.log(`   ❌ Failed (no trading): ${failed}`);
+  console.log(`   📥 New data points: ${newDataPoints}`);
+  console.log(`   ⏭️  Already had data: ${skipped}`);
+
+  return { successful, failed, newDataPoints, skipped };
+}
+
+/**
+ * Main backfill function
+ */
+async function backfillSpecificDates(dates: string[], dryRun: boolean = false) {
+  console.log("\n🔄 Historical Price Data Backfill");
+  console.log("=".repeat(60));
+  console.log(`📅 Dates to backfill: ${dates.join(", ")}`);
+  console.log(`🔧 Dry run: ${dryRun ? "YES" : "NO"}`);
+  console.log();
+
+  // Create local directory
+  mkdirSync(LOCAL_DATA_DIR, { recursive: true });
+
+  // Load tickers
+  const tickers = loadTickersFromFile("scripts/config/tickers.txt");
+  console.log(`📊 Tickers: ${tickers.length}`);
+  console.log(`📊 Exchanges: ${EXCHANGES.length}`);
+  console.log(`📊 Total endpoints per date: ${tickers.length * EXCHANGES.length}\n`);
+
+  // Load missed days log
+  const missedDaysLog = loadMissedDaysLog();
+  console.log(`📋 Loaded missed days log: ${missedDaysLog.failures.length} previous failures\n`);
+
+  const startTime = Date.now();
+  const dateSummaries = [];
+
+  // Process each date
+  for (const isoDate of dates) {
+    try {
+      const { timestamp } = parseISODate(isoDate);
+      const summary = await backfillDate(isoDate, timestamp, tickers, missedDaysLog, dryRun);
+      dateSummaries.push({ date: isoDate, ...summary });
+    } catch (error) {
+      console.error(`\n❌ Error processing ${isoDate}: ${error}`);
+      dateSummaries.push({ date: isoDate, error: String(error) });
+    }
+  }
 
   // Save missed days log
   if (!dryRun) {
@@ -380,43 +423,30 @@ async function updateDailyHistoricalPrices(dryRun: boolean = false) {
       console.log("✅ Manifest generated and uploaded successfully");
     } catch (error) {
       console.warn("⚠️  Failed to generate manifest, but continuing...");
-      console.warn("   You can manually run: npm run generate-manifest");
     }
   }
 
-  // Print summary
+  const duration = ((Date.now() - startTime) / 1000).toFixed(1);
+
+  // Print overall summary
   console.log("\n" + "=".repeat(60));
-  console.log(`✅ Update complete in ${duration}s`);
+  console.log(`✅ Backfill complete in ${duration}s`);
   console.log("=".repeat(60));
 
-  rateLimiter.printMetrics();
-
-  const successful = results.filter((r) => r.success).length;
-  const failed = results.filter((r) => !r.success).length;
-  const newDataPoints = results.filter((r) => r.newDataPoint).length;
-  const skipped = results.filter((r) => r.success && !r.newDataPoint).length;
-
-  console.log(`\n📊 Summary:`);
-  console.log(`   Date: ${isoDate}`);
-  console.log(`   Total endpoints: ${results.length}`);
-  console.log(`   ✅ Successful: ${successful}`);
-  console.log(`   ❌ Failed: ${failed}`);
-  console.log(`   📥 New data points added: ${newDataPoints}`);
-  console.log(`   ⏭️  Skipped (no new data): ${skipped}`);
-  console.log(`   📋 Total missed days in log: ${missedDaysLog.failures.length}`);
-
-  if (failed > 0) {
-    console.log(`\n⚠️  Failed fetches:`);
-    results
-      .filter((r) => !r.success)
-      .slice(0, 10)
-      .forEach((r) => {
-        console.log(`   - ${r.ticker}.${r.exchange}: ${r.error}`);
-      });
-    if (failed > 10) {
-      console.log(`   ... and ${failed - 10} more`);
+  console.log(`\n📊 Overall Summary:`);
+  for (const summary of dateSummaries) {
+    if ('error' in summary) {
+      console.log(`\n   ${summary.date}: ❌ Error - ${summary.error}`);
+    } else {
+      console.log(`\n   ${summary.date}:`);
+      console.log(`     ✅ Successful: ${summary.successful}`);
+      console.log(`     ❌ No trading: ${summary.failed}`);
+      console.log(`     📥 New points: ${summary.newDataPoints}`);
+      console.log(`     ⏭️  Had data: ${summary.skipped}`);
     }
   }
+
+  console.log(`\n   📋 Total missed days in log: ${missedDaysLog.failures.length}`);
 
   if (dryRun) {
     console.log(`\n🔧 DRY RUN: No files uploaded to GCS`);
@@ -432,9 +462,18 @@ function sleep(ms: number): Promise<void> {
 // Parse arguments
 const args = process.argv.slice(2);
 const dryRun = args.includes("--dry-run");
+const dates = args.filter(arg => arg !== "--dry-run" && !arg.startsWith("--"));
+
+if (dates.length === 0) {
+  console.error("❌ Error: No dates provided");
+  console.error("\nUsage:");
+  console.error("  npm run backfill-dates -- 2024-11-09 2024-11-10 2024-11-11");
+  console.error("  npm run backfill-dates -- 2024-11-09 2024-11-10 2024-11-11 --dry-run");
+  process.exit(1);
+}
 
 // Run the script
-updateDailyHistoricalPrices(dryRun).catch((error) => {
+backfillSpecificDates(dates, dryRun).catch((error) => {
   console.error("❌ Fatal error:", error);
   process.exit(1);
 });

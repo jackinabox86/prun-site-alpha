@@ -43,4 +43,8 @@ next-env.d.ts
 public/data/prices-merged.csv
 public/data/historical-prices/
 public/data/historical-prices-test/
+public/data/historical-prices-vwap-test/
 pnpm-lock.yaml
+
+# temporary test scripts
+scripts/generate-test-data.ts
