@@ -40,6 +40,11 @@ interface ApiResponse {
   error?: string;
 }
 
+interface MultiExchangeResponse {
+  success: boolean;
+  exchanges: ApiResponse[];
+}
+
 export default function InflationClient() {
   // Calculate default index date (276 days in the past)
   const getDefaultIndexDate = () => {
@@ -50,14 +55,24 @@ export default function InflationClient() {
 
   // State
   const [tickers, setTickers] = useState<string>(PRESET_BASKETS.frequentlyTraded.join(", "));
-  const [exchange, setExchange] = useState<string>("ANT");
+  const [selectedExchanges, setSelectedExchanges] = useState<string[]>(["ANT"]);
   const [indexDate, setIndexDate] = useState<string>(getDefaultIndexDate());
   const [weightType, setWeightType] = useState<"equal" | "volume">("equal");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [indexData, setIndexData] = useState<IndexDataPoint[]>([]);
-  const [weights, setWeights] = useState<TickerWeight[]>([]);
-  const [apiResponse, setApiResponse] = useState<ApiResponse | null>(null);
+  const [exchangeResults, setExchangeResults] = useState<ApiResponse[]>([]);
+
+  const handleExchangeToggle = (exchange: string) => {
+    setSelectedExchanges(prev => {
+      if (prev.includes(exchange)) {
+        // Don't allow deselecting all exchanges
+        if (prev.length === 1) return prev;
+        return prev.filter(e => e !== exchange);
+      } else {
+        return [...prev, exchange];
+      }
+    });
+  };
 
   // Load data on mount with default Frequently Traded basket
   useEffect(() => {
@@ -80,27 +95,36 @@ export default function InflationClient() {
         return;
       }
 
-      const params = new URLSearchParams({
-        tickers: tickerList.join(","),
-        exchange,
-        indexDate,
-        weightType,
-      });
-
-      const response = await fetch(`/api/inflation?${params}`);
-      const data: ApiResponse = await response.json();
-
-      if (!response.ok || !data.success) {
-        setError(data.error || "Failed to calculate inflation index");
+      if (selectedExchanges.length === 0) {
+        setError("Please select at least one exchange");
         setLoading(false);
         return;
       }
 
-      setIndexData(data.data);
-      setWeights(data.weights);
-      setApiResponse(data);
+      // Fetch data for all selected exchanges in parallel
+      const fetchPromises = selectedExchanges.map(async (exchange) => {
+        const params = new URLSearchParams({
+          tickers: tickerList.join(","),
+          exchange,
+          indexDate,
+          weightType,
+        });
+
+        const response = await fetch(`/api/inflation?${params}`);
+        const data: ApiResponse = await response.json();
+
+        if (!response.ok || !data.success) {
+          throw new Error(data.error || `Failed to calculate index for ${exchange}`);
+        }
+
+        return data;
+      });
+
+      const results = await Promise.all(fetchPromises);
+      setExchangeResults(results);
     } catch (err: any) {
       setError(err.message || "An error occurred");
+      setExchangeResults([]);
     } finally {
       setLoading(false);
     }
@@ -111,48 +135,59 @@ export default function InflationClient() {
   };
 
   const handleExportCSV = () => {
-    if (!apiResponse || indexData.length === 0) return;
+    if (exchangeResults.length === 0) return;
 
     // Build CSV content
     const lines: string[] = [];
 
     // Metadata section
     lines.push(`# Inflation Index Export`);
-    lines.push(`# Exchange: ${apiResponse.exchange}`);
-    lines.push(`# Index Date: ${apiResponse.indexDate} (Base = 100)`);
-    lines.push(`# Weight Type: ${apiResponse.weightType}`);
-    lines.push(`# Tickers: ${apiResponse.tickers.join(", ")}`);
-    lines.push(`# Data Points: ${apiResponse.dataPoints}`);
+    lines.push(`# Exchanges: ${exchangeResults.map(r => r.exchange).join(", ")}`);
+    lines.push(`# Index Date: ${exchangeResults[0].indexDate} (Base = 100)`);
+    lines.push(`# Weight Type: ${exchangeResults[0].weightType}`);
+    lines.push(`# Tickers: ${exchangeResults[0].tickers.join(", ")}`);
     lines.push(`# Exported: ${new Date().toISOString()}`);
     lines.push(``);
 
-    // Weights section
-    lines.push(`# Ticker Weights:`);
-    for (const w of weights) {
-      if (weightType === "volume") {
-        lines.push(`# ${w.ticker}: ${(w.weight * 100).toFixed(4)}% (Volume: ${w.indexDateVolume})`);
-      } else {
-        lines.push(`# ${w.ticker}: ${(w.weight * 100).toFixed(4)}%`);
+    // Weights section for each exchange
+    for (const result of exchangeResults) {
+      lines.push(`# ${result.exchange} Ticker Weights:`);
+      for (const w of result.weights) {
+        if (result.weightType === "volume") {
+          lines.push(`# ${w.ticker}: ${(w.weight * 100).toFixed(4)}% (Volume: ${w.indexDateVolume})`);
+        } else {
+          lines.push(`# ${w.ticker}: ${(w.weight * 100).toFixed(4)}%`);
+        }
       }
+      lines.push(``);
     }
-    lines.push(``);
 
-    // Header row
-    const tickerList = apiResponse.tickers.sort();
-    const headers = ["Date", "Timestamp", "Index Value", ...tickerList.map(t => `${t} Contribution`)];
+    // Header row with all exchange columns
+    const headers = ["Date", "Timestamp"];
+    for (const result of exchangeResults) {
+      headers.push(`${result.exchange} Index Value`);
+    }
     lines.push(headers.join(","));
 
+    // Build a combined date list
+    const allDates = new Set<number>();
+    for (const result of exchangeResults) {
+      for (const point of result.data) {
+        allDates.add(point.timestamp);
+      }
+    }
+    const sortedDates = Array.from(allDates).sort((a, b) => a - b);
+
     // Data rows
-    for (const point of indexData) {
-      const row = [
-        point.date,
-        point.timestamp.toString(),
-        point.indexValue.toFixed(6),
-        ...tickerList.map(ticker => {
-          const contribution = point.contributions[ticker];
-          return contribution !== undefined ? contribution.toFixed(6) : "";
-        })
-      ];
+    for (const timestamp of sortedDates) {
+      const date = new Date(timestamp).toISOString().split("T")[0];
+      const row = [date, timestamp.toString()];
+
+      for (const result of exchangeResults) {
+        const point = result.data.find(d => d.timestamp === timestamp);
+        row.push(point ? point.indexValue.toFixed(6) : "");
+      }
+
       lines.push(row.join(","));
     }
 
@@ -162,36 +197,42 @@ export default function InflationClient() {
     const url = URL.createObjectURL(blob);
     const link = document.createElement("a");
     link.href = url;
-    const filename = `inflation-index-${apiResponse.exchange}-${apiResponse.indexDate}-${apiResponse.weightType}.csv`;
+    const exchangesList = exchangeResults.map(r => r.exchange).join("-");
+    const filename = `inflation-index-${exchangesList}-${exchangeResults[0].indexDate}-${exchangeResults[0].weightType}.csv`;
     link.download = filename;
     link.click();
     URL.revokeObjectURL(url);
   };
 
-  // Prepare chart data
-  const chartData = indexData.length > 0 ? [
-    {
-      x: indexData.map((d) => d.date),
-      y: indexData.map((d) => d.indexValue),
-      type: "scatter" as const,
-      mode: "lines" as const,
-      name: "Inflation Index",
-      line: {
-        color: "#ff9500",
-        width: 2,
-      },
-      hovertemplate: "<b>%{x}</b><br>Index: %{y:.2f}<extra></extra>",
-    },
-  ] : [];
+  // Prepare chart data - one line per exchange
+  const exchangeColors: Record<string, string> = {
+    ANT: "#ff9500",
+    CIS: "#00d9ff",
+    ICA: "#00ff88",
+    NCC: "#ff4466",
+  };
 
-  // Calculate y-axis range: 80 to (max + 10)
-  const yAxisRange = indexData.length > 0
-    ? [80, Math.max(...indexData.map(d => d.indexValue)) + 10]
+  const chartData = exchangeResults.map((result) => ({
+    x: result.data.map((d) => d.date),
+    y: result.data.map((d) => d.indexValue),
+    type: "scatter" as const,
+    mode: "lines" as const,
+    name: result.exchange,
+    line: {
+      color: exchangeColors[result.exchange] || "#ff9500",
+      width: 2,
+    },
+    hovertemplate: `<b>%{x}</b><br>${result.exchange}: %{y:.2f}<extra></extra>`,
+  }));
+
+  // Calculate y-axis range: 80 to (max + 10) across all exchanges
+  const yAxisRange = exchangeResults.length > 0
+    ? [80, Math.max(...exchangeResults.flatMap(r => r.data.map(d => d.indexValue))) + 10]
     : undefined;
 
   const chartLayout = {
     title: {
-      text: `${weightType === "equal" ? "Equal-Weighted" : "Volume-Weighted"} Inflation Index (${exchange})`,
+      text: `${weightType === "equal" ? "Equal-Weighted" : "Volume-Weighted"} Inflation Index`,
       font: { color: "#e6e8eb", family: "-apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif", size: 18 },
     },
     paper_bgcolor: "#0a0e14",
@@ -202,7 +243,7 @@ export default function InflationClient() {
       gridcolor: "#2a3f5f",
       showgrid: true,
       color: "#a0a8b5",
-      range: apiResponse ? [apiResponse.indexDate, new Date().toISOString().split("T")[0]] : undefined,
+      range: exchangeResults.length > 0 ? [exchangeResults[0].indexDate, new Date().toISOString().split("T")[0]] : undefined,
       rangeselector: {
         buttons: [
           { count: 1, label: "1M", step: "month", stepmode: "backward" },
@@ -292,22 +333,23 @@ export default function InflationClient() {
 
           {/* Controls Row */}
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: "1rem" }}>
-            {/* Exchange */}
+            {/* Exchanges */}
             <div>
               <label className="terminal-header" style={{ fontSize: "0.75rem", marginBottom: "0.5rem" }}>
-                Exchange
+                Exchanges
               </label>
-              <select
-                className="terminal-select"
-                value={exchange}
-                onChange={(e) => setExchange(e.target.value)}
-                style={{ width: "100%" }}
-              >
-                <option value="ANT">ANT</option>
-                <option value="CIS">CIS</option>
-                <option value="ICA">ICA</option>
-                <option value="NCC">NCC</option>
-              </select>
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0.5rem", paddingTop: "0.5rem" }}>
+                {["ANT", "CIS", "ICA", "NCC"].map((ex) => (
+                  <label key={ex} style={{ display: "flex", alignItems: "center", gap: "0.5rem", cursor: "pointer" }}>
+                    <input
+                      type="checkbox"
+                      checked={selectedExchanges.includes(ex)}
+                      onChange={() => handleExchangeToggle(ex)}
+                    />
+                    <span className="text-mono" style={{ fontSize: "0.875rem" }}>{ex}</span>
+                  </label>
+                ))}
+              </div>
             </div>
 
             {/* Index Date */}
@@ -367,7 +409,7 @@ export default function InflationClient() {
             <button
               className="terminal-button"
               onClick={handleExportCSV}
-              disabled={indexData.length === 0}
+              disabled={exchangeResults.length === 0}
               style={{ padding: "0.75rem 2rem" }}
             >
               📥 Export CSV
@@ -384,29 +426,29 @@ export default function InflationClient() {
       )}
 
       {/* Info Display */}
-      {apiResponse && !error && (
+      {exchangeResults.length > 0 && !error && (
         <div className="terminal-box" style={{ marginBottom: "2rem" }}>
           <div style={{ display: "grid", gap: "0.5rem", fontSize: "0.875rem", fontFamily: "var(--font-display)" }}>
             <div>
-              <span className="text-accent">Tickers Found:</span> {apiResponse.tickers.join(", ")}
+              <span className="text-accent">Exchanges:</span> {exchangeResults.map(r => r.exchange).join(", ")}
             </div>
-            {apiResponse.tickersNotFound.length > 0 && (
+            <div>
+              <span className="text-accent">Tickers Found:</span> {exchangeResults[0].tickers.join(", ")}
+            </div>
+            {exchangeResults[0].tickersNotFound.length > 0 && (
               <div className="status-warning">
-                <span className="text-accent">Tickers Not Found:</span> {apiResponse.tickersNotFound.join(", ")}
+                <span className="text-accent">Tickers Not Found:</span> {exchangeResults[0].tickersNotFound.join(", ")}
               </div>
             )}
             <div>
-              <span className="text-accent">Data Points:</span> {apiResponse.dataPoints}
-            </div>
-            <div>
-              <span className="text-accent">Index Base Date:</span> {apiResponse.indexDate} (Value = 100)
+              <span className="text-accent">Index Base Date:</span> {exchangeResults[0].indexDate} (Value = 100)
             </div>
           </div>
         </div>
       )}
 
       {/* Chart */}
-      {indexData.length > 0 && (
+      {exchangeResults.length > 0 && (
         <div className="terminal-box" style={{ marginBottom: "2rem" }}>
           <Plot
             data={chartData}
@@ -419,35 +461,42 @@ export default function InflationClient() {
       )}
 
       {/* Weights Display */}
-      {weights.length > 0 && apiResponse && (
+      {exchangeResults.length > 0 && (
         <div className="terminal-box" style={{ marginBottom: "2rem" }}>
           <div className="terminal-header" style={{ fontSize: "0.75rem" }}>
             Ticker Weights
           </div>
-          <div style={{ maxHeight: "200px", overflowY: "auto" }}>
-            <table className="terminal-table" style={{ fontSize: "0.75rem" }}>
-              <thead>
-                <tr>
-                  <th>Ticker</th>
-                  <th>Weight (%)</th>
-                  {apiResponse.weightType === "volume" && <th>Index Date Volume</th>}
-                </tr>
-              </thead>
-              <tbody>
-                {weights.map((w) => (
-                  <tr key={w.ticker}>
-                    <td>{w.ticker}</td>
-                    <td>{(w.weight * 100).toFixed(2)}%</td>
-                    {apiResponse.weightType === "volume" && <td>{w.indexDateVolume.toLocaleString()}</td>}
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+          <div style={{ maxHeight: "400px", overflowY: "auto" }}>
+            {exchangeResults.map((result) => (
+              <div key={result.exchange} style={{ marginBottom: "1.5rem" }}>
+                <div style={{ fontSize: "0.875rem", color: exchangeColors[result.exchange], marginBottom: "0.5rem", fontWeight: 600 }}>
+                  {result.exchange}
+                </div>
+                <table className="terminal-table" style={{ fontSize: "0.75rem" }}>
+                  <thead>
+                    <tr>
+                      <th>Ticker</th>
+                      <th>Weight (%)</th>
+                      {result.weightType === "volume" && <th>Index Date Volume</th>}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {result.weights.map((w) => (
+                      <tr key={w.ticker}>
+                        <td>{w.ticker}</td>
+                        <td>{(w.weight * 100).toFixed(2)}%</td>
+                        {result.weightType === "volume" && <td>{w.indexDateVolume.toLocaleString()}</td>}
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            ))}
           </div>
         </div>
       )}
 
-      {indexData.length === 0 && !loading && !error && (
+      {exchangeResults.length === 0 && !loading && !error && (
         <div className="terminal-box">
           <div className="text-mono" style={{ color: "var(--color-text-muted)", textAlign: "center", padding: "2rem" }}>
             Click "Calculate Index" to generate the inflation index
