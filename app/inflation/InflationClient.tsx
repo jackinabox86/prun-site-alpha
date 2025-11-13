@@ -49,7 +49,7 @@ export default function InflationClient() {
   };
 
   // State
-  const [tickers, setTickers] = useState<string>(PRESET_BASKETS.consumables.join(", "));
+  const [tickers, setTickers] = useState<string>(PRESET_BASKETS.frequentlyTraded.join(", "));
   const [exchange, setExchange] = useState<string>("ANT");
   const [indexDate, setIndexDate] = useState<string>(getDefaultIndexDate());
   const [weightType, setWeightType] = useState<"equal" | "volume">("equal");
@@ -59,7 +59,7 @@ export default function InflationClient() {
   const [weights, setWeights] = useState<TickerWeight[]>([]);
   const [apiResponse, setApiResponse] = useState<ApiResponse | null>(null);
 
-  // Load data on mount with default consumables basket
+  // Load data on mount with default Frequently Traded basket
   useEffect(() => {
     handleCalculate();
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
@@ -197,6 +197,7 @@ export default function InflationClient() {
       gridcolor: "#2a3f5f",
       showgrid: true,
       color: "#a0a8b5",
+      range: apiResponse ? [apiResponse.indexDate, new Date().toISOString().split("T")[0]] : undefined,
       rangeselector: {
         buttons: [
           { count: 1, label: "1M", step: "month", stepmode: "backward" },
@@ -250,17 +251,17 @@ export default function InflationClient() {
             <div style={{ display: "flex", gap: "0.5rem", flexWrap: "wrap" }}>
               <button
                 className="terminal-button"
-                onClick={() => handlePresetBasket("consumables")}
-                style={{ fontSize: "0.75rem" }}
-              >
-                Consumables
-              </button>
-              <button
-                className="terminal-button"
                 onClick={() => handlePresetBasket("frequentlyTraded")}
                 style={{ fontSize: "0.75rem" }}
               >
                 Frequently Traded
+              </button>
+              <button
+                className="terminal-button"
+                onClick={() => handlePresetBasket("consumables")}
+                style={{ fontSize: "0.75rem" }}
+              >
+                Consumables
               </button>
               <button
                 className="terminal-button"
@@ -402,6 +403,19 @@ export default function InflationClient() {
         </div>
       )}
 
+      {/* Chart */}
+      {indexData.length > 0 && (
+        <div className="terminal-box" style={{ marginBottom: "2rem" }}>
+          <Plot
+            data={chartData}
+            layout={chartLayout}
+            config={chartConfig}
+            style={{ width: "100%", height: "600px" }}
+            useResizeHandler={true}
+          />
+        </div>
+      )}
+
       {/* Weights Display */}
       {weights.length > 0 && (
         <div className="terminal-box" style={{ marginBottom: "2rem" }}>
@@ -428,19 +442,6 @@ export default function InflationClient() {
               </tbody>
             </table>
           </div>
-        </div>
-      )}
-
-      {/* Chart */}
-      {indexData.length > 0 && (
-        <div className="terminal-box">
-          <Plot
-            data={chartData}
-            layout={chartLayout}
-            config={chartConfig}
-            style={{ width: "100%", height: "600px" }}
-            useResizeHandler={true}
-          />
         </div>
       )}
 
