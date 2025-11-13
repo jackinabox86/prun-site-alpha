@@ -75,14 +75,34 @@ export async function buildReport(opts: {
         { bestMap }
       );
 
-      // Merge expanded recipes into the main recipeMap
-      // For each ticker in expanded recipes, add those recipes to the existing ticker's recipe list
+      // Transform expanded recipes to match standard format
+      // Expanded recipes have an extra "Planet" column at index 1 that needs to be removed
+      // to make them compatible with the engine's column index logic
+
+      // Find the "Planet" column index in expanded headers
+      const planetIndex = expandedData.recipeMap.headers.indexOf("Planet");
+
+      if (planetIndex !== -1) {
+        // Remove "Planet" from headers to match standard format
+        expandedData.recipeMap.headers.splice(planetIndex, 1);
+
+        // Remove "Planet" column data from all recipe rows
+        for (const recipes of Object.values(expandedData.recipeMap.map)) {
+          for (const recipe of recipes) {
+            // Each recipe is an array where index corresponds to column
+            // Remove the value at planetIndex to align with standard format
+            recipe.splice(planetIndex, 1);
+          }
+        }
+      }
+
+      // Now merge the transformed expanded recipes into the main recipeMap
       for (const [ticker, recipes] of Object.entries(expandedData.recipeMap.map)) {
         if (!recipeMap.map[ticker]) {
           // If ticker doesn't exist in main map, create it
           recipeMap.map[ticker] = [];
         }
-        // Add all expanded recipes for this ticker
+        // Add all transformed expanded recipes for this ticker
         recipeMap.map[ticker].push(...recipes);
       }
     } catch (error: any) {
