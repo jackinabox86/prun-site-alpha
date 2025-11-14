@@ -5,12 +5,15 @@
  * Generates data for all exchanges with all sell price options
  * Standard exchanges (ANT, CIS, ICA, NCC): bid, ask, pp7
  * UNV special cases: UNV7 (pp7), UNV30 (pp30) - not displayed in UI
- * Total: 12 standard + 2 UNV = 14 files
+ * For each config, generates BOTH standard and extraction variants
+ * Total: (12 standard + 2 UNV) × 2 modes = 28 files
  */
 
 import { writeFileSync, mkdirSync } from 'fs';
 import { join } from 'path';
 import { refreshBestRecipeIDs } from '../src/server/bestRecipes';
+import { loadAllFromCsv } from '../src/lib/loadFromCsv';
+import { GCS_STATIC_BASE } from '../src/lib/config';
 import type { Exchange, PriceType } from '../src/types';
 
 // Exchange configurations
@@ -41,7 +44,7 @@ const EXCHANGE_CONFIGS: ExchangeConfig[] = [
 ];
 
 async function generateBestRecipes() {
-  console.log('Starting best recipes generation for all exchanges...');
+  console.log('Starting best recipes generation for all exchanges (standard + extraction modes)...');
   const overallStartTime = Date.now();
 
   try {
@@ -50,43 +53,106 @@ async function generateBestRecipes() {
     mkdirSync(outputDir, { recursive: true });
 
     // Generate best recipes for all exchanges in parallel
+    // For each config, generate both standard and extraction variants
     const outputNames = EXCHANGE_CONFIGS.map(c => c.outputName).join(', ');
-    console.log(`Generating best recipes for ${EXCHANGE_CONFIGS.length} configurations: ${outputNames}`);
+    console.log(`Generating best recipes for ${EXCHANGE_CONFIGS.length} configurations × 2 modes = ${EXCHANGE_CONFIGS.length * 2} files`);
+    console.log(`Configurations: ${outputNames}`);
 
     const results = await Promise.all(
-      EXCHANGE_CONFIGS.map(async (config) => {
-        const startTime = Date.now();
-        console.log(`\n[${config.outputName}] Starting generation (exchange: ${config.exchange}, buy: ${config.buyPriceType}, sell: ${config.sellPriceType})...`);
+      EXCHANGE_CONFIGS.flatMap((config) => {
+        // Generate both standard and extraction modes for each config
+        return ['standard', 'extraction'].map(async (mode) => {
+          const modeLabel = mode === 'extraction' ? '-Extraction' : '';
+          const startTime = Date.now();
+          console.log(`\n[${config.outputName}${modeLabel}] Starting generation (exchange: ${config.exchange}, buy: ${config.buyPriceType}, sell: ${config.sellPriceType}, mode: ${mode})...`);
 
-        // Use GCS prices for generation (aligns with production deployment)
-        const data = await refreshBestRecipeIDs("gcs", config.exchange, config.buyPriceType, config.sellPriceType);
+          let data;
+          if (mode === 'extraction') {
+            // Load standard recipes and prices from GCS
+            const { GCS_DATA_SOURCES } = await import('../src/lib/config');
+            const { recipeMap, pricesMap } = await loadAllFromCsv(
+              { recipes: GCS_DATA_SOURCES.recipes, prices: GCS_DATA_SOURCES.prices },
+              { bestMap: {} }
+            );
 
-        const duration = ((Date.now() - startTime) / 1000).toFixed(2);
-        console.log(`[${config.outputName}] ✓ Generated ${data.length} tickers in ${duration}s`);
+            // Load expanded recipes for this exchange (if they exist)
+            const expandedRecipeUrl = `${GCS_STATIC_BASE}/${config.exchange}-expandedrecipes-dynamic.csv`;
 
-        return { outputName: config.outputName, exchange: config.exchange, data, duration };
+            try {
+              console.log(`[${config.outputName}${modeLabel}] Loading expanded recipes from ${expandedRecipeUrl}...`);
+              const expandedData = await loadAllFromCsv(
+                { recipes: expandedRecipeUrl, prices: GCS_DATA_SOURCES.prices },
+                { bestMap: {} }
+              );
+
+              // Strip "Planet" column to align with standard format (same logic as report.ts)
+              const planetIndex = expandedData.recipeMap.headers.indexOf("Planet");
+              if (planetIndex !== -1) {
+                expandedData.recipeMap.headers.splice(planetIndex, 1);
+                for (const recipes of Object.values(expandedData.recipeMap.map)) {
+                  for (const recipe of recipes as any[]) {
+                    recipe.splice(planetIndex, 1);
+                  }
+                }
+              }
+
+              // Merge expanded recipes into main recipeMap
+              for (const [ticker, recipes] of Object.entries(expandedData.recipeMap.map)) {
+                if (!recipeMap.map[ticker]) {
+                  recipeMap.map[ticker] = [];
+                }
+                recipeMap.map[ticker].push(...(recipes as any[]));
+              }
+
+              console.log(`[${config.outputName}${modeLabel}] ✓ Merged expanded recipes`);
+            } catch (err) {
+              // If expanded recipes don't exist for this exchange, that's OK
+              // The extraction variant will just match the standard variant
+              console.log(`[${config.outputName}${modeLabel}] No expanded recipes found (will match standard)`);
+            }
+
+            // Generate best recipes with merged data
+            data = await refreshBestRecipeIDs(
+              "gcs",
+              config.exchange,
+              config.buyPriceType,
+              config.sellPriceType,
+              { recipeMap, pricesMap } // Pass pre-merged data
+            );
+          } else {
+            // Standard mode: Use GCS prices for generation (aligns with production deployment)
+            data = await refreshBestRecipeIDs("gcs", config.exchange, config.buyPriceType, config.sellPriceType);
+          }
+
+          const duration = ((Date.now() - startTime) / 1000).toFixed(2);
+          console.log(`[${config.outputName}${modeLabel}] ✓ Generated ${data.length} tickers in ${duration}s`);
+
+          return { outputName: config.outputName, exchange: config.exchange, mode, data, duration };
+        });
       })
     );
 
-    // Write exchange-specific files
-    for (const { outputName, exchange, data, duration } of results) {
-      const outputPath = join(outputDir, `best-recipes-${outputName}.json`);
+    // Write exchange-specific files (both standard and extraction variants)
+    for (const { outputName, exchange, mode, data, duration } of results) {
+      const modeLabel = mode === 'extraction' ? '-Extraction' : '';
+      const outputPath = join(outputDir, `best-recipes-${outputName}${modeLabel}.json`);
       writeFileSync(outputPath, JSON.stringify(data, null, 2));
 
-      const metaPath = join(outputDir, `best-recipes-${outputName}-meta.json`);
+      const metaPath = join(outputDir, `best-recipes-${outputName}${modeLabel}-meta.json`);
       writeFileSync(metaPath, JSON.stringify({
-        outputName,
+        outputName: `${outputName}${modeLabel}`,
         exchange,
+        mode,
         generatedAt: new Date().toISOString(),
         tickerCount: data.length,
         durationSeconds: parseFloat(duration)
       }, null, 2));
 
-      console.log(`[${outputName}] Written to ${outputPath}`);
+      console.log(`[${outputName}${modeLabel}] Written to ${outputPath}`);
     }
 
-    // Write default file (ANT-bid) for backwards compatibility
-    const antBidResult = results.find(r => r.outputName === "ANT-bid")!;
+    // Write default file (ANT-bid standard mode) for backwards compatibility
+    const antBidResult = results.find(r => r.outputName === "ANT-bid" && r.mode === "standard")!;
     const defaultPath = join(outputDir, 'best-recipes.json');
     writeFileSync(defaultPath, JSON.stringify(antBidResult.data, null, 2));
 
@@ -94,15 +160,17 @@ async function generateBestRecipes() {
     writeFileSync(defaultMetaPath, JSON.stringify({
       exchange: "ANT",
       sellPriceType: "bid",
+      mode: "standard",
       generatedAt: new Date().toISOString(),
       tickerCount: antBidResult.data.length,
       durationSeconds: parseFloat(antBidResult.duration)
     }, null, 2));
 
-    console.log(`\n✓ Default files (ANT-bid) written to ${defaultPath}`);
+    console.log(`\n✓ Default files (ANT-bid standard) written to ${defaultPath}`);
 
     const overallDuration = ((Date.now() - overallStartTime) / 1000).toFixed(2);
-    console.log(`\n✅ Successfully generated best recipes for all ${EXCHANGE_CONFIGS.length} configurations in ${overallDuration}s`);
+    const totalFiles = EXCHANGE_CONFIGS.length * 2; // standard + extraction for each config
+    console.log(`\n✅ Successfully generated best recipes for ${totalFiles} files (${EXCHANGE_CONFIGS.length} configs × 2 modes) in ${overallDuration}s`);
 
   } catch (error) {
     console.error('Error generating best recipes:', error);

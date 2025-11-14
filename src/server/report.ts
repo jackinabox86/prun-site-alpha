@@ -48,11 +48,13 @@ export async function buildReport(opts: {
     ? new Set(excludeRecipe.split(',').map(r => r.trim().toUpperCase()).filter(r => r.length > 0))
     : undefined;
 
-  // Get cached best recipes matching the price source
+  // Get cached best recipes matching the price source and extraction mode
   // Use exchange-specific best recipes, except UNV always uses ANT
   // Always use 'bid' for scenario pruning in main analysis
+  // Load extraction-mode best recipes if extractionMode is enabled
   const bestRecipesExchange = exchange === "UNV" ? "ANT" : exchange;
-  const { bestMap } = await cachedBestRecipes.getBestRecipes(priceSource, bestRecipesExchange, 'bid');
+  const bestRecipesMode = extractionMode ? 'extraction' : 'standard';
+  const { bestMap } = await cachedBestRecipes.getBestRecipes(priceSource, bestRecipesExchange, 'bid', bestRecipesMode);
 
   // Determine which data sources to use based on priceSource
   const dataSources = priceSource === "gcs" ? GCS_DATA_SOURCES : LOCAL_DATA_SOURCES;
@@ -63,7 +65,8 @@ export async function buildReport(opts: {
     { bestMap }
   );
 
-  // If extraction mode is enabled for ANT, merge expanded recipes
+  // If extraction mode is enabled for ANT, merge expanded recipes into recipeMap for runtime analysis
+  // The bestMap already includes extraction scenarios from the extraction best recipes file
   if (extractionMode && exchange === "ANT") {
     const expandedRecipeUrl = priceSource === "gcs"
       ? `${GCS_STATIC_BASE}/ANT-expandedrecipes-dynamic.csv`
@@ -72,14 +75,11 @@ export async function buildReport(opts: {
     try {
       const expandedData = await loadAllFromCsv(
         { recipes: expandedRecipeUrl, prices: dataSources.prices },
-        { bestMap }
+        { bestMap } // Use the extraction-mode bestMap for consistency
       );
 
       // Transform expanded recipes to match standard format
-      // Expanded recipes have an extra "Planet" column at index 1 that needs to be removed
-      // to make them compatible with the engine's column index logic
-
-      // Find the "Planet" column index in expanded headers
+      // Expanded recipes have an extra "Planet" column that needs to be removed
       const planetIndex = expandedData.recipeMap.headers.indexOf("Planet");
 
       if (planetIndex !== -1) {
@@ -89,20 +89,16 @@ export async function buildReport(opts: {
         // Remove "Planet" column data from all recipe rows
         for (const recipes of Object.values(expandedData.recipeMap.map)) {
           for (const recipe of recipes) {
-            // Each recipe is an array where index corresponds to column
-            // Remove the value at planetIndex to align with standard format
             recipe.splice(planetIndex, 1);
           }
         }
       }
 
-      // Now merge the transformed expanded recipes into the main recipeMap
+      // Merge the transformed expanded recipes into the main recipeMap
       for (const [ticker, recipes] of Object.entries(expandedData.recipeMap.map)) {
         if (!recipeMap.map[ticker]) {
-          // If ticker doesn't exist in main map, create it
           recipeMap.map[ticker] = [];
         }
-        // Add all transformed expanded recipes for this ticker
         recipeMap.map[ticker].push(...recipes);
       }
     } catch (error: any) {

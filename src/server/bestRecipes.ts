@@ -4,7 +4,7 @@ import { findAllMakeOptions, buildScenarioRows, clearScenarioCache } from "@/cor
 import { findPrice } from "@/core/price";
 import { scenarioDisplayName } from "@/core/scenario";
 import { CSV_URLS } from "@/lib/config";
-import type { RecipeSheet, BestMap, PriceMode, Exchange, PriceType } from "@/types";
+import type { RecipeSheet, RecipeRow, BestMap, PriceMode, Exchange, PriceType } from "@/types";
 
 export interface BestRecipeResult {
   ticker: string;
@@ -243,32 +243,46 @@ function getTickersInDependencyOrder(recipeSheet: RecipeSheet): string[] {
  * @param exchange - Exchange to analyze (default: "ANT")
  * @param buyPriceType - Price type for buying inputs (default: "ask")
  * @param sellPriceType - Price type for selling outputs (default: "bid")
+ * @param preloadedRecipeData - Optional pre-loaded recipe and price data (for extraction mode)
  */
 export async function refreshBestRecipeIDs(
   priceSource: "local" | "gcs" = "local",
   exchange: Exchange = "ANT",
   buyPriceType: PriceType = "ask",
-  sellPriceType: PriceType = "bid"
+  sellPriceType: PriceType = "bid",
+  preloadedRecipeData?: { recipeMap: any; pricesMap: any }
 ): Promise<BestRecipeResult[]> {
   // Clear caches
   clearScenarioCache();
 
-  // Determine which data sources to use
-  const { LOCAL_DATA_SOURCES, GCS_DATA_SOURCES } = await import("@/lib/config");
-  const dataSources = priceSource === "gcs" ? GCS_DATA_SOURCES : LOCAL_DATA_SOURCES;
+  let recipeMap: any;
+  let pricesMap: any;
 
-  console.log(`Using ${priceSource} prices: ${dataSources.prices}`);
+  if (preloadedRecipeData) {
+    // Use pre-loaded data (e.g., for extraction mode with merged recipes)
+    console.log(`Using preloaded recipe data for ${exchange}-${sellPriceType}`);
+    recipeMap = preloadedRecipeData.recipeMap;
+    pricesMap = preloadedRecipeData.pricesMap;
+  } else {
+    // Determine which data sources to use
+    const { LOCAL_DATA_SOURCES, GCS_DATA_SOURCES } = await import("@/lib/config");
+    const dataSources = priceSource === "gcs" ? GCS_DATA_SOURCES : LOCAL_DATA_SOURCES;
 
-  // Load data (no bestMap needed since we're generating it)
-  const { recipeMap, pricesMap } = await loadAllFromCsv(
-    { recipes: dataSources.recipes, prices: dataSources.prices },
-    { bestMap: {} } // Pass empty bestMap since we're generating the best recipes
-  );
+    console.log(`Using ${priceSource} prices: ${dataSources.prices}`);
+
+    // Load data (no bestMap needed since we're generating it)
+    const loadedData = await loadAllFromCsv(
+      { recipes: dataSources.recipes, prices: dataSources.prices },
+      { bestMap: {} } // Pass empty bestMap since we're generating the best recipes
+    );
+    recipeMap = loadedData.recipeMap;
+    pricesMap = loadedData.pricesMap;
+  }
 
   // Build recipe sheet for dependency analysis
   const recipeSheet: RecipeSheet = [
     recipeMap.headers,
-    ...Object.values(recipeMap.map).flat(),
+    ...(Object.values(recipeMap.map).flat() as RecipeRow[]),
   ];
 
   // Get all tickers in bottom-up dependency order

@@ -57,9 +57,10 @@ jobs:
           TIMESTAMP=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
           echo "Snapshot timestamp: ${TIMESTAMP}"
 
-          # Upload standard exchange-specific data files (exchange-sellAt combinations)
+          # Upload standard and extraction exchange-specific data files (exchange-sellAt-mode combinations)
           for exchange in ANT CIS ICA NCC; do
             for sellAt in bid ask pp7; do
+              # Upload standard mode
               filename="best-recipes-${exchange}-${sellAt}"
               echo "Uploading ${filename}.json..."
               gsutil -h "Cache-Control:public, max-age=300" \
@@ -73,17 +74,39 @@ jobs:
                      cp public/data/${filename}-meta.json \
                      gs://prun-site-alpha-bucket/${filename}-meta.json
 
-              # Save historical snapshot
+              # Save historical snapshot for standard
               echo "Saving historical snapshot for ${filename}..."
               gsutil -h "Cache-Control:public, max-age=31536000" \
                      -h "Content-Type:application/json" \
                      cp public/data/${filename}.json \
                      gs://prun-site-alpha-bucket/historical/${filename}/${TIMESTAMP}.json
+
+              # Upload extraction mode
+              filename_extraction="best-recipes-${exchange}-${sellAt}-Extraction"
+              echo "Uploading ${filename_extraction}.json..."
+              gsutil -h "Cache-Control:public, max-age=300" \
+                     -h "Content-Type:application/json" \
+                     cp public/data/${filename_extraction}.json \
+                     gs://prun-site-alpha-bucket/${filename_extraction}.json
+
+              echo "Uploading ${filename_extraction}-meta.json..."
+              gsutil -h "Cache-Control:public, max-age=300" \
+                     -h "Content-Type:application/json" \
+                     cp public/data/${filename_extraction}-meta.json \
+                     gs://prun-site-alpha-bucket/${filename_extraction}-meta.json
+
+              # Save historical snapshot for extraction
+              echo "Saving historical snapshot for ${filename_extraction}..."
+              gsutil -h "Cache-Control:public, max-age=31536000" \
+                     -h "Content-Type:application/json" \
+                     cp public/data/${filename_extraction}.json \
+                     gs://prun-site-alpha-bucket/historical/${filename_extraction}/${TIMESTAMP}.json
             done
           done
 
-          # Upload UNV special cases (not displayed in UI, but kept for compatibility)
+          # Upload UNV special cases (standard and extraction modes)
           for unv in UNV7 UNV30; do
+            # Upload standard mode
             filename="best-recipes-${unv}"
             echo "Uploading ${filename}.json..."
             gsutil -h "Cache-Control:public, max-age=300" \
@@ -97,12 +120,33 @@ jobs:
                    cp public/data/${filename}-meta.json \
                    gs://prun-site-alpha-bucket/${filename}-meta.json
 
-            # Save historical snapshot
+            # Save historical snapshot for standard
             echo "Saving historical snapshot for ${filename}..."
             gsutil -h "Cache-Control:public, max-age=31536000" \
                    -h "Content-Type:application/json" \
                    cp public/data/${filename}.json \
                    gs://prun-site-alpha-bucket/historical/${filename}/${TIMESTAMP}.json
+
+            # Upload extraction mode
+            filename_extraction="best-recipes-${unv}-Extraction"
+            echo "Uploading ${filename_extraction}.json..."
+            gsutil -h "Cache-Control:public, max-age=300" \
+                   -h "Content-Type:application/json" \
+                   cp public/data/${filename_extraction}.json \
+                   gs://prun-site-alpha-bucket/${filename_extraction}.json
+
+            echo "Uploading ${filename_extraction}-meta.json..."
+            gsutil -h "Cache-Control:public, max-age=300" \
+                   -h "Content-Type:application/json" \
+                   cp public/data/${filename_extraction}-meta.json \
+                   gs://prun-site-alpha-bucket/${filename_extraction}-meta.json
+
+            # Save historical snapshot for extraction
+            echo "Saving historical snapshot for ${filename_extraction}..."
+            gsutil -h "Cache-Control:public, max-age=31536000" \
+                   -h "Content-Type:application/json" \
+                   cp public/data/${filename_extraction}.json \
+                   gs://prun-site-alpha-bucket/historical/${filename_extraction}/${TIMESTAMP}.json
           done
 
           # Upload default file (ANT-bid) for backwards compatibility
@@ -170,16 +214,19 @@ jobs:
             echo "✅ Index updated for ${config}"
           }
 
-          # Update indices for all standard configurations
+          # Update indices for all standard and extraction configurations
           for exchange in ANT CIS ICA NCC; do
             for sellAt in bid ask pp7; do
               update_index "best-recipes-${exchange}-${sellAt}" "${exchange}" "${sellAt}"
+              update_index "best-recipes-${exchange}-${sellAt}-Extraction" "${exchange}" "${sellAt}"
             done
           done
 
-          # Update indices for UNV special cases
+          # Update indices for UNV special cases (standard and extraction)
           update_index "best-recipes-UNV7" "UNV" "pp7"
+          update_index "best-recipes-UNV7-Extraction" "UNV" "pp7"
           update_index "best-recipes-UNV30" "UNV" "pp30"
+          update_index "best-recipes-UNV30-Extraction" "UNV" "pp30"
 
           echo "✅ All historical indices updated"
 
