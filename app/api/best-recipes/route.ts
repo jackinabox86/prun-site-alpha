@@ -19,6 +19,7 @@ export async function GET(request: Request) {
     const priceSource = (searchParams.get("priceSource") || "gcs") as "local" | "gcs";
     const exchangeParam = searchParams.get("exchange")?.toUpperCase() || "ANT";
     const sellAtParam = searchParams.get("sellAt")?.toLowerCase() || "bid";
+    const extractionMode = searchParams.get("extractionMode") === "true";
 
     // Validate exchange parameter - accept UNV7 and UNV30 as special cases
     const exchange = VALID_EXCHANGE_DISPLAYS.includes(exchangeParam)
@@ -28,18 +29,21 @@ export async function GET(request: Request) {
     // Validate sellAt parameter
     const sellAt = VALID_SELL_AT.includes(sellAtParam) ? sellAtParam : "bid";
 
+    // Determine mode based on extractionMode flag
+    const mode = extractionMode ? 'extraction' : 'standard';
+
     if (clearCache) {
       console.log(`Clearing best recipes cache for ${exchange}...`);
       cachedBestRecipes.clearCache(exchange);
     }
 
-    console.log(`Getting best recipes for ${exchange} with sellAt=${sellAt} (${priceSource} mode)...`);
+    console.log(`Getting best recipes for ${exchange} with sellAt=${sellAt} mode=${mode} (${priceSource} mode)...`);
     const startTime = Date.now();
 
-    const { results } = await cachedBestRecipes.getBestRecipes(priceSource, exchange, sellAt);
+    const { results } = await cachedBestRecipes.getBestRecipes(priceSource, exchange, sellAt, mode);
 
     const duration = ((Date.now() - startTime) / 1000).toFixed(2);
-    console.log(`Best recipes for ${exchange} with sellAt=${sellAt} retrieved in ${duration}s`);
+    console.log(`Best recipes for ${exchange} with sellAt=${sellAt} mode=${mode} retrieved in ${duration}s`);
 
     return NextResponse.json({
       success: true,
@@ -47,8 +51,9 @@ export async function GET(request: Request) {
       count: results.length,
       exchange,
       sellAt,
+      mode,
       priceSource,
-      cached: cachedBestRecipes.isCached(priceSource, exchange, sellAt),
+      cached: cachedBestRecipes.isCached(priceSource, exchange, sellAt, mode),
       durationSeconds: parseFloat(duration)
     });
   } catch (err: any) {

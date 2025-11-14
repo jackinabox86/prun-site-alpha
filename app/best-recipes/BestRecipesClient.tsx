@@ -51,8 +51,9 @@ export default function BestRecipesClient() {
   const [selectedBuilding, setSelectedBuilding] = useState<string>("all");
   const [exchange, setExchange] = useState<string>("ANT");
   const [sellAt, setSellAt] = useState<string>("bid");
+  const [extractionMode, setExtractionMode] = useState<boolean>(false);
 
-  // Read exchange and sellAt from URL params on mount
+  // Read exchange, sellAt, and extractionMode from URL params on mount
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const exchangeParam = params.get("exchange")?.toUpperCase();
@@ -70,16 +71,25 @@ export default function BestRecipesClient() {
         setSellAt(validSellAt.value);
       }
     }
+    const extractionModeParam = params.get("extractionMode");
+    if (extractionModeParam === "true") {
+      setExtractionMode(true);
+    }
   }, []);
 
   const loadData = async () => {
     setLoading(true);
     setError(null);
     try {
-      // Update URL with current exchange and sellAt
+      // Update URL with current exchange, sellAt, and extractionMode
       const url = new URL(window.location.href);
       url.searchParams.set("exchange", exchange);
       url.searchParams.set("sellAt", sellAt);
+      if (extractionMode) {
+        url.searchParams.set("extractionMode", "true");
+      } else {
+        url.searchParams.delete("extractionMode");
+      }
       window.history.replaceState({}, "", url);
 
       // Add a longer timeout for this computation-heavy request
@@ -87,6 +97,9 @@ export default function BestRecipesClient() {
       const timeoutId = setTimeout(() => controller.abort(), 300000); // 5 min timeout
 
       const qs = new URLSearchParams({ exchange, sellAt });
+      if (extractionMode) {
+        qs.set("extractionMode", "true");
+      }
       const res = await fetch(`/api/best-recipes?${qs.toString()}`, {
         cache: "no-store",
         signal: controller.signal
@@ -187,6 +200,7 @@ export default function BestRecipesClient() {
       <div className="terminal-box" style={{ marginBottom: "2rem" }}>
         <h1 className="terminal-header" style={{ margin: 0, fontSize: "1.2rem" }}>
           BEST RECIPE DATABASE // {exchange} // SELL_AT_{sellAt.toUpperCase()}
+          {extractionMode && exchange === "ANT" && <span style={{ color: "var(--color-warning)" }}> // EXTRACTION_MODE</span>}
         </h1>
         <p style={{ marginTop: "1rem", marginBottom: 0, color: "var(--color-text-secondary)", fontSize: "0.875rem", lineHeight: "1.6" }}>
           This tool determines the best production recipe for each ticker on the {exchange} exchange, calculated in dependency order using streamlined pruning;
@@ -254,6 +268,46 @@ export default function BestRecipesClient() {
           ))}
         </div>
       </div>
+
+      {/* Extraction Mode Toggle (ANT only) */}
+      {exchange === "ANT" && (
+        <div className="terminal-box" style={{ marginBottom: "1.5rem" }}>
+          <div className="terminal-header" style={{ marginBottom: "1rem" }}>Extraction Mode</div>
+          <div style={{ display: "flex", gap: "0.75rem", flexWrap: "wrap", alignItems: "center" }}>
+            <button
+              onClick={() => setExtractionMode(false)}
+              className="terminal-button"
+              style={{
+                padding: "0.5rem 1.5rem",
+                opacity: !extractionMode ? 1 : 0.7,
+                background: !extractionMode ? "var(--color-info)" : "var(--color-bg-tertiary)",
+                color: !extractionMode ? "var(--color-bg-primary)" : "var(--color-info)",
+                borderColor: !extractionMode ? "var(--color-info)" : "var(--color-border-primary)"
+              }}
+            >
+              Standard
+            </button>
+            <button
+              onClick={() => setExtractionMode(true)}
+              className="terminal-button"
+              style={{
+                padding: "0.5rem 1.5rem",
+                opacity: extractionMode ? 1 : 0.7,
+                background: extractionMode ? "var(--color-warning)" : "var(--color-bg-tertiary)",
+                color: extractionMode ? "var(--color-bg-primary)" : "var(--color-warning)",
+                borderColor: extractionMode ? "var(--color-warning)" : "var(--color-border-primary)"
+              }}
+            >
+              Extraction
+            </button>
+            <span style={{ fontSize: "0.75rem", color: "var(--color-text-muted)", marginLeft: "0.5rem" }}>
+              {extractionMode
+                ? "Includes planet-specific extraction recipes for raw materials"
+                : "Standard recipes only (buy raw materials from market)"}
+            </span>
+          </div>
+        </div>
+      )}
 
       {/* Loading Indicator */}
       {loading && (
