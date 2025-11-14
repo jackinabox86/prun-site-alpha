@@ -4,7 +4,7 @@ import { findAllMakeOptions, buildScenarioRows, clearScenarioCache } from "@/cor
 import { findPrice } from "@/core/price";
 import { scenarioDisplayName } from "@/core/scenario";
 import { CSV_URLS } from "@/lib/config";
-import type { RecipeSheet, BestMap, PriceMode, Exchange, PriceType } from "@/types";
+import type { RecipeSheet, RecipeRow, BestMap, PriceMode, Exchange, PriceType } from "@/types";
 
 export interface BestRecipeResult {
   ticker: string;
@@ -282,7 +282,7 @@ export async function refreshBestRecipeIDs(
   // Build recipe sheet for dependency analysis
   const recipeSheet: RecipeSheet = [
     recipeMap.headers,
-    ...Object.values(recipeMap.map).flat(),
+    ...(Object.values(recipeMap.map).flat() as RecipeRow[]),
   ];
 
   // Get all tickers in bottom-up dependency order
