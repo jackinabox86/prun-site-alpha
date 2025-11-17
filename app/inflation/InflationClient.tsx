@@ -216,10 +216,10 @@ export default function InflationClient() {
 
   // Prepare chart data - one line per exchange
   const exchangeColors: Record<string, string> = {
-    ANT: "#ff9500",
-    CIS: "#00d9ff",
-    ICA: "#00ff88",
-    NCC: "#ff4466",
+    ANT: "#ff7b3d",  // Reddish orange
+    CIS: "#ff1744",  // Bright red
+    ICA: "#00cc66",  // Deeper green
+    NCC: "#ffdd66",  // Faded yellow
   };
 
   const chartData = exchangeResults.map((result) => {
