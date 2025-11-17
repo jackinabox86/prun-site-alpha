@@ -284,7 +284,7 @@ export default function InflationClient() {
       {/* Input Controls */}
       <div className="terminal-box" style={{ marginBottom: "2rem" }}>
         <h1 className="terminal-header" style={{ margin: 0, marginBottom: "1.5rem", fontSize: "1.2rem", paddingBottom: 0, borderBottom: "none", fontWeight: "normal" }}>
-          INFLATION INDEX CALCULATOR
+          INFLATION INDEX GENERATOR
         </h1>
 
         <div style={{ display: "grid", gap: "1.5rem" }}>
@@ -506,3 +506,4 @@ export default function InflationClient() {
     </div>
   );
 }
+
