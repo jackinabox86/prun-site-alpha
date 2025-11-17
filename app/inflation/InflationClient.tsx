@@ -204,6 +204,16 @@ export default function InflationClient() {
     URL.revokeObjectURL(url);
   };
 
+  // Calculate cutoff date (10 days before today) for chart display
+  const getCutoffDate = () => {
+    const cutoff = new Date();
+    cutoff.setUTCDate(cutoff.getUTCDate() - 10);
+    cutoff.setUTCHours(0, 0, 0, 0);
+    return cutoff.getTime();
+  };
+  const cutoffTimestamp = getCutoffDate();
+  const cutoffDateString = new Date(cutoffTimestamp).toISOString().split("T")[0];
+
   // Prepare chart data - one line per exchange
   const exchangeColors: Record<string, string> = {
     ANT: "#ff9500",
@@ -212,22 +222,29 @@ export default function InflationClient() {
     NCC: "#ff4466",
   };
 
-  const chartData = exchangeResults.map((result) => ({
-    x: result.data.map((d) => d.date),
-    y: result.data.map((d) => d.indexValue),
-    type: "scatter" as const,
-    mode: "lines" as const,
-    name: result.exchange,
-    line: {
-      color: exchangeColors[result.exchange] || "#ff9500",
-      width: 2,
-    },
-    hovertemplate: `<b>%{x}</b><br>${result.exchange}: %{y:.2f}<extra></extra>`,
-  }));
+  const chartData = exchangeResults.map((result) => {
+    // Filter data to only include points up to 10 days before today
+    const filteredData = result.data.filter((d) => d.timestamp <= cutoffTimestamp);
 
-  // Calculate y-axis range: 80 to (max + 10) across all exchanges
+    return {
+      x: filteredData.map((d) => d.date),
+      y: filteredData.map((d) => d.indexValue),
+      type: "scatter" as const,
+      mode: "lines" as const,
+      name: result.exchange,
+      line: {
+        color: exchangeColors[result.exchange] || "#ff9500",
+        width: 2,
+      },
+      hovertemplate: `<b>%{x}</b><br>${result.exchange}: %{y:.2f}<extra></extra>`,
+    };
+  });
+
+  // Calculate y-axis range: 80 to (max + 10) across all exchanges (using filtered data)
   const yAxisRange = exchangeResults.length > 0
-    ? [80, Math.max(...exchangeResults.flatMap(r => r.data.map(d => d.indexValue))) + 10]
+    ? [80, Math.max(...exchangeResults.flatMap(r =>
+        r.data.filter(d => d.timestamp <= cutoffTimestamp).map(d => d.indexValue)
+      )) + 10]
     : undefined;
 
   const chartLayout = {
@@ -243,7 +260,7 @@ export default function InflationClient() {
       gridcolor: "#2a3f5f",
       showgrid: true,
       color: "#a0a8b5",
-      range: exchangeResults.length > 0 ? [exchangeResults[0].indexDate, new Date().toISOString().split("T")[0]] : undefined,
+      range: exchangeResults.length > 0 ? [exchangeResults[0].indexDate, cutoffDateString] : undefined,
       rangeselector: {
         buttons: [
           { count: 1, label: "1M", step: "month", stepmode: "backward" },
