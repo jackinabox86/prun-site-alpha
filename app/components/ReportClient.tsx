@@ -34,6 +34,7 @@ export default function ReportClient() {
   const [forceRecipe, setForceRecipe] = useState<string>("");
   const [excludeRecipe, setExcludeRecipe] = useState<string>("");
   const [showRecipeList, setShowRecipeList] = useState(false);
+  const [showExtractionPlanets, setShowExtractionPlanets] = useState(false);
   const [analysisCollapsed, setAnalysisCollapsed] = useState(false);
   const [systemControlsCollapsed, setSystemControlsCollapsed] = useState(true);
   const [showTickerDropdown, setShowTickerDropdown] = useState(false);
@@ -66,6 +67,11 @@ export default function ReportClient() {
     }
     setUrlParamsChecked(true);
   }, []);
+
+  // Close extraction planets dropdown when exchange changes
+  useEffect(() => {
+    setShowExtractionPlanets(false);
+  }, [exchange]);
 
   const filteredTickers = useMemo(() => {
     if (!tickerInput) return tickers.slice(0, 50);
@@ -126,6 +132,50 @@ export default function ReportClient() {
   const money = (n: number | null | undefined, exchange: Exchange = "ANT") =>
     formatCurrency(n, exchange);
 
+  // Extraction planets data by exchange
+  const extractionPlanetsData: Record<Exchange, string | null> = {
+    ANT: `TICKER  PLANET      DAILY OUTPUT
+------  ----------  ------------
+AMM     Romulus     33.13
+AR      KI-401d     14.88
+F       BS-658h      3.09
+H       KI-401d     63.78
+HE      CG-044d     36.63
+HE3     IY-206i     16.15
+N       ZV-639d     37.72
+NE      BS-788c      7.70
+O       KW-688c     43.34
+BTS     LS-231b      8.62
+H2O     KW-688c     67.41
+HEX     OE-073c     35.23
+LES     WU-013d      8.01
+BER     SE-648b     19.04
+BOR     IY-028c     14.06
+BRM     IY-206j     46.20
+CLI     SE-110a     40.74
+GAL     KI-448c     28.04
+HAL     YK-005d     28.65
+LST     SE-866e     62.49
+MAG     QJ-149d     20.01
+MGS     QJ-382a     36.92
+SCR     IA-151d     18.43
+TAI     IA-151d     17.03
+TCO     SE-648c     33.13
+TS      XH-594c     18.41
+ZIR     KI-401b     21.99
+ALO     QJ-149c     46.77
+AUO     QJ-650c     18.66
+CUO     KI-840c     20.76
+FEO     SE-110d     62.35
+LIO     SE-648a     34.13
+SIO     YK-649b     55.74
+TIO     KI-401b     24.28`,
+    CIS: null, // Add data when available
+    ICA: null, // Add data when available
+    NCC: null, // Add data when available
+    UNV: null  // Add data when available
+  };
+
   return (
     <>
       <style>{`
@@ -183,8 +233,9 @@ export default function ReportClient() {
               Users may force certain inputs to be made or bought, as well as force or exclude specific recipe IDs
               using the controls below. This can help explore alternative production scenarios or work around supply
               constraints. Below the main analysis is a condensed ranked table of other profitable production scenarios
-              for the selected ticker, which can be expanded to show a sankey chart. The table is condensed to show
-              only unique high-level scenarios (buy/make decisions for direct inputs only).
+              for the selected ticker, which can each be expanded to show its own sankey chart. The table is condensed to show
+              only unique high-level scenarios (buy/make decisions for direct inputs only).  Below that table is a second table that displays the top 20 most profitable scenarios
+              without requiring unique buy/make decisions for direct inputs.
             </p>
             <p style={{ margin: 0 }}>
               Each ticker on the sankey chain has a node and tooltip with additional info on its own profitability
@@ -217,13 +268,13 @@ export default function ReportClient() {
         <div style={{
           display: "grid",
           gap: "1rem",
-          gridTemplateColumns: "80px 80px 80px 140px 1fr",
+          gridTemplateColumns: "80px 80px 80px 80px 1fr",
           alignItems: "end",
           marginBottom: systemControlsCollapsed ? "0.5rem" : "1.5rem"
         }}>
           <div style={{ position: "relative" }}>
-            <label style={{ display: "block", fontSize: "0.75rem", marginBottom: "0.5rem", color: "var(--color-accent-primary)", textTransform: "uppercase" }}>
-              Ticker
+            <label style={{ display: "block", fontSize: "0.75rem", marginBottom: "0.5rem", color: "var(--color-accent-primary)", textTransform: "uppercase", fontFamily: "var(--font-mono)" }}>
+              &nbsp;Ticker
             </label>
             <input
               value={tickerInput}
@@ -234,7 +285,7 @@ export default function ReportClient() {
               onFocus={() => setShowTickerDropdown(true)}
               onBlur={() => setTimeout(() => setShowTickerDropdown(false), 200)}
               className="terminal-input"
-              style={{ width: "100%", textAlign: "center", fontWeight: "bold" }}
+              style={{ width: "100%", textAlign: "center", fontWeight: "bold", padding: "0.70rem 1rem" }}
               placeholder="Type ticker..."
             />
             {showTickerDropdown && filteredTickers.length > 0 && (
@@ -285,14 +336,14 @@ export default function ReportClient() {
           </div>
 
           <div>
-            <label style={{ display: "block", fontSize: "0.75rem", marginBottom: "0.5rem", color: "var(--color-accent-primary)", textTransform: "uppercase" }}>
-              Exchange
+            <label style={{ display: "block", fontSize: "0.75rem", marginBottom: "0.5rem", color: "var(--color-accent-primary)", textTransform: "uppercase", fontFamily: "var(--font-mono)" }}>
+              &nbsp;Exchange
             </label>
             <select
               value={exchange}
               onChange={(e) => setExchange(e.target.value as Exchange)}
               className="terminal-select"
-              style={{ width: "100%" }}
+              style={{ width: "100%", padding: "0.65rem 1rem" }}
             >
               <option value="ANT">ANT</option>
               <option value="CIS">CIS</option>
@@ -304,7 +355,7 @@ export default function ReportClient() {
 
           <div>
             <label
-              style={{ display: "block", fontSize: "0.75rem", marginBottom: "0.5rem", color: "var(--color-accent-primary)", textTransform: "uppercase" }}
+              style={{ display: "block", fontSize: "0.75rem", marginBottom: "0.5rem", color: "var(--color-accent-primary)", textTransform: "uppercase", fontFamily: "var(--font-mono)" }}
               title={exchange !== "ANT" ? "Extraction mode only available for ANT exchange" : "Include planet-specific extraction recipes"}
             >
               Extraction
@@ -315,7 +366,7 @@ export default function ReportClient() {
               className="terminal-button"
               style={{
                 width: "100%",
-                padding: "0.65rem 1rem",
+                padding: "0.70rem 1rem",
                 backgroundColor: extractionMode ? "var(--color-accent-primary)" : "transparent",
                 color: extractionMode ? "var(--color-bg-primary)" : "var(--color-text-primary)",
                 opacity: exchange !== "ANT" ? 0.4 : 1,
@@ -328,14 +379,14 @@ export default function ReportClient() {
           </div>
 
           <div>
-            <label style={{ display: "block", fontSize: "0.75rem", marginBottom: "0.5rem", color: "var(--color-accent-primary)", textTransform: "uppercase" }}>
-              Sell At
+            <label style={{ display: "block", fontSize: "0.75rem", marginBottom: "0.5rem", color: "var(--color-accent-primary)", textTransform: "uppercase", fontFamily: "var(--font-mono)" }}>
+              &nbsp;Sell At
             </label>
             <select
               value={priceType}
               onChange={(e) => setPriceType(e.target.value as PriceType)}
               className="terminal-select"
-              style={{ width: "100%" }}
+              style={{ width: "100%", padding: "0.65rem 1rem" }}
             >
               <option value="ask">Ask</option>
               <option value="bid">Bid</option>
@@ -344,17 +395,18 @@ export default function ReportClient() {
             </select>
           </div>
 
-          <button
-            onClick={run}
-            disabled={loading || !tickerInput.trim()}
-            className="terminal-button"
-            style={{ padding: "0.65rem 1rem" }}
-          >
-            {loading ? <span className="terminal-loading">Processing</span> : "Execute"}
-          </button>
-
-          <div style={{ fontSize: "0.875rem", color: "var(--color-text-muted)", fontFamily: "var(--font-mono)", paddingBottom: "0.5rem" }}>
-            {exchange === "ANT" ? <span className="status-success">◉ OPTIMAL_EXCHANGE</span> : <span className="status-warning">◉ SUBOPTIMAL_EXCHANGE</span>}
+          <div>
+            <label style={{ display: "block", fontSize: "0.75rem", marginBottom: "0.5rem", fontFamily: "var(--font-mono)" }}>
+              {exchange === "ANT" ? <span className="status-success" style={{ fontSize: "0.75rem" }}>&nbsp;◉ OPTIMAL_EXCHANGE</span> : <span className="status-error" style={{ fontSize: "0.75rem" }}>◉ SUBOPTIMAL_EXCHANGE</span>}
+            </label>
+            <button
+              onClick={run}
+              disabled={loading || !tickerInput.trim()}
+              className="terminal-button"
+              style={{ padding: "0.70rem 1rem", width: "100%" }}
+            >
+              {loading ? <span className="terminal-loading">Processing</span> : "Execute"}
+            </button>
           </div>
         </div>
 
@@ -561,6 +613,57 @@ VEG_2 - HYF: 16xH2O-1xNS=>6xVEG`}
             </div>
           )}
         </div>
+
+        {/* Extraction Planets Toggle */}
+        <div style={{ marginTop: "1rem" }}>
+          <div
+            onClick={() => extractionPlanetsData[exchange] && setShowExtractionPlanets(!showExtractionPlanets)}
+            title={!extractionPlanetsData[exchange] ? `Extraction planets data not available for ${exchange} exchange` : ""}
+            style={{
+              cursor: extractionPlanetsData[exchange] ? "pointer" : "not-allowed",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "space-between",
+              padding: "0.5rem",
+              background: "var(--color-bg-primary)",
+              border: "1px solid var(--color-border-primary)",
+              borderRadius: "2px",
+              transition: "all 0.2s ease",
+              opacity: extractionPlanetsData[exchange] ? 1 : 0.4
+            }}
+            onMouseEnter={(e) => extractionPlanetsData[exchange] && (e.currentTarget.style.borderColor = "var(--color-border-glow)")}
+            onMouseLeave={(e) => e.currentTarget.style.borderColor = "var(--color-border-primary)"}
+          >
+            <span className="text-accent text-mono" style={{ fontSize: "0.875rem" }}>
+              {showExtractionPlanets ? "[-]" : "[+]"} EXTRACTION PLANETS {!extractionPlanetsData[exchange] && `(${exchange} N/A)`}
+            </span>
+            <span style={{ fontSize: "0.75rem", color: "var(--color-text-muted)" }}>
+              {showExtractionPlanets ? "COLLAPSE" : "EXPAND"}
+            </span>
+          </div>
+          {showExtractionPlanets && extractionPlanetsData[exchange] && (
+            <div style={{
+              marginTop: "0.5rem",
+              padding: "1rem",
+              background: "var(--color-bg-primary)",
+              border: "1px solid var(--color-border-secondary)",
+              borderRadius: "2px",
+              maxHeight: "400px",
+              overflowY: "auto"
+            }}>
+              <pre style={{
+                margin: 0,
+                whiteSpace: "pre-wrap",
+                fontFamily: "var(--font-mono)",
+                fontSize: "0.75rem",
+                lineHeight: "1.6",
+                color: "var(--color-text-secondary)"
+              }}>
+                {extractionPlanetsData[exchange]}
+              </pre>
+            </div>
+          )}
+        </div>
         </>)}
       </div>
 
@@ -643,12 +746,12 @@ VEG_2 - HYF: 16xH2O-1xNS=>6xVEG`}
               <div style={{ display: "grid", gap: "0.5rem", fontSize: "0.875rem", fontFamily: "var(--font-mono)" }}>
                 <div style={{ display: "flex", gap: "0.5rem" }}>
                   <span
-                    data-tooltip="The daily profit generated by a single building producing this ticker in this scenario."
+                    data-tooltip="The daily profit generated by a single building production chain of this ticker in this scenario."
                     style={{ cursor: "help", color: "var(--color-accent-secondary)" }}
                   >
                     [i]
                   </span>
-                  <span style={{ color: "var(--color-text-secondary)" }}>Building Profit/Day:</span>
+                  <span style={{ color: "var(--color-text-secondary)" }}>Chain Profit/Day:</span>
                   <span className="text-accent">{money(report.best.baseProfitPerDay, report.exchange)}</span>
                 </div>
                 <div style={{ display: "flex", gap: "0.5rem" }}>
@@ -708,7 +811,7 @@ VEG_2 - HYF: 16xH2O-1xNS=>6xVEG`}
                 {(report.best.totalBuildCost != null || report.best.roiBroadDays != null) && (
                   <div style={{ display: "flex", gap: "0.5rem" }}>
                     <span
-                      data-tooltip="This figure includes the narrow build cost plus the proportionate build cost of all input production and habitation buildings needed for one day's production of this ticker"
+                      data-tooltip="The narrow build cost plus the proportionate build cost of all input production and habitation buildings needed for one day's production for this production chain"
                       style={{ cursor: "help", color: "var(--color-accent-secondary)" }}
                     >
                       [i]
