@@ -227,7 +227,8 @@ TIO     KI-401b     24.28`,
               This tool determines and displays the highest profit per area per day production scenario for one
               building producing the selected ticker (not a full base). A production scenario is the buy/make
               decision for each input in a ticker's full production chain. This model uses FIO data (refreshed hourly)
-              for its calculations on optimal buy/make decisions.
+              for its calculations on optimal buy/make decisions.  Extraction mode, when enabled, uses an optimal planet (per region) 
+              for extracting each raw resource (only ANT currently supported).
             </p>
             <p style={{ marginBottom: "0.75rem" }}>
               Users may force certain inputs to be made or bought, as well as force or exclude specific recipe IDs
