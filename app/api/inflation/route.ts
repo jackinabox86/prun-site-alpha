@@ -5,7 +5,7 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 const GCS_BUCKET = "https://storage.googleapis.com/prun-site-alpha-bucket";
-const GCS_VWAP_PATH = "historical-prices-vwap-test/claude/explore-feature-implementation-011CUw3txifyKMabjhhL1oFr";
+const GCS_VWAP_PATH = "historical-prices-vwap";
 
 // Exchange code mapping
 const EXCHANGE_MAP: Record<string, string> = {
@@ -278,3 +278,4 @@ export async function GET(request: NextRequest) {
     );
   }
 }
+
