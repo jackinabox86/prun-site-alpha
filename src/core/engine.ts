@@ -379,10 +379,8 @@ function buildAllOptionsForTicker(
       }
     }
 
-    // Skip this recipe if the main output ticker doesn't have a price for the selected price mode
-    if (!output1HasPrice) {
-      continue;
-    }
+    // Allow recipes without output prices - COGM can still be calculated
+    // (output price only needed for profit calculation, not for cost chain)
 
     // Build scenarios for THIS ticker: each input → BUY or MAKE(childBest)
     type Scn = {
@@ -483,8 +481,9 @@ function buildAllOptionsForTicker(
         output1Amount > 0
           ? (totalProductionCost - byproductValue) / output1Amount
           : 0;
+      // If no output price, set base profit to 0 (no market = no opportunity cost)
       const baseProfitPerOutput =
-        output1Amount > 0 ? baseProfit / output1Amount : 0;
+        output1Amount > 0 && output1HasPrice ? baseProfit / output1Amount : 0;
       const adjProfitPerOutput =
         output1Amount > 0 ? finalProfit / output1Amount : 0;
       const valuePerOutput =
@@ -720,10 +719,8 @@ function bestOptionForTicker(
       }
     }
 
-    // Skip this recipe if the main output ticker doesn't have a price for the selected price mode
-    if (!output1HasPrice) {
-      continue;
-    }
+    // Allow recipes without output prices - COGM can still be calculated
+    // (output price only needed for profit calculation, not for cost chain)
 
     // Build scenarios for THIS ticker only: each input → BUY or MAKE(childBest)
     type Scn = {
@@ -825,8 +822,9 @@ function bestOptionForTicker(
         output1Amount > 0
           ? (totalProductionCost - byproductValue) / output1Amount
           : 0;
+      // If no output price, set base profit to 0 (no market = no opportunity cost)
       const baseProfitPerOutput =
-        output1Amount > 0 ? baseProfit / output1Amount : 0;
+        output1Amount > 0 && output1HasPrice ? baseProfit / output1Amount : 0;
       const adjProfitPerOutput =
         output1Amount > 0 ? finalProfit / output1Amount : 0;
       const valuePerOutput =
@@ -1139,10 +1137,8 @@ export function findAllMakeOptions(
       }
     }
 
-    // Skip this recipe if the main output ticker doesn't have a price for the selected price mode
-    if (!output1HasPrice) {
-      continue;
-    }
+    // Allow recipes without output prices - COGM can still be calculated
+    // (output price only needed for profit calculation, not for cost chain)
 
     // Build scenarios: each input → BUY or MAKE(all child options)
     type Scn = {
@@ -1245,8 +1241,9 @@ export function findAllMakeOptions(
         output1Amount > 0
           ? (totalProductionCost - byproductValue) / output1Amount
           : 0;
+      // If no output price, set base profit to 0 (no market = no opportunity cost)
       const baseProfitPerOutput =
-        output1Amount > 0 ? baseProfit / output1Amount : 0;
+        output1Amount > 0 && output1HasPrice ? baseProfit / output1Amount : 0;
       const adjProfitPerOutput =
         output1Amount > 0 ? finalProfit / output1Amount : 0;
       const valuePerOutput =
