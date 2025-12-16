@@ -62,8 +62,8 @@ export default function CondensedOptionsTable({ options, exchange, priceType }: 
               <th style={{ textAlign: "center" }}>Ticker</th>
               <th style={{ textAlign: "center" }}>Recipe ID</th>
               <th style={{ textAlign: "center" }}>Scenario</th>
-              <th style={{ textAlign: "center" }}>Building Profit/Day</th>
-              <th style={{ textAlign: "center" }}>Total Area/Day</th>
+              <th style={{ textAlign: "center" }}>Chain Profit/Day</th>
+              <th style={{ textAlign: "center" }}>Chain Area/Day</th>
               <th style={{ textAlign: "center" }}>ROI (narrow)</th>
               <th style={{ textAlign: "center" }}>ROI (broad)</th>
               <th style={{ textAlign: "center" }}>Profit P/A</th>
