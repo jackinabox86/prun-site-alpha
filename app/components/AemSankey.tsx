@@ -123,14 +123,19 @@ const AemSankey = memo(function AemSankey({
         const isError = child.isError;
 
         const showChildRecipeId = recipeIdDiffersFromTicker(child.ticker, child.recipeId);
+        const isRawMaterial = isError && child.errorMessage?.includes("raw");
         const childLabel = isError
-          ? `<b>&nbsp;${child.ticker}</b><br>[${child.errorMessage?.includes("raw") ? "RAW" : "ERROR"}]`
+          ? isRawMaterial
+            ? `<b>&nbsp;${child.ticker}</b>`
+            : `<b>&nbsp;${child.ticker}</b><br>[ERROR]`
           : showChildRecipeId
             ? `<b>&nbsp;${child.ticker}</b><br>[${child.recipeId}]`
             : `<b>&nbsp;${child.ticker}</b>`;
 
         const childHover = isError
-          ? [`<b>${child.ticker}</b>`, `${child.errorMessage}`].join("<br>")
+          ? isRawMaterial
+            ? [`<b>${child.ticker}</b>`, `Amount needed: ${input.amount}`].join("<br>")
+            : [`<b>${child.ticker}</b>`, `${child.errorMessage}`].join("<br>")
           : [
               `<b>${child.ticker}</b>`,
               child.building ? `Building: ${child.building}` : null,
