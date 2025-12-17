@@ -17,6 +17,7 @@ export default function RootLayout({
           <a href="/">Main Report</a>
           <a href="/best-recipes">Best Recipes</a>
           <a href="/best-recipes-history">Recipe History</a>
+          <a href="/aem-visualizer">AEM Visualizer</a>
           <a href="/xit-converter">XIT Converter</a>
         </nav>
         <main className="terminal-container">
