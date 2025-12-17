@@ -293,33 +293,87 @@ export default function AemVisualizerClient() {
                 lineHeight: "1.6",
               }}
             >
-              {`Materials with multiple recipes (use Force Recipe IDs to select):
-
-AL_1 - SME: 6xALO-1xC-1xO=>3xAL
+              {`AL_1 - SME: 6xALO-1xC-1xO=>3xAL
 AL_2 - SME: 6xALO-1xC-1xFLX-1xO=>4xAL
+BBH_1 - PP1: 2xFE-1xLST=>1xBBH
+BBH_2 - PP2: 2xAL-1xLST=>1xBBH
+BDE_1 - PP1: 150xPE=>1xBDE
+BDE_2 - PP2: 40xPG=>1xBDE
+BEA_1 - FRM: 1xH2O=>2xBEA
+BEA_2 - FRM: 6xH2O=>4xBEA
+BLE_1 - LAB: 10xNAB-2xO-3xS=>4xBLE
+BLE_2 - LAB: 1xCL-1xNA-1xO=>3xBLE
+BSE_1 - PP1: 1xFE-2xLST=>1xBSE
+BSE_2 - PP2: 1xAL-2xLST=>1xBSE
+BTA_1 - PP1: 1xFE-50xPE=>1xBTA
+BTA_2 - PP2: 1xAL-1xGL=>1xBTA
 C_1 - INC: 4xGRN=>4xC
 C_2 - INC: 2xGRN-4xHCP-2xMAI=>4xC
 C_3 - INC: 2xGRN-4xHCP=>4xC
 C_4 - INC: 4xHCP-2xMAI=>4xC
 C_5 - INC: 4xHCP=>4xC
 C_6 - INC: 4xMAI=>4xC
+DRF_1 - DRS: 1xDCS-50xNFI=>1xDRF
+DRF_2 - WEL: 6xAL-1xHE=>1xDRF
+DW_1 - FP: 10xH2O-1xPG=>10xDW
+DW_2 - FP: 10xH2O=>7xDW
+EXO_1 - BMP: 1xAL-1xMFK-10xOVE=>10xEXO
+EXO_2 - BMP: 1xAL-10xOVE-1xSWF=>10xEXO
+EXO_3 - BMP: 1xAL-10xOVE=>10xEXO
 FE_1 - SME: 1xC-6xFEO-1xFLX-1xO=>4xFE
 FE_2 - SME: 1xC-6xFEO-1xO=>3xFE
 GL_1 - GF: 1xFLX-1xNA-2xSIO=>12xGL
 GL_2 - GF: 1xNA-1xSEN-2xSIO=>10xGL
 GL_3 - GF: 1xNA-2xSIO=>10xGL
+GRA_1 - RC: 1xDDT-30xH2O-3xSOI=>6xGRA
+GRA_2 - ORC: 1xDDT-40xH2O=>5xGRA
 GRN_1 - FRM: 1xH2O=>4xGRN
 GRN_2 - FRM: 4xH2O=>4xGRN
 HCP_1 - FRM: 2xH2O=>4xHCP
 HCP_2 - HYF: 14xH2O-1xNS=>8xHCP
+HOP_1 - ORC: 2xDDT-40xH2O-4xSOI=>18xHOP
+HOP_2 - ORC: 2xDDT-60xH2O=>15xHOP
 MAI_1 - FRM: 4xH2O=>12xMAI
 MAI_2 - HYF: 20xH2O-2xNS=>12xMAI
-RAT_1 through RAT_12 - Various FP recipes
-SI_1 through SI_4 - Various SME recipes
+MUS_1 - HYF: 1xNS=>4xMUS
+MUS_2 - HYF: 4xNS=>12xMUS
+OVE_1 - BMP: 100xPE-25xPG=>20xOVE
+OVE_2 - BMP: 1xCOT-10xPG=>30xOVE
+OVE_3 - BMP: 50xPE-1xRCO=>20xOVE
+PIB_1 - ORC: 1xDDT-20xH2O-2xSOI=>12xPIB
+PIB_2 - ORC: 1xDDT-30xH2O=>10xPIB
+PPA_1 - FP: 1xALG-1xBEA-1xH2O=>6xPPA
+PPA_2 - FP: 2xALG-1xH2O=>4xPPA
+PPA_3 - FP: 2xBEA-1xH2O=>4xPPA
+PT_1 - BMP: 1xSTL-1xTRN=>7xPT
+PT_2 - BMP: 1xSTL-1xW=>15xPT
+PT_3 - BMP: 2xSFK-1xSTL=>6xPT
+PT_4 - BMP: 1xSTL=>5xPT
+RAT_1 - FP: 1xALG-1xGRN-1xNUT=>10xRAT
+RAT_2 - FP: 1xALG-1xGRN-1xVEG=>10xRAT
+RAT_3 - FP: 1xBEA-1xGRN-1xNUT=>10xRAT
+RAT_4 - FP: 1xBEA-1xGRN-1xVEG=>10xRAT
+RAT_5 - FP: 1xALG-1xMAI-1xNUT=>10xRAT
+RAT_6 - FP: 1xALG-1xMAI-1xVEG=>10xRAT
+RAT_7 - FP: 1xBEA-1xMAI-1xNUT=>10xRAT
+RAT_8 - FP: 1xBEA-1xMAI-1xVEG=>10xRAT
+RAT_9 - FP: 1xGRN-1xMUS-1xNUT=>10xRAT
+RAT_10 - FP: 1xMAI-1xMUS-1xNUT=>10xRAT
+RAT_11 - FP: 1xGRN-1xMUS-1xVEG=>10xRAT
+RAT_12 - FP: 1xMAI-1xMUS-1xVEG=>10xRAT
+RCO_1 - FRM: 2xH2O-4xNS=>2xRCO
+RCO_2 - FRM: 2xH2O=>1xRCO
+RCO_3 - HYF: 10xH2O-4xNS=>2xRCO
+RG_1 - GF: 10xGL-15xPG-1xSEN=>10xRG
+RG_2 - GF: 10xGL-15xPG=>10xRG
+SF_1 - REF: 1xAMM-2xGAL-3xH=>100xSF
+SF_2 - REF: 1xAMM-5xNAB=>150xSF
+SI_1 - SME: 1xAL-3xSIO=>1xSI
+SI_2 - SME: 1xC-1xFLX-1xO-3xSIO=>1xSI
+SI_3 - SME: 1xC-1xO-3xSIO=>1xSI
+SI_4 - SME: 1xAL-1xO-4xTS=>1xSI
 VEG_1 - FRM: 3xH2O=>4xVEG
-VEG_2 - HYF: 16xH2O-1xNS=>6xVEG
-
-See main Ticker Analysis page for complete recipe list.`}
+VEG_2 - HYF: 16xH2O-1xNS=>6xVEG`}
             </pre>
           </details>
         </div>

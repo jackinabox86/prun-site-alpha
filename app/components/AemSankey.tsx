@@ -78,17 +78,27 @@ const AemSankey = memo(function AemSankey({
       links.label.push(label);
     };
 
+    // Helper to check if recipe ID differs from ticker (e.g., "C_5" vs "C")
+    const recipeIdDiffersFromTicker = (ticker: string, recipeId: string | null): boolean => {
+      if (!recipeId) return false;
+      // Recipe IDs are format TICKER_N, so check if it's not just the ticker
+      const baseTicker = recipeId.split("_")[0];
+      return baseTicker === ticker && recipeId !== ticker;
+    };
+
     // Create root node
+    const showRootRecipeId = recipeIdDiffersFromTicker(chain.ticker, chain.recipeId);
     const rootLabel = chain.isError
       ? `<b>&nbsp;${chain.ticker}</b><br>[ERROR]`
-      : `<b>&nbsp;${chain.ticker}</b><br>[${chain.recipeId || chain.ticker}]`;
+      : showRootRecipeId
+        ? `<b>&nbsp;${chain.ticker}</b><br>[${chain.recipeId}]`
+        : `<b>&nbsp;${chain.ticker}</b>`;
 
     const rootHover = chain.isError
       ? [`<b>${chain.ticker}</b>`, `Error: ${chain.errorMessage}`].join("<br>")
       : [
           `<b>${chain.ticker}</b>`,
           chain.building ? `Building: ${chain.building}` : null,
-          chain.recipeId ? `Recipe: ${chain.recipeId}` : null,
         ]
           .filter(Boolean)
           .join("<br>");
@@ -112,16 +122,18 @@ const AemSankey = memo(function AemSankey({
         const childId = `${child.ticker}::${depth + 1}::${visited.size}`;
         const isError = child.isError;
 
+        const showChildRecipeId = recipeIdDiffersFromTicker(child.ticker, child.recipeId);
         const childLabel = isError
           ? `<b>&nbsp;${child.ticker}</b><br>[${child.errorMessage?.includes("raw") ? "RAW" : "ERROR"}]`
-          : `<b>&nbsp;${child.ticker}</b><br>[${child.recipeId || child.ticker}]`;
+          : showChildRecipeId
+            ? `<b>&nbsp;${child.ticker}</b><br>[${child.recipeId}]`
+            : `<b>&nbsp;${child.ticker}</b>`;
 
         const childHover = isError
           ? [`<b>${child.ticker}</b>`, `${child.errorMessage}`].join("<br>")
           : [
               `<b>${child.ticker}</b>`,
               child.building ? `Building: ${child.building}` : null,
-              child.recipeId ? `Recipe: ${child.recipeId}` : null,
               `Amount needed: ${input.amount}`,
             ]
               .filter(Boolean)
