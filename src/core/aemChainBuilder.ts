@@ -43,7 +43,7 @@ export interface ChainResult {
   circularDependency: boolean;
 }
 
-const MAX_DEPTH = 8;
+const MAX_DEPTH = 20;
 
 /**
  * Parse forced recipe IDs from comma-separated string
