@@ -1,7 +1,7 @@
 // app/components/AemSankey.tsx
 "use client";
 
-import { useMemo, memo, useRef, useCallback, useState, useEffect } from "react";
+import { useMemo, memo, useState, useEffect } from "react";
 import PlotlySankey from "./PlotlySankey";
 import type { ChainNode } from "@/core/aemChainBuilder";
 
@@ -13,28 +13,39 @@ interface AemSankeyProps {
 }
 
 const AemSankey = memo(function AemSankey({ chain, height = 400 }: AemSankeyProps) {
-  const containerRef = useRef<HTMLDivElement>(null);
-  const [isFullscreen, setIsFullscreen] = useState(false);
+  const [isExpanded, setIsExpanded] = useState(false);
+  const [windowHeight, setWindowHeight] = useState(800);
 
-  // Handle fullscreen changes
+  // Track window size for expanded view
   useEffect(() => {
-    const handleFullscreenChange = () => {
-      setIsFullscreen(!!document.fullscreenElement);
-    };
-    document.addEventListener("fullscreenchange", handleFullscreenChange);
-    return () => document.removeEventListener("fullscreenchange", handleFullscreenChange);
+    const updateHeight = () => setWindowHeight(window.innerHeight);
+    updateHeight();
+    window.addEventListener("resize", updateHeight);
+    return () => window.removeEventListener("resize", updateHeight);
   }, []);
 
-  const toggleFullscreen = useCallback(() => {
-    if (!containerRef.current) return;
-    if (!document.fullscreenElement) {
-      containerRef.current.requestFullscreen().catch((err) => {
-        console.error("Error entering fullscreen:", err);
-      });
+  // Handle escape key to close expanded view
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape" && isExpanded) {
+        setIsExpanded(false);
+      }
+    };
+    document.addEventListener("keydown", handleKeyDown);
+    return () => document.removeEventListener("keydown", handleKeyDown);
+  }, [isExpanded]);
+
+  // Prevent body scroll when expanded
+  useEffect(() => {
+    if (isExpanded) {
+      document.body.style.overflow = "hidden";
     } else {
-      document.exitFullscreen();
+      document.body.style.overflow = "";
     }
-  }, []);
+    return () => {
+      document.body.style.overflow = "";
+    };
+  }, [isExpanded]);
 
   const result = useMemo(() => {
     if (!chain) return null;
@@ -317,39 +328,82 @@ const AemSankey = memo(function AemSankey({ chain, height = 400 }: AemSankeyProp
 
   if (!result || !chain) return null;
 
-  return (
-    <div
-      ref={containerRef}
-      style={{
-        position: "relative",
-        backgroundColor: isFullscreen ? "#0a0e14" : "transparent",
-        padding: isFullscreen ? "1rem" : 0,
-        height: isFullscreen ? "100vh" : "auto",
-        overflow: isFullscreen ? "auto" : "visible",
-      }}
-    >
+  const expandedHeight = windowHeight - 80;
+
+  // Normal inline view
+  const normalView = (
+    <div style={{ position: "relative" }}>
       <button
-        onClick={toggleFullscreen}
+        onClick={() => setIsExpanded(true)}
         className="terminal-button"
         style={{
           position: "absolute",
-          top: isFullscreen ? "1rem" : "0.5rem",
-          right: isFullscreen ? "1rem" : "0.5rem",
-          zIndex: 1000,
+          top: "0.5rem",
+          right: "0.5rem",
+          zIndex: 100,
           padding: "0.5rem 1rem",
           fontSize: "0.75rem",
         }}
       >
-        {isFullscreen ? "Exit Fullscreen" : "Fullscreen"}
+        Fullscreen
       </button>
-      <PlotlySankey
-        data={result.data}
-        layout={{
-          ...result.layout,
-          height: isFullscreen ? window.innerHeight - 50 : result.dynamicHeight,
-        }}
-      />
+      <PlotlySankey data={result.data} layout={result.layout} />
     </div>
+  );
+
+  // Expanded overlay view
+  const expandedView = (
+    <div
+      style={{
+        position: "fixed",
+        top: 0,
+        left: 0,
+        right: 0,
+        bottom: 0,
+        backgroundColor: "#0a0e14",
+        zIndex: 9999,
+        display: "flex",
+        flexDirection: "column",
+      }}
+    >
+      <div
+        style={{
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "center",
+          padding: "0.75rem 1rem",
+          borderBottom: "1px solid var(--color-border-primary)",
+          backgroundColor: "#0a0e14",
+        }}
+      >
+        <span style={{ color: "var(--color-accent-primary)", fontFamily: "var(--font-mono)", fontSize: "0.875rem" }}>
+          Production Chain: {chain.ticker}
+        </span>
+        <button
+          onClick={() => setIsExpanded(false)}
+          className="terminal-button"
+          style={{ padding: "0.5rem 1rem", fontSize: "0.75rem" }}
+        >
+          Close (Esc)
+        </button>
+      </div>
+      <div style={{ flex: 1, overflow: "auto", padding: "0.5rem" }}>
+        <PlotlySankey
+          data={result.data}
+          layout={{
+            ...result.layout,
+            height: expandedHeight,
+          }}
+        />
+      </div>
+    </div>
+  );
+
+  return (
+    <>
+      {normalView}
+      {isExpanded && expandedView}
+    </>
   );
 });
 
