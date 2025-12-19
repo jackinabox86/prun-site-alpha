@@ -154,7 +154,7 @@ export default function InflationClient() {
       lines.push(`# ${result.exchange} Ticker Weights:`);
       for (const w of result.weights) {
         if (result.weightType === "volume") {
-          lines.push(`# ${w.ticker}: ${(w.weight * 100).toFixed(4)}% (Volume: ${w.indexDateVolume})`);
+          lines.push(`# ${w.ticker}: ${(w.weight * 100).toFixed(4)}% (Volume ±7d: ${w.indexDateVolume})`);
         } else {
           lines.push(`# ${w.ticker}: ${(w.weight * 100).toFixed(4)}%`);
         }
@@ -407,7 +407,7 @@ export default function InflationClient() {
                     checked={weightType === "volume"}
                     onChange={(e) => setWeightType(e.target.value as "equal" | "volume")}
                   />
-                  <span className="text-mono" style={{ fontSize: "0.875rem" }}>Volume</span>
+                  <span className="text-mono" style={{ fontSize: "0.875rem" }}>Volume (±7 days)</span>
                 </label>
               </div>
             </div>
@@ -494,7 +494,7 @@ export default function InflationClient() {
                     <tr>
                       <th>Ticker</th>
                       <th>Weight (%)</th>
-                      {result.weightType === "volume" && <th>Index Date Volume</th>}
+                      {result.weightType === "volume" && <th>Volume (±7d)</th>}
                     </tr>
                   </thead>
                   <tbody>
