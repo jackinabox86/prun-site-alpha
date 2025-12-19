@@ -84,18 +84,11 @@ async function fetchVWAPData(ticker: string, exchange: string): Promise<VWAPHist
 /**
  * Calculate inflation index from VWAP data
  */
-interface IndexWarning {
-  message: string;
-  missingTickers: string[];
-  suggestedDate: string;
-  coverage: string;
-}
-
 function calculateIndex(
   vwapDataMap: Map<string, VWAPHistoricalData>,
   indexTimestamp: number,
   weightType: "equal" | "volume"
-): { indexData: IndexDataPoint[]; weights: TickerWeight[]; warning?: IndexWarning } {
+): { indexData: IndexDataPoint[]; weights: TickerWeight[] } {
   // Step 1: Calculate weights
   const weights: TickerWeight[] = [];
   const tickers = Array.from(vwapDataMap.keys());
@@ -147,56 +140,11 @@ function calculateIndex(
 
   // Step 2: Get base prices on index date
   const basePrices: Record<string, number> = {};
-  const tickersWithoutBasePrice: string[] = [];
-
   for (const [ticker, data] of vwapDataMap.entries()) {
     const indexPoint = data.data.find(d => d.DateEpochMs === indexTimestamp);
     if (indexPoint && indexPoint.vwap7d !== null) {
       basePrices[ticker] = indexPoint.vwap7d;
-    } else {
-      tickersWithoutBasePrice.push(ticker);
     }
-  }
-
-  // Check if we have insufficient base price data
-  const basePriceCount = Object.keys(basePrices).length;
-  const totalTickers = tickers.length;
-  const basePriceCoverage = basePriceCount / totalTickers;
-
-  // If less than 50% of tickers have base prices, the index date is likely in an invalid range
-  if (basePriceCoverage < 0.5) {
-    // Find the first date where we have good coverage (at least 80% of tickers have vwap7d)
-    let suggestedDate: string | null = null;
-    for (const data of vwapDataMap.values()) {
-      for (const point of data.data) {
-        if (point.vwap7d !== null) {
-          // Check coverage at this date across all tickers
-          let validCount = 0;
-          for (const tickerData of vwapDataMap.values()) {
-            const tickerPoint = tickerData.data.find(d => d.DateEpochMs === point.DateEpochMs);
-            if (tickerPoint && tickerPoint.vwap7d !== null) {
-              validCount++;
-            }
-          }
-          if (validCount / totalTickers >= 0.8) {
-            suggestedDate = new Date(point.DateEpochMs).toISOString().split("T")[0];
-            break;
-          }
-        }
-      }
-      if (suggestedDate) break;
-    }
-
-    return {
-      indexData: [],
-      weights,
-      warning: {
-        message: `Index date ${indexDateParam} has insufficient data. Only ${basePriceCount}/${totalTickers} tickers have valid price data on this date. This typically occurs when the selected date is within the first 30 days of available historical data, as VWAP calculation requires a 30-day baseline period.`,
-        missingTickers: tickersWithoutBasePrice,
-        suggestedDate: suggestedDate || "Use a date at least 30 days after the start of available data",
-        coverage: `${(basePriceCoverage * 100).toFixed(1)}%`,
-      },
-    };
   }
 
   // Step 3: Build complete date list (union of all dates)
@@ -315,11 +263,10 @@ export async function GET(request: NextRequest) {
     }
 
     // Calculate index
-    const { indexData, weights, warning } = calculateIndex(vwapDataMap, indexTimestamp, weightType);
+    const { indexData, weights } = calculateIndex(vwapDataMap, indexTimestamp, weightType);
 
     return NextResponse.json({
       success: true,
-      ...(warning && { warning }),
       exchange,
       indexDate: indexDateParam,
       indexTimestamp,

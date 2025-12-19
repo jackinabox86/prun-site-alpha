@@ -26,13 +26,6 @@ interface TickerWeight {
   indexDateVolume: number;
 }
 
-interface IndexWarning {
-  message: string;
-  missingTickers: string[];
-  suggestedDate: string;
-  coverage: string;
-}
-
 interface ApiResponse {
   success: boolean;
   exchange: string;
@@ -45,7 +38,6 @@ interface ApiResponse {
   dataPoints: number;
   data: IndexDataPoint[];
   error?: string;
-  warning?: IndexWarning;
 }
 
 interface MultiExchangeResponse {
@@ -447,29 +439,6 @@ export default function InflationClient() {
       {error && (
         <div className="terminal-box" style={{ marginBottom: "2rem", borderColor: "var(--color-error)" }}>
           <div className="status-error">⚠️ {error}</div>
-        </div>
-      )}
-
-      {/* Warning Display */}
-      {exchangeResults.length > 0 && exchangeResults.some(r => r.warning) && !error && (
-        <div className="terminal-box" style={{ marginBottom: "2rem", borderColor: "#ffaa00", background: "rgba(255, 170, 0, 0.05)" }}>
-          <div style={{ color: "#ffaa00", marginBottom: "1rem", fontWeight: 600 }}>
-            ⚠️ Index Date Has Insufficient Data
-          </div>
-          {exchangeResults.filter(r => r.warning).map((result) => (
-            <div key={result.exchange} style={{ fontSize: "0.875rem", marginBottom: "1rem" }}>
-              <div style={{ marginBottom: "0.5rem" }}>
-                <strong>{result.exchange}:</strong> {result.warning!.message}
-              </div>
-              <div style={{ marginLeft: "1rem", color: "var(--color-text-muted)", fontSize: "0.8rem" }}>
-                <div>Coverage: {result.warning!.coverage}</div>
-                <div>Missing tickers ({result.warning!.missingTickers.length}): {result.warning!.missingTickers.slice(0, 10).join(", ")}{result.warning!.missingTickers.length > 10 ? "..." : ""}</div>
-                <div style={{ color: "#00ff88", marginTop: "0.5rem" }}>
-                  💡 Suggested date: <strong>{result.warning!.suggestedDate}</strong>
-                </div>
-              </div>
-            </div>
-          ))}
         </div>
       )}
 
