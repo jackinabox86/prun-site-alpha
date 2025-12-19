@@ -1,7 +1,7 @@
 // app/components/BestScenarioSankey.tsx
 "use client";
 
-import { useMemo, memo } from "react";
+import { useMemo, memo, useState, useEffect } from "react";
 import PlotlySankey from "./PlotlySankey";
 import type { Exchange, PriceType } from "@/types";
 import { scenarioDisplayName } from "@/core/scenario";
@@ -56,6 +56,40 @@ const BestScenarioSankey = memo(function BestScenarioSankey({
   exchange?: Exchange;
   priceType?: PriceType;
 }) {
+  const [isExpanded, setIsExpanded] = useState(false);
+  const [windowHeight, setWindowHeight] = useState(800);
+
+  // Track window size for expanded view
+  useEffect(() => {
+    const updateHeight = () => setWindowHeight(window.innerHeight);
+    updateHeight();
+    window.addEventListener("resize", updateHeight);
+    return () => window.removeEventListener("resize", updateHeight);
+  }, []);
+
+  // Handle escape key to close expanded view
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape" && isExpanded) {
+        setIsExpanded(false);
+      }
+    };
+    document.addEventListener("keydown", handleKeyDown);
+    return () => document.removeEventListener("keydown", handleKeyDown);
+  }, [isExpanded]);
+
+  // Prevent body scroll when expanded
+  useEffect(() => {
+    if (isExpanded) {
+      document.body.style.overflow = "hidden";
+    } else {
+      document.body.style.overflow = "";
+    }
+    return () => {
+      document.body.style.overflow = "";
+    };
+  }, [isExpanded]);
+
   const result = useMemo(() => {
     if (!best) return null;
 
@@ -263,7 +297,7 @@ const BestScenarioSankey = memo(function BestScenarioSankey({
     }
 
     const isBuyNode = (idx: number) => (nodeLabels[idx] || "").startsWith("Buy ");
-    
+
     // Calculate position of each node within its column for parent ordering
     const nodePositionInColumn = new Array<number>(N).fill(0);
     for (let d = 0; d <= maxDepth; d++) {
@@ -282,20 +316,20 @@ const BestScenarioSankey = memo(function BestScenarioSankey({
           const bParentPos = nodePositionInColumn[bParent] ?? 0;
           if (aParentPos !== bParentPos) return aParentPos - bParentPos;
         }
-        
+
         // Priority 2: Within same parent, MAKE before BUY
         const aBuy = isBuyNode(a),
           bBuy = isBuyNode(b);
         if (aBuy !== bBuy) return aBuy ? 1 : -1;
-        
+
         // Priority 3: Within same parent and type, sort by cost
         const delta = (inCost[b] || 0) - (inCost[a] || 0);
         if (delta !== 0) return delta;
-        
+
         // Priority 4: Stable sort
         return a - b;
       });
-      
+
       // Update positions after sorting this column
       column.forEach((idx, pos) => {
         nodePositionInColumn[idx] = pos;
@@ -390,11 +424,89 @@ const BestScenarioSankey = memo(function BestScenarioSankey({
         hovermode: "closest",
         height: dynamicHeight,
       },
+      dynamicHeight,
     };
   }, [best, exchange, priceType, height]);
 
   if (!result || !best) return null;
-  return <PlotlySankey data={result.data} layout={result.layout} />;
+
+  const expandedHeight = windowHeight - 80;
+
+  // Normal inline view
+  const normalView = (
+    <div style={{ position: "relative" }}>
+      <button
+        onClick={() => setIsExpanded(true)}
+        className="terminal-button"
+        style={{
+          position: "absolute",
+          top: "0.5rem",
+          right: "0.5rem",
+          zIndex: 100,
+          padding: "0.5rem 1rem",
+          fontSize: "0.75rem",
+        }}
+      >
+        Expand
+      </button>
+      <PlotlySankey data={result.data} layout={result.layout} />
+    </div>
+  );
+
+  // Expanded overlay view
+  const expandedView = (
+    <div
+      style={{
+        position: "fixed",
+        top: 0,
+        left: 0,
+        right: 0,
+        bottom: 0,
+        backgroundColor: "#0a0e14",
+        zIndex: 9999,
+        display: "flex",
+        flexDirection: "column",
+      }}
+    >
+      <div
+        style={{
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "center",
+          padding: "0.75rem 1rem",
+          borderBottom: "1px solid var(--color-border-primary)",
+          backgroundColor: "#0a0e14",
+        }}
+      >
+        <span style={{ color: "var(--color-accent-primary)", fontFamily: "var(--font-mono)", fontSize: "0.875rem" }}>
+          Production Chain: {best.ticker}
+        </span>
+        <button
+          onClick={() => setIsExpanded(false)}
+          className="terminal-button"
+          style={{ padding: "0.5rem 1rem", fontSize: "0.75rem" }}
+        >
+          Close (Esc)
+        </button>
+      </div>
+      <div style={{ flex: 1, overflow: "auto", padding: "0.5rem" }}>
+        <PlotlySankey
+          data={result.data}
+          layout={{
+            ...result.layout,
+            height: expandedHeight,
+          }}
+        />
+      </div>
+    </div>
+  );
+
+  return (
+    <>
+      {normalView}
+      {isExpanded && expandedView}
+    </>
+  );
 });
 
 export default BestScenarioSankey;

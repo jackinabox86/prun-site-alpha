@@ -345,7 +345,7 @@ const AemSankey = memo(function AemSankey({ chain, height = 400 }: AemSankeyProp
           fontSize: "0.75rem",
         }}
       >
-        Fullscreen
+        Expand
       </button>
       <PlotlySankey data={result.data} layout={result.layout} />
     </div>
