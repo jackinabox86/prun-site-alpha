@@ -482,18 +482,6 @@ VEG_2 - HYF: 16xH2O-1xNS=>6xVEG`}
                       <th
                         style={{
                           padding: "0.75rem",
-                          textAlign: "center",
-                          fontFamily: "var(--font-mono)",
-                          fontSize: "0.75rem",
-                          color: "var(--color-accent-primary)",
-                          textTransform: "uppercase",
-                        }}
-                      >
-                        Type
-                      </th>
-                      <th
-                        style={{
-                          padding: "0.75rem",
                           textAlign: "left",
                           fontFamily: "var(--font-mono)",
                           fontSize: "0.75rem",
@@ -550,17 +538,6 @@ VEG_2 - HYF: 16xH2O-1xNS=>6xVEG`}
                           {material.totalAmount % 1 === 0
                             ? material.totalAmount.toLocaleString()
                             : material.totalAmount.toLocaleString(undefined, { maximumFractionDigits: 2 })}
-                        </td>
-                        <td
-                          style={{
-                            padding: "0.5rem 0.75rem",
-                            textAlign: "center",
-                            fontFamily: "var(--font-mono)",
-                            fontSize: "0.75rem",
-                            color: material.isRawMaterial ? "#ff4444" : "var(--color-accent-primary)",
-                          }}
-                        >
-                          {material.isRawMaterial ? "RAW" : "INTERMEDIATE"}
                         </td>
                         <td
                           style={{

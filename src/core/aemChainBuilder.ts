@@ -25,6 +25,7 @@ export interface ChainNode {
   ticker: string;
   recipeId: string | null;
   building: string | null;
+  outputAmount: number;   // How many units this recipe produces per run
   depth: number;
   isError?: boolean;
   errorMessage?: string;
@@ -118,6 +119,7 @@ export function buildProductionChain(
       ticker,
       recipeId: null,
       building: null,
+      outputAmount: 1,
       depth,
       isError: true,
       errorMessage: "Max depth exceeded",
@@ -132,6 +134,7 @@ export function buildProductionChain(
       ticker,
       recipeId: null,
       building: null,
+      outputAmount: 1,
       depth,
       isError: true,
       errorMessage: "Circular dependency detected",
@@ -147,6 +150,7 @@ export function buildProductionChain(
       ticker,
       recipeId: null,
       building: null,
+      outputAmount: 1,
       depth,
       isError: true,
       errorMessage: "No recipe found (raw material or missing)",
@@ -161,12 +165,17 @@ export function buildProductionChain(
       ticker,
       recipeId: null,
       building: null,
+      outputAmount: 1,
       depth,
       isError: true,
       errorMessage: "Recipe selection failed",
       inputs: [],
     };
   }
+
+  // Get the output amount for this ticker from the recipe
+  const outputForTicker = recipe.outputs.find((o) => o.ticker === ticker);
+  const outputAmount = outputForTicker?.amount ?? 1;
 
   // Add to visited set for this branch
   const newVisited = new Set(visited);
@@ -194,6 +203,7 @@ export function buildProductionChain(
     ticker,
     recipeId: recipe.recipeId,
     building: recipe.building,
+    outputAmount,
     depth,
     inputs,
   };
@@ -250,14 +260,23 @@ function checkForCircular(node: ChainNode): boolean {
 
 /**
  * Calculate the total materials list from a production chain
- * Recursively traverses the tree, accumulating quantities with multiplier * input.amount
+ * Recursively traverses the tree, accumulating quantities with proper scaling.
+ *
+ * The key formula is: childUnitsNeeded = (parentUnitsNeeded / parentOutputAmount) * inputAmountPerRun
+ * Example: If we need 20 BCO and BCO recipe outputs 10 per run and needs 300 PE per run:
+ *   runsNeeded = 20 / 10 = 2, so PE needed = 2 * 300 = 600
  */
 export function calculateMaterialsList(chain: ChainNode): MaterialEntry[] {
   const materialsMap = new Map<string, MaterialEntry>();
 
-  function traverse(node: ChainNode, multiplier: number): void {
+  // unitsNeeded: how many units of this node's output are needed
+  function traverse(node: ChainNode, unitsNeeded: number): void {
+    // Calculate how many runs of this recipe we need
+    const runsNeeded = unitsNeeded / node.outputAmount;
+
     for (const input of node.inputs) {
-      const amount = multiplier * input.amount;
+      // How many units of this input material we need
+      const childUnitsNeeded = runsNeeded * input.amount;
       const childNode = input.childNode;
 
       if (childNode) {
@@ -265,7 +284,7 @@ export function calculateMaterialsList(chain: ChainNode): MaterialEntry[] {
         const isRaw = childNode.recipeId === null;
 
         if (existing) {
-          existing.totalAmount += amount;
+          existing.totalAmount += childUnitsNeeded;
           // Keep the deepest depth
           if (childNode.depth > existing.depth) {
             existing.depth = childNode.depth;
@@ -273,7 +292,7 @@ export function calculateMaterialsList(chain: ChainNode): MaterialEntry[] {
         } else {
           materialsMap.set(childNode.ticker, {
             ticker: childNode.ticker,
-            totalAmount: amount,
+            totalAmount: childUnitsNeeded,
             isRawMaterial: isRaw,
             building: childNode.building,
             recipeId: childNode.recipeId,
@@ -281,13 +300,13 @@ export function calculateMaterialsList(chain: ChainNode): MaterialEntry[] {
           });
         }
 
-        // Recursively traverse child inputs
-        traverse(childNode, amount);
+        // Recursively traverse child inputs with the units needed of that child
+        traverse(childNode, childUnitsNeeded);
       }
     }
   }
 
-  // Start traversal from root with multiplier of 1
+  // Start traversal: we need 1 unit of the root ticker
   traverse(chain, 1);
 
   // Convert map to array and sort alphabetically by ticker
