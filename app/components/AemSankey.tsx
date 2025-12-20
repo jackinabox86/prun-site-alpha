@@ -339,7 +339,7 @@ const AemSankey = memo(function AemSankey({ chain, height = 400 }: AemSankeyProp
         style={{
           position: "absolute",
           top: "0.5rem",
-          right: "0.5rem",
+          left: "0.5rem",
           zIndex: 100,
           padding: "0.5rem 1rem",
           fontSize: "0.75rem",
