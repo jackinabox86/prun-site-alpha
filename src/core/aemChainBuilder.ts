@@ -25,6 +25,7 @@ export interface ChainNode {
   ticker: string;
   recipeId: string | null;
   building: string | null;
+  outputAmount: number;   // How many units this recipe produces per run
   depth: number;
   isError?: boolean;
   errorMessage?: string;
@@ -43,7 +44,16 @@ export interface ChainResult {
   circularDependency: boolean;
 }
 
-const MAX_DEPTH = 8;
+export interface MaterialEntry {
+  ticker: string;
+  totalAmount: number;
+  isRawMaterial: boolean;
+  building: string | null;
+  recipeId: string | null;
+  depth: number;
+}
+
+const MAX_DEPTH = 20;
 
 /**
  * Parse forced recipe IDs from comma-separated string
@@ -109,6 +119,7 @@ export function buildProductionChain(
       ticker,
       recipeId: null,
       building: null,
+      outputAmount: 1,
       depth,
       isError: true,
       errorMessage: "Max depth exceeded",
@@ -123,6 +134,7 @@ export function buildProductionChain(
       ticker,
       recipeId: null,
       building: null,
+      outputAmount: 1,
       depth,
       isError: true,
       errorMessage: "Circular dependency detected",
@@ -138,6 +150,7 @@ export function buildProductionChain(
       ticker,
       recipeId: null,
       building: null,
+      outputAmount: 1,
       depth,
       isError: true,
       errorMessage: "No recipe found (raw material or missing)",
@@ -152,12 +165,17 @@ export function buildProductionChain(
       ticker,
       recipeId: null,
       building: null,
+      outputAmount: 1,
       depth,
       isError: true,
       errorMessage: "Recipe selection failed",
       inputs: [],
     };
   }
+
+  // Get the output amount for this ticker from the recipe
+  const outputForTicker = recipe.outputs.find((o) => o.ticker === ticker);
+  const outputAmount = outputForTicker?.amount ?? 1;
 
   // Add to visited set for this branch
   const newVisited = new Set(visited);
@@ -185,6 +203,7 @@ export function buildProductionChain(
     ticker,
     recipeId: recipe.recipeId,
     building: recipe.building,
+    outputAmount,
     depth,
     inputs,
   };
@@ -237,4 +256,61 @@ function checkForCircular(node: ChainNode): boolean {
   }
 
   return false;
+}
+
+/**
+ * Calculate the total materials list from a production chain
+ * Recursively traverses the tree, accumulating quantities with proper scaling.
+ *
+ * The key formula is: childUnitsNeeded = (parentUnitsNeeded / parentOutputAmount) * inputAmountPerRun
+ * Example: If we need 20 BCO and BCO recipe outputs 10 per run and needs 300 PE per run:
+ *   runsNeeded = 20 / 10 = 2, so PE needed = 2 * 300 = 600
+ */
+export function calculateMaterialsList(chain: ChainNode): MaterialEntry[] {
+  const materialsMap = new Map<string, MaterialEntry>();
+
+  // unitsNeeded: how many units of this node's output are needed
+  function traverse(node: ChainNode, unitsNeeded: number): void {
+    // Calculate how many runs of this recipe we need
+    const runsNeeded = unitsNeeded / node.outputAmount;
+
+    for (const input of node.inputs) {
+      // How many units of this input material we need
+      const childUnitsNeeded = runsNeeded * input.amount;
+      const childNode = input.childNode;
+
+      if (childNode) {
+        const existing = materialsMap.get(childNode.ticker);
+        const isRaw = childNode.recipeId === null;
+
+        if (existing) {
+          existing.totalAmount += childUnitsNeeded;
+          // Keep the deepest depth
+          if (childNode.depth > existing.depth) {
+            existing.depth = childNode.depth;
+          }
+        } else {
+          materialsMap.set(childNode.ticker, {
+            ticker: childNode.ticker,
+            totalAmount: childUnitsNeeded,
+            isRawMaterial: isRaw,
+            building: childNode.building,
+            recipeId: childNode.recipeId,
+            depth: childNode.depth,
+          });
+        }
+
+        // Recursively traverse child inputs with the units needed of that child
+        traverse(childNode, childUnitsNeeded);
+      }
+    }
+  }
+
+  // Start traversal: we need 1 unit of the root ticker
+  traverse(chain, 1);
+
+  // Convert map to array and sort alphabetically by ticker
+  return Array.from(materialsMap.values()).sort((a, b) =>
+    a.ticker.localeCompare(b.ticker)
+  );
 }
