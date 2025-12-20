@@ -2,7 +2,13 @@
 
 import { useEffect, useMemo, useState } from "react";
 import AemSankey from "./AemSankey";
-import { buildChain, type RecipeMap, type ChainNode } from "@/core/aemChainBuilder";
+import {
+  buildChain,
+  calculateMaterialsList,
+  type RecipeMap,
+  type ChainNode,
+  type MaterialEntry,
+} from "@/core/aemChainBuilder";
 
 interface AemDataResponse {
   recipes: RecipeMap;
@@ -67,6 +73,11 @@ export default function AemVisualizerClient() {
     const q = tickerInput.toUpperCase();
     return tickers.filter((t) => t.toUpperCase().startsWith(q)).slice(0, 50);
   }, [tickers, tickerInput]);
+
+  const materialsList = useMemo(() => {
+    if (!chain) return [];
+    return calculateMaterialsList(chain);
+  }, [chain]);
 
   const handleExecute = () => {
     if (!recipeMap || !tickerInput.trim()) return;
@@ -422,6 +433,162 @@ VEG_2 - HYF: 16xH2O-1xNS=>6xVEG`}
 
           {/* Sankey Chart */}
           <AemSankey chain={chain} />
+
+          {/* Materials List Table */}
+          {materialsList.length > 0 && (
+            <div style={{ marginTop: "1.5rem" }}>
+              <div className="terminal-header" style={{ marginBottom: "1rem" }}>
+                Materials List
+              </div>
+              <div
+                style={{
+                  overflowX: "auto",
+                  border: "1px solid var(--color-border-secondary)",
+                  borderRadius: "2px",
+                }}
+              >
+                <table className="terminal-table" style={{ width: "100%", borderCollapse: "collapse" }}>
+                  <thead>
+                    <tr
+                      style={{
+                        background: "var(--color-bg-primary)",
+                        borderBottom: "1px solid var(--color-border-secondary)",
+                      }}
+                    >
+                      <th
+                        style={{
+                          padding: "0.75rem",
+                          textAlign: "left",
+                          fontFamily: "var(--font-mono)",
+                          fontSize: "0.75rem",
+                          color: "var(--color-accent-primary)",
+                          textTransform: "uppercase",
+                        }}
+                      >
+                        Ticker
+                      </th>
+                      <th
+                        style={{
+                          padding: "0.75rem",
+                          textAlign: "right",
+                          fontFamily: "var(--font-mono)",
+                          fontSize: "0.75rem",
+                          color: "var(--color-accent-primary)",
+                          textTransform: "uppercase",
+                        }}
+                      >
+                        Total Amount
+                      </th>
+                      <th
+                        style={{
+                          padding: "0.75rem",
+                          textAlign: "center",
+                          fontFamily: "var(--font-mono)",
+                          fontSize: "0.75rem",
+                          color: "var(--color-accent-primary)",
+                          textTransform: "uppercase",
+                        }}
+                      >
+                        Type
+                      </th>
+                      <th
+                        style={{
+                          padding: "0.75rem",
+                          textAlign: "left",
+                          fontFamily: "var(--font-mono)",
+                          fontSize: "0.75rem",
+                          color: "var(--color-accent-primary)",
+                          textTransform: "uppercase",
+                        }}
+                      >
+                        Recipe ID
+                      </th>
+                      <th
+                        style={{
+                          padding: "0.75rem",
+                          textAlign: "left",
+                          fontFamily: "var(--font-mono)",
+                          fontSize: "0.75rem",
+                          color: "var(--color-accent-primary)",
+                          textTransform: "uppercase",
+                        }}
+                      >
+                        Building
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {materialsList.map((material, idx) => (
+                      <tr
+                        key={material.ticker}
+                        style={{
+                          borderBottom:
+                            idx < materialsList.length - 1 ? "1px solid var(--color-border-secondary)" : "none",
+                          background: idx % 2 === 0 ? "transparent" : "var(--color-bg-primary)",
+                        }}
+                      >
+                        <td
+                          style={{
+                            padding: "0.5rem 0.75rem",
+                            fontFamily: "var(--font-mono)",
+                            fontSize: "0.875rem",
+                            color: material.isRawMaterial ? "#ff4444" : "var(--color-accent-primary)",
+                            fontWeight: "bold",
+                          }}
+                        >
+                          {material.ticker}
+                        </td>
+                        <td
+                          style={{
+                            padding: "0.5rem 0.75rem",
+                            textAlign: "right",
+                            fontFamily: "var(--font-mono)",
+                            fontSize: "0.875rem",
+                            color: "var(--color-text-primary)",
+                          }}
+                        >
+                          {material.totalAmount % 1 === 0
+                            ? material.totalAmount.toLocaleString()
+                            : material.totalAmount.toLocaleString(undefined, { maximumFractionDigits: 2 })}
+                        </td>
+                        <td
+                          style={{
+                            padding: "0.5rem 0.75rem",
+                            textAlign: "center",
+                            fontFamily: "var(--font-mono)",
+                            fontSize: "0.75rem",
+                            color: material.isRawMaterial ? "#ff4444" : "var(--color-accent-primary)",
+                          }}
+                        >
+                          {material.isRawMaterial ? "RAW" : "INTERMEDIATE"}
+                        </td>
+                        <td
+                          style={{
+                            padding: "0.5rem 0.75rem",
+                            fontFamily: "var(--font-mono)",
+                            fontSize: "0.875rem",
+                            color: "var(--color-text-secondary)",
+                          }}
+                        >
+                          {material.recipeId || "—"}
+                        </td>
+                        <td
+                          style={{
+                            padding: "0.5rem 0.75rem",
+                            fontFamily: "var(--font-mono)",
+                            fontSize: "0.875rem",
+                            color: "var(--color-text-secondary)",
+                          }}
+                        >
+                          {material.building || "—"}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
         </div>
       )}
 

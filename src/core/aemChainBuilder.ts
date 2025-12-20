@@ -43,6 +43,15 @@ export interface ChainResult {
   circularDependency: boolean;
 }
 
+export interface MaterialEntry {
+  ticker: string;
+  totalAmount: number;
+  isRawMaterial: boolean;
+  building: string | null;
+  recipeId: string | null;
+  depth: number;
+}
+
 const MAX_DEPTH = 20;
 
 /**
@@ -237,4 +246,52 @@ function checkForCircular(node: ChainNode): boolean {
   }
 
   return false;
+}
+
+/**
+ * Calculate the total materials list from a production chain
+ * Recursively traverses the tree, accumulating quantities with multiplier * input.amount
+ */
+export function calculateMaterialsList(chain: ChainNode): MaterialEntry[] {
+  const materialsMap = new Map<string, MaterialEntry>();
+
+  function traverse(node: ChainNode, multiplier: number): void {
+    for (const input of node.inputs) {
+      const amount = multiplier * input.amount;
+      const childNode = input.childNode;
+
+      if (childNode) {
+        const existing = materialsMap.get(childNode.ticker);
+        const isRaw = childNode.recipeId === null;
+
+        if (existing) {
+          existing.totalAmount += amount;
+          // Keep the deepest depth
+          if (childNode.depth > existing.depth) {
+            existing.depth = childNode.depth;
+          }
+        } else {
+          materialsMap.set(childNode.ticker, {
+            ticker: childNode.ticker,
+            totalAmount: amount,
+            isRawMaterial: isRaw,
+            building: childNode.building,
+            recipeId: childNode.recipeId,
+            depth: childNode.depth,
+          });
+        }
+
+        // Recursively traverse child inputs
+        traverse(childNode, amount);
+      }
+    }
+  }
+
+  // Start traversal from root with multiplier of 1
+  traverse(chain, 1);
+
+  // Convert map to array and sort alphabetically by ticker
+  return Array.from(materialsMap.values()).sort((a, b) =>
+    a.ticker.localeCompare(b.ticker)
+  );
 }
