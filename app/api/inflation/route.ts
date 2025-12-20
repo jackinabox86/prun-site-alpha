@@ -47,7 +47,7 @@ interface VWAPHistoricalData {
 interface TickerWeight {
   ticker: string;
   weight: number;
-  indexDateVolume: number;
+  indexDateVolume: number; // For volume weighting: sum of rawVolume over ±7 days from index date
 }
 
 interface IndexDataPoint {
@@ -100,18 +100,25 @@ function calculateIndex(
       weights.push({ ticker, weight: equalWeight, indexDateVolume: 0 });
     }
   } else {
-    // Volume-weighted: based on rawVolume on index date
+    // Volume-weighted: based on rawVolume over a date range (±7 days from index date)
+    const DAYS_BEFORE = 7;
+    const DAYS_AFTER = 7;
+    const MS_PER_DAY = 24 * 60 * 60 * 1000;
+
+    const rangeStart = indexTimestamp - (DAYS_BEFORE * MS_PER_DAY);
+    const rangeEnd = indexTimestamp + (DAYS_AFTER * MS_PER_DAY);
+
     const volumes: Record<string, number> = {};
     let totalVolume = 0;
 
     for (const [ticker, data] of vwapDataMap.entries()) {
-      const indexPoint = data.data.find(d => d.DateEpochMs === indexTimestamp);
-      if (indexPoint && indexPoint.rawVolume > 0) {
-        volumes[ticker] = indexPoint.rawVolume;
-        totalVolume += indexPoint.rawVolume;
-      } else {
-        volumes[ticker] = 0;
-      }
+      // Sum rawVolume over the date range
+      const volumeInRange = data.data
+        .filter(d => d.DateEpochMs >= rangeStart && d.DateEpochMs <= rangeEnd)
+        .reduce((sum, d) => sum + (d.rawVolume || 0), 0);
+
+      volumes[ticker] = volumeInRange;
+      totalVolume += volumeInRange;
     }
 
     if (totalVolume === 0) {
