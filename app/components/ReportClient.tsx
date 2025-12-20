@@ -266,13 +266,12 @@ TIO     KI-401b     24.28`,
           </span>
         </div>
 
-        <div style={{
-          display: "grid",
-          gap: "1rem",
-          gridTemplateColumns: "80px 80px 80px 80px 1fr",
-          alignItems: "end",
-          marginBottom: systemControlsCollapsed ? "0.5rem" : "1.5rem"
-        }}>
+        <div
+          className="responsive-control-grid"
+          style={{
+            marginBottom: systemControlsCollapsed ? "0.5rem" : "1.5rem"
+          }}
+        >
           <div style={{ position: "relative" }}>
             <label style={{ display: "block", fontSize: "0.75rem", marginBottom: "0.5rem", color: "var(--color-accent-primary)", textTransform: "uppercase", fontFamily: "var(--font-mono)" }}>
               &nbsp;Ticker
@@ -413,12 +412,7 @@ TIO     KI-401b     24.28`,
 
         {!systemControlsCollapsed && (<>
         {/* Force Make/Buy Controls */}
-        <div style={{
-          display: "grid",
-          gap: "1rem",
-          gridTemplateColumns: "1fr 1fr",
-          marginBottom: "1rem"
-        }}>
+        <div className="responsive-grid-2" style={{ marginBottom: "1rem" }}>
           <div>
             <label style={{ display: "block", fontSize: "0.75rem", marginBottom: "0.5rem", color: "var(--color-accent-primary)", textTransform: "uppercase" }}>
               Force Make (comma-separated)
@@ -449,12 +443,7 @@ TIO     KI-401b     24.28`,
         </div>
 
         {/* Force/Exclude Recipe Controls */}
-        <div style={{
-          display: "grid",
-          gap: "1rem",
-          gridTemplateColumns: "1fr 1fr",
-          marginBottom: "1rem"
-        }}>
+        <div className="responsive-grid-2" style={{ marginBottom: "1rem" }}>
           <div>
             <label style={{ display: "block", fontSize: "0.75rem", marginBottom: "0.5rem", color: "var(--color-accent-primary)", textTransform: "uppercase" }}>
               Force RecipeID (comma-separated)
@@ -706,16 +695,16 @@ VEG_2 - HYF: 16xH2O-1xNS=>6xVEG`}
               </span>
             </div>
 
-            <div style={{
-              display: "grid",
-              gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))",
-              gap: "1rem",
-              marginBottom: analysisCollapsed ? 0 : "1rem",
-              padding: "1rem",
-              background: "var(--color-bg-primary)",
-              border: "1px solid var(--color-border-secondary)",
-              borderRadius: "2px"
-            }}>
+            <div
+              className="responsive-card-grid"
+              style={{
+                marginBottom: analysisCollapsed ? 0 : "1rem",
+                padding: "1rem",
+                background: "var(--color-bg-primary)",
+                border: "1px solid var(--color-border-secondary)",
+                borderRadius: "2px"
+              }}
+            >
               <div>
                 <div style={{ fontSize: "0.75rem", color: "var(--color-text-muted)", textTransform: "uppercase", marginBottom: "0.25rem", fontFamily: "var(--font-mono)" }}>
                   Ticker
