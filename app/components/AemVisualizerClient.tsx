@@ -5,9 +5,11 @@ import AemSankey from "./AemSankey";
 import {
   buildChain,
   calculateMaterialsList,
+  calculateByproducts,
   type RecipeMap,
   type ChainNode,
   type MaterialEntry,
+  type ByproductEntry,
 } from "@/core/aemChainBuilder";
 
 interface AemDataResponse {
@@ -77,6 +79,11 @@ export default function AemVisualizerClient() {
   const materialsList = useMemo(() => {
     if (!chain) return [];
     return calculateMaterialsList(chain);
+  }, [chain]);
+
+  const byproductsList = useMemo(() => {
+    if (!chain) return [];
+    return calculateByproducts(chain);
   }, [chain]);
 
   const handleExecute = () => {
@@ -581,6 +588,117 @@ VEG_2 - HYF: 16xH2O-1xNS=>6xVEG`}
                           }}
                         >
                           {material.building || "—"}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
+
+          {/* Byproducts Produced Table */}
+          {byproductsList.length > 0 && (
+            <div style={{ marginTop: "1.5rem" }}>
+              <div className="terminal-header" style={{ marginBottom: "1rem" }}>
+                Byproducts Produced
+              </div>
+              <div
+                style={{
+                  overflowX: "auto",
+                  border: "1px solid var(--color-border-secondary)",
+                  borderRadius: "2px",
+                }}
+              >
+                <table className="terminal-table" style={{ width: "100%", borderCollapse: "collapse" }}>
+                  <thead>
+                    <tr
+                      style={{
+                        background: "var(--color-bg-primary)",
+                        borderBottom: "1px solid var(--color-border-secondary)",
+                      }}
+                    >
+                      <th
+                        style={{
+                          padding: "0.75rem",
+                          textAlign: "left",
+                          fontFamily: "var(--font-mono)",
+                          fontSize: "0.75rem",
+                          color: "var(--color-accent-primary)",
+                          textTransform: "uppercase",
+                        }}
+                      >
+                        Ticker
+                      </th>
+                      <th
+                        style={{
+                          padding: "0.75rem",
+                          textAlign: "right",
+                          fontFamily: "var(--font-mono)",
+                          fontSize: "0.75rem",
+                          color: "var(--color-accent-primary)",
+                          textTransform: "uppercase",
+                        }}
+                      >
+                        Total Amount
+                      </th>
+                      <th
+                        style={{
+                          padding: "0.75rem",
+                          textAlign: "left",
+                          fontFamily: "var(--font-mono)",
+                          fontSize: "0.75rem",
+                          color: "var(--color-accent-primary)",
+                          textTransform: "uppercase",
+                        }}
+                      >
+                        Source Recipes
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {byproductsList.map((byproduct, idx) => (
+                      <tr
+                        key={byproduct.ticker}
+                        style={{
+                          borderBottom:
+                            idx < byproductsList.length - 1 ? "1px solid var(--color-border-secondary)" : "none",
+                          background: idx % 2 === 0 ? "transparent" : "var(--color-bg-primary)",
+                        }}
+                      >
+                        <td
+                          style={{
+                            padding: "0.5rem 0.75rem",
+                            fontFamily: "var(--font-mono)",
+                            fontSize: "0.875rem",
+                            color: "var(--color-accent-secondary)",
+                            fontWeight: "bold",
+                          }}
+                        >
+                          {byproduct.ticker}
+                        </td>
+                        <td
+                          style={{
+                            padding: "0.5rem 0.75rem",
+                            textAlign: "right",
+                            fontFamily: "var(--font-mono)",
+                            fontSize: "0.875rem",
+                            color: "var(--color-text-primary)",
+                          }}
+                        >
+                          {byproduct.totalAmount % 1 === 0
+                            ? byproduct.totalAmount.toLocaleString()
+                            : byproduct.totalAmount.toLocaleString(undefined, { maximumFractionDigits: 2 })}
+                        </td>
+                        <td
+                          style={{
+                            padding: "0.5rem 0.75rem",
+                            fontFamily: "var(--font-mono)",
+                            fontSize: "0.875rem",
+                            color: "var(--color-text-secondary)",
+                          }}
+                        >
+                          {byproduct.sourceRecipes.join(", ") || "—"}
                         </td>
                       </tr>
                     ))}

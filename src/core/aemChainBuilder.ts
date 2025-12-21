@@ -26,6 +26,7 @@ export interface ChainNode {
   recipeId: string | null;
   building: string | null;
   outputAmount: number;   // How many units this recipe produces per run
+  byproducts: RecipeOutput[];  // Other outputs from this recipe (not the primary ticker)
   depth: number;
   isError?: boolean;
   errorMessage?: string;
@@ -51,6 +52,12 @@ export interface MaterialEntry {
   building: string | null;
   recipeId: string | null;
   depth: number;
+}
+
+export interface ByproductEntry {
+  ticker: string;
+  totalAmount: number;
+  sourceRecipes: string[];  // Which recipes produce this byproduct
 }
 
 const MAX_DEPTH = 20;
@@ -120,6 +127,7 @@ export function buildProductionChain(
       recipeId: null,
       building: null,
       outputAmount: 1,
+      byproducts: [],
       depth,
       isError: true,
       errorMessage: "Max depth exceeded",
@@ -135,6 +143,7 @@ export function buildProductionChain(
       recipeId: null,
       building: null,
       outputAmount: 1,
+      byproducts: [],
       depth,
       isError: true,
       errorMessage: "Circular dependency detected",
@@ -151,6 +160,7 @@ export function buildProductionChain(
       recipeId: null,
       building: null,
       outputAmount: 1,
+      byproducts: [],
       depth,
       isError: true,
       errorMessage: "No recipe found (raw material or missing)",
@@ -166,6 +176,7 @@ export function buildProductionChain(
       recipeId: null,
       building: null,
       outputAmount: 1,
+      byproducts: [],
       depth,
       isError: true,
       errorMessage: "Recipe selection failed",
@@ -176,6 +187,9 @@ export function buildProductionChain(
   // Get the output amount for this ticker from the recipe
   const outputForTicker = recipe.outputs.find((o) => o.ticker === ticker);
   const outputAmount = outputForTicker?.amount ?? 1;
+
+  // Get byproducts (outputs that are not the primary ticker)
+  const byproducts = recipe.outputs.filter((o) => o.ticker !== ticker);
 
   // Add to visited set for this branch
   const newVisited = new Set(visited);
@@ -204,6 +218,7 @@ export function buildProductionChain(
     recipeId: recipe.recipeId,
     building: recipe.building,
     outputAmount,
+    byproducts,
     depth,
     inputs,
   };
@@ -311,6 +326,57 @@ export function calculateMaterialsList(chain: ChainNode): MaterialEntry[] {
 
   // Convert map to array and sort alphabetically by ticker
   return Array.from(materialsMap.values()).sort((a, b) =>
+    a.ticker.localeCompare(b.ticker)
+  );
+}
+
+/**
+ * Calculate byproducts produced from the production chain
+ * Traverses the tree and sums byproducts based on scaled recipe runs
+ */
+export function calculateByproducts(chain: ChainNode): ByproductEntry[] {
+  const byproductsMap = new Map<string, ByproductEntry>();
+
+  // unitsNeeded: how many units of this node's output are needed
+  function traverse(node: ChainNode, unitsNeeded: number): void {
+    // Calculate how many runs of this recipe we need
+    const runsNeeded = unitsNeeded / node.outputAmount;
+
+    // Add byproducts from this node's recipe
+    for (const byproduct of node.byproducts) {
+      const byproductAmount = runsNeeded * byproduct.amount;
+      const existing = byproductsMap.get(byproduct.ticker);
+
+      if (existing) {
+        existing.totalAmount += byproductAmount;
+        if (node.recipeId && !existing.sourceRecipes.includes(node.recipeId)) {
+          existing.sourceRecipes.push(node.recipeId);
+        }
+      } else {
+        byproductsMap.set(byproduct.ticker, {
+          ticker: byproduct.ticker,
+          totalAmount: byproductAmount,
+          sourceRecipes: node.recipeId ? [node.recipeId] : [],
+        });
+      }
+    }
+
+    // Traverse children
+    for (const input of node.inputs) {
+      const childUnitsNeeded = runsNeeded * input.amount;
+      const childNode = input.childNode;
+
+      if (childNode) {
+        traverse(childNode, childUnitsNeeded);
+      }
+    }
+  }
+
+  // Start traversal: we need 1 unit of the root ticker
+  traverse(chain, 1);
+
+  // Convert map to array and sort alphabetically by ticker
+  return Array.from(byproductsMap.values()).sort((a, b) =>
     a.ticker.localeCompare(b.ticker)
   );
 }
