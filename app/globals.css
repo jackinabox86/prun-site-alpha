@@ -603,27 +603,15 @@ datalist {
     flex-wrap: wrap;
   }
 
-  /* Table improvements */
+  /* Table improvements - just reduce font and padding, allow natural scrolling */
   .terminal-table {
     font-size: 0.75rem;
-    display: block;
-    overflow-x: auto;
-    white-space: nowrap;
-    -webkit-overflow-scrolling: touch;
-  }
-
-  .terminal-table thead,
-  .terminal-table tbody,
-  .terminal-table tr {
-    display: table;
-    width: 100%;
-    table-layout: fixed;
   }
 
   .terminal-table th,
   .terminal-table td {
     padding: 0.5rem;
-    min-width: 80px;
+    white-space: nowrap;
   }
 
   /* Grid adjustments - stack on mobile */
