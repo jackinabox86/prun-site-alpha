@@ -36,9 +36,10 @@ export default function XitConverterClient() {
     for (const line of lines) {
       // Match pattern: Transfer [number] [ticker] from ... to ...
       // More flexible - works with ACTION:, SUCCESS:, or any prefix
-      const match = line.match(/Transfer\s+(\d+)\s+([A-Z0-9]+)\s+from/i);
+      // Supports numbers with commas (e.g., 2,175)
+      const match = line.match(/Transfer\s+([\d,]+)\s+([A-Z0-9]+)\s+from/i);
       if (match) {
-        const quantity = parseInt(match[1], 10);
+        const quantity = parseInt(match[1].replace(/,/g, ''), 10);
         const ticker = match[2];
 
         if (materials[ticker]) {
