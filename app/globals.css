@@ -666,23 +666,37 @@ datalist {
     white-space: nowrap;
   }
 
+  /*
+   * MOBILE TABLE COLUMN HIDING
+   *
+   * IMPORTANT: If table column counts or order changes, update these selectors!
+   *
+   * Best Recipes table (6 columns):
+   *   1. Ticker  2. RecipeID  3. Scenario  4. Profit P/A  5. Buy All P/A  6. Analysis
+   *   → Hide: Column 2 (RecipeID)
+   *
+   * Main Report tables (9 columns):
+   *   1. Expand  2. Ticker  3. Recipe ID  4. Scenario  5. Chain Profit/Day
+   *   6. Chain Area/Day  7. ROI (narrow)  8. ROI (broad)  9. Profit P/A
+   *   → Hide: Columns 5, 6, 7, 8 (Chain Profit/Day, Chain Area/Day, both ROIs)
+   */
+
   /* Best Recipes page - hide RecipeID column (column 2 in 6-column table) */
-  /* Only hide if table has exactly 6 columns (has Analysis column) */
   .terminal-table:has(th:nth-child(6):last-child) th:nth-child(2),
   .terminal-table:has(th:nth-child(6):last-child) td:nth-child(2) {
     display: none;
   }
 
-  /* Main Report page tables - hide Chain Profit/Day, Chain Area/Day, ROI columns (columns 4-7 in 9-column table) */
-  /* Only hide if table has 9 columns (expandable tables) */
-  .terminal-table:has(th:nth-child(9)) th:nth-child(4),
-  .terminal-table:has(th:nth-child(9)) td:nth-child(4),
+  /* Main Report page tables - hide Chain Profit/Day, Chain Area/Day, ROI columns */
+  /* Columns 5, 6, 7, 8 in 9-column table (after Expand column) */
   .terminal-table:has(th:nth-child(9)) th:nth-child(5),
   .terminal-table:has(th:nth-child(9)) td:nth-child(5),
   .terminal-table:has(th:nth-child(9)) th:nth-child(6),
   .terminal-table:has(th:nth-child(9)) td:nth-child(6),
   .terminal-table:has(th:nth-child(9)) th:nth-child(7),
-  .terminal-table:has(th:nth-child(9)) td:nth-child(7) {
+  .terminal-table:has(th:nth-child(9)) td:nth-child(7),
+  .terminal-table:has(th:nth-child(9)) th:nth-child(8),
+  .terminal-table:has(th:nth-child(9)) td:nth-child(8) {
     display: none;
   }
 
