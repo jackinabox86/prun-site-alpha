@@ -638,6 +638,15 @@ datalist {
     white-space: nowrap;
   }
 
+  /* Ensure scenario column stays small on mobile */
+  .terminal-table td[title] {
+    font-size: 0.75rem !important;
+    max-width: 100px !important;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
   /* Grid adjustments - stack on mobile */
   .terminal-grid-2 {
     grid-template-columns: 1fr;

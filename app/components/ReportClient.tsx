@@ -396,8 +396,8 @@ TIO     KI-401b     24.28`,
           </div>
 
           <div>
-            <label style={{ display: "block", fontSize: "0.75rem", marginBottom: "0.5rem", fontFamily: "var(--font-mono)" }}>
-              {exchange === "ANT" ? <span className="status-success" style={{ fontSize: "0.75rem" }}>&nbsp;◉ OPTIMAL_EXCHANGE</span> : <span className="status-error" style={{ fontSize: "0.75rem" }}>◉ SUBOPTIMAL_EXCHANGE</span>}
+            <label style={{ display: "block", fontSize: "0.75rem", marginBottom: "0.5rem", fontFamily: "var(--font-mono)", whiteSpace: "nowrap" }}>
+              {exchange === "ANT" ? <span className="status-success" style={{ fontSize: "0.75rem", whiteSpace: "nowrap" }}>&nbsp;◉ OPTIMAL_EXCHANGE</span> : <span className="status-error" style={{ fontSize: "0.75rem", whiteSpace: "nowrap" }}>◉ SUBOPTIMAL_EXCHANGE</span>}
             </label>
             <button
               onClick={run}
