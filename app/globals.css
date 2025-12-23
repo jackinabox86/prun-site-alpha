@@ -151,6 +151,9 @@ body {
   letter-spacing: 0.05em;
   position: relative;
   overflow: hidden;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .terminal-button::before {
@@ -645,6 +648,20 @@ datalist {
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
+  }
+
+  /* Hide recipeID column on mobile */
+  .terminal-table th:nth-child(2),
+  .terminal-table td:nth-child(2) {
+    display: none;
+  }
+
+  /* Reduce button height in selection sections on mobile */
+  .terminal-box .terminal-button[href],
+  .terminal-box button.terminal-button {
+    padding: 0.35rem 1rem !important;
+    min-height: auto !important;
+    font-size: 0.8rem;
   }
 
   /* Grid adjustments - stack on mobile */
