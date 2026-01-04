@@ -52,7 +52,6 @@ export default function BestRecipesClient() {
   const [exchange, setExchange] = useState<string>("ANT");
   const [sellAt, setSellAt] = useState<string>("bid");
   const [extractionMode, setExtractionMode] = useState<boolean>(false);
-  const [readmeCollapsed, setReadmeCollapsed] = useState<boolean>(false);
 
   // Read exchange, sellAt, and extractionMode from URL params on mount
   useEffect(() => {
@@ -199,30 +198,19 @@ export default function BestRecipesClient() {
     <>
       {/* Header Section */}
       <div className="terminal-box" style={{ marginBottom: "2rem" }}>
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: readmeCollapsed ? 0 : "1rem" }}>
-          <h1 className="terminal-header" style={{ margin: 0, fontSize: "1.2rem", flex: 1, paddingBottom: 0, border: "none" }}>
-            BEST RECIPE DATABASE // {exchange} // SELL_AT_{sellAt.toUpperCase()}
-            {extractionMode && exchange === "ANT" && <span style={{ color: "var(--color-warning)" }}> // EXTRACTION_MODE</span>}
-          </h1>
-          <button
-            onClick={() => setReadmeCollapsed(!readmeCollapsed)}
-            className="terminal-button"
-            style={{ padding: "0.25rem 0.75rem", fontSize: "0.75rem", marginLeft: "1rem" }}
-          >
-            {readmeCollapsed ? "[+] SHOW" : "[-] HIDE"}
-          </button>
-        </div>
-        {!readmeCollapsed && (
-          <p style={{ marginTop: "1rem", marginBottom: 0, color: "var(--color-text-secondary)", fontSize: "0.875rem", lineHeight: "1.6" }}>
-            This tool determines the best production recipe for each ticker on the {exchange} exchange, calculated in dependency order using streamlined pruning;
-            results may differ slightly from a full analysis done on the main page.
-            Inputs are always purchased at <span className="text-accent">Ask</span> price, and outputs are sold at the price type chosen by the user.
-            Each ticker shows its optimal recipe ID, scenario, profit per area (P/A), and the P/A if all inputs are bought (Buy All P/A).
-            <span className="text-mono" style={{ display: "block", marginTop: "0.5rem", fontSize: "0.75rem", color: "var(--color-text-muted)" }}>
-              Data refreshed hourly from FIO price feeds.
-            </span>
-          </p>
-        )}
+        <h1 className="terminal-header" style={{ margin: 0, fontSize: "1.2rem" }}>
+          BEST RECIPE DATABASE // {exchange} // SELL_AT_{sellAt.toUpperCase()}
+          {extractionMode && exchange === "ANT" && <span style={{ color: "var(--color-warning)" }}> // EXTRACTION_MODE</span>}
+        </h1>
+        <p style={{ marginTop: "1rem", marginBottom: 0, color: "var(--color-text-secondary)", fontSize: "0.875rem", lineHeight: "1.6" }}>
+          This tool determines the best production recipe for each ticker on the {exchange} exchange, calculated in dependency order using streamlined pruning;
+          results may differ slightly from a full analysis done on the main page.
+          Inputs are always purchased at <span className="text-accent">Ask</span> price, and outputs are sold at the price type chosen by the user.
+          Each ticker shows its optimal recipe ID, scenario, profit per area (P/A), and the P/A if all inputs are bought (Buy All P/A).
+          <span className="text-mono" style={{ display: "block", marginTop: "0.5rem", fontSize: "0.75rem", color: "var(--color-text-muted)" }}>
+            Data refreshed hourly from FIO price feeds.
+          </span>
+        </p>
       </div>
 
       {/* Exchange Selection */}
