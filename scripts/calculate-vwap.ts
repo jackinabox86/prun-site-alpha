@@ -553,6 +553,56 @@ async function calculateAllVWAP(config: VWAPConfig) {
     }
   }
 
+  // Write summary to GCS
+  const summaryData = {
+    timestamp: new Date().toISOString(),
+    branch: CURRENT_BRANCH,
+    mode: IS_PRODUCTION ? "production" : "test",
+    configuration: {
+      tickers: config.tickers.length,
+      exchanges: config.exchanges,
+      batchSize: config.batchSize,
+      delayMs: config.delayMs,
+      gcsBucket: config.gcsBucket,
+      gcsInputPath: config.gcsInputPath,
+      gcsOutputPath: config.gcsOutputPath,
+    },
+    results: {
+      total: results.length,
+      successful,
+      failed,
+      durationSeconds: parseFloat(duration),
+    },
+    dataPoints: {
+      total: successful > 0 ? results
+        .filter((r) => r.success && r.dataPoints)
+        .reduce((sum, r) => sum + (r.dataPoints || 0), 0) : 0,
+      averagePerEndpoint: successful > 0 ? results
+        .filter((r) => r.success && r.dataPoints)
+        .reduce((sum, r) => sum + (r.dataPoints || 0), 0) / successful : 0,
+    },
+    failures: results
+      .filter((r) => !r.success)
+      .map((r) => ({ ticker: r.ticker, exchange: r.exchange })),
+  };
+
+  try {
+    const summaryTempFile = `/tmp/vwap-calculation-summary.json`;
+    writeFileSync(summaryTempFile, JSON.stringify(summaryData, null, 2));
+
+    const timestamp = new Date().toISOString().replace(/[:.]/g, '-').split('T')[0];
+    const gcsSummaryPath = `gs://${config.gcsBucket}/${config.gcsOutputPath}/calculation-summary-${timestamp}.json`;
+
+    execSync(`gsutil -h "Cache-Control:public, max-age=3600" cp ${summaryTempFile} ${gcsSummaryPath}`, {
+      stdio: ["pipe", "pipe", "pipe"]
+    });
+
+    console.log(`\n📝 Summary saved to GCS:`);
+    console.log(`   ${gcsSummaryPath}`);
+  } catch (error) {
+    console.error(`\n⚠️  Failed to save summary to GCS: ${error instanceof Error ? error.message : String(error)}`);
+  }
+
   console.log();
 }
 
