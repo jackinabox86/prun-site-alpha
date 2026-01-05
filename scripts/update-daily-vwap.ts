@@ -255,10 +255,17 @@ function calculateIncrementalVWAP(
   const oneDayMs = 86400000;
   const startTimestamp = targetTimestamp - (CALCULATION_WINDOW * oneDayMs);
 
-  // Expand and filter raw data
+  // IMPORTANT: We need extra data for lookback calculations
+  // - 30 days for rolling statistics baseline
+  // - 7 days for vwap7d window
+  // Total extra: 37 days, but use 40 for safety
+  const LOOKBACK_BUFFER = 40;
+  const dataStartTimestamp = startTimestamp - (LOOKBACK_BUFFER * oneDayMs);
+
+  // Expand and filter raw data - include lookback buffer
   const expandedData = expandToAllDays(rawData.data);
   const filteredData = expandedData.filter(
-    (d) => d.DateEpochMs >= startTimestamp && d.DateEpochMs <= targetTimestamp
+    (d) => d.DateEpochMs >= dataStartTimestamp && d.DateEpochMs <= targetTimestamp
   );
 
   if (filteredData.length === 0) {
@@ -391,7 +398,11 @@ function calculateIncrementalVWAP(
     });
   }
 
-  return { newData: vwapData, startTimestamp };
+  // Filter to only return dates from startTimestamp onwards (exclude lookback buffer)
+  // The lookback buffer was used for calculation but shouldn't be merged into output
+  const dataToMerge = vwapData.filter((d) => d.DateEpochMs >= startTimestamp);
+
+  return { newData: dataToMerge, startTimestamp };
 }
 
 /**
