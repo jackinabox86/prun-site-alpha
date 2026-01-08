@@ -876,7 +876,7 @@ VEG_2 - HYF: 16xH2O-1xNS=>6xVEG`}
           <div className="terminal-box" style={{ marginBottom: "2rem" }}>
             <div className="terminal-header">Best Options - Condensed</div>
             <p style={{ margin: "0 0 1rem 0", color: "var(--color-text-secondary)", fontSize: "0.875rem" }}>
-              Best performing option for each unique display scenario (up to 20). Display scenarios show only the buy/make decisions for direct inputs, not their sub-components.
+              Best performing option for each unique high-level scenario (up to 20). This condensed table only shows scenarios where the buy/make decisions for direct inputs, not their sub-components, are unique.
             </p>
             <CondensedOptionsTable options={report.topDisplayScenarios} exchange={report.exchange} priceType={report.priceType} />
           </div>
@@ -884,7 +884,7 @@ VEG_2 - HYF: 16xH2O-1xNS=>6xVEG`}
           <div className="terminal-box">
             <div className="terminal-header">Best Options - Expanded</div>
             <p style={{ margin: "0 0 1rem 0", color: "var(--color-text-secondary)", fontSize: "0.875rem" }}>
-              List of up to 20 other production scenarios ranked by profit per area, including multiple full scenarios per display scenario.
+              List of the top 20 production scenarios ranked by profit per area without requiring unique buy/make combinations for high-level inputs.
             </p>
             <Top20Table options={report.top20} exchange={report.exchange} priceType={report.priceType} />
           </div>

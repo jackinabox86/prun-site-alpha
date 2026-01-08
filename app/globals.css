@@ -324,10 +324,12 @@ body {
   font-size: 0.875rem;
   text-transform: uppercase;
   letter-spacing: 0.05em;
-  padding: 0.5rem 1rem;
+  padding: 0.5rem 0.75rem;
   border: 1px solid transparent;
   transition: all 0.2s ease;
   position: relative;
+  text-align: center;
+  min-width: fit-content;
 }
 
 .terminal-nav a::before {

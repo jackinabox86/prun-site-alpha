@@ -28,11 +28,27 @@ export async function GET(req: Request) {
 
     const report = await buildReport({ ticker, exchange, priceType, priceSource, forceMake, forceBuy, forceRecipe, excludeRecipe, extractionMode });
     const status = (report as any)?.ok === false ? 500 : 200;
-    return NextResponse.json(report, { status });
+
+    // Add explicit cache-busting headers to prevent any response caching
+    return NextResponse.json(report, {
+      status,
+      headers: {
+        'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0',
+        'Pragma': 'no-cache',
+        'Expires': '0',
+      }
+    });
   } catch (err: any) {
     return NextResponse.json(
       { schemaVersion: 3, ok: false, error: String(err?.message ?? err) },
-      { status: 500 }
+      {
+        status: 500,
+        headers: {
+          'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0',
+          'Pragma': 'no-cache',
+          'Expires': '0',
+        }
+      }
     );
   }
 }
