@@ -114,7 +114,7 @@ body {
     border: none;
     border-bottom: 1px solid rgba(42, 63, 95, 0.3);
     border-radius: 0;
-    padding: 1rem 0;
+    padding: 0.75rem 0;
     margin-bottom: 0.5rem;
     box-shadow: none;
   }
@@ -227,6 +227,7 @@ body {
   background: var(--color-bg-primary);
   color: var(--color-text-primary);
   border: 1px solid var(--color-border-primary);
+  border-radius: 0;
   padding: 0.5rem;
   font-family: var(--font-mono);
   font-size: 0.875rem;
@@ -634,30 +635,30 @@ datalist {
 
   /* Container adjustments */
   .terminal-container {
-    padding: 1rem;
+    padding: 0.5rem;
     max-width: 100%;
   }
 
   /* Navigation - PRUN// and Main Report on first row, Best Recipes and Recipe History on second row */
   .terminal-nav {
     display: grid;
-    grid-template-columns: 1fr 1fr;
+    grid-template-columns: 1fr 1fr 1fr 1fr;
     grid-template-rows: auto auto;
     padding: 1rem;
     gap: 0.5rem;
   }
 
   .terminal-nav::before {
-    grid-column: 1; /* PRUN// header in first column */
+    grid-column: 1; /* PRUN// header in first column (25%) */
     margin-right: 0;
     margin-bottom: 0;
     display: flex;
     align-items: center;
   }
 
-  /* Main Report - next to PRUN// in first row */
+  /* Main Report - spans 3 columns for 75% width */
   .terminal-nav a:nth-of-type(1) {
-    grid-column: 2;
+    grid-column: 2 / 5;
     grid-row: 1;
     width: 100%;
     padding: 0.75rem 1rem;
@@ -665,9 +666,20 @@ datalist {
     text-align: center;
   }
 
-  /* Best Recipes and Recipe History - side by side second row */
-  .terminal-nav a:nth-of-type(2),
+  /* Best Recipes - spans 2 columns for 50% width */
+  .terminal-nav a:nth-of-type(2) {
+    grid-column: 1 / 3;
+    grid-row: 2;
+    width: 100%;
+    padding: 0.75rem 1rem;
+    border: 1px solid var(--color-border-primary);
+    text-align: center;
+  }
+
+  /* Recipe History - spans 2 columns for 50% width */
   .terminal-nav a:nth-of-type(3) {
+    grid-column: 3 / 5;
+    grid-row: 2;
     width: 100%;
     padding: 0.75rem 1rem;
     border: 1px solid var(--color-border-primary);
@@ -698,6 +710,16 @@ datalist {
   .terminal-button {
     font-size: 16px; /* Match input/select font size on mobile */
   }
+
+  /* Analysis results grid - 2 column layout on mobile */
+  .analysis-results-grid {
+    grid-template-columns: 1fr 1fr !important;
+  }
+
+  .analysis-results-grid > div:nth-child(1) { order: 1; } /* Ticker - Column 1, Row 1 */
+  .analysis-results-grid > div:nth-child(2) { order: 2; } /* Best P/A - Column 2, Row 1 */
+  .analysis-results-grid > div:nth-child(3) { order: 4; } /* Full Base P/D - Column 2, Row 2 */
+  .analysis-results-grid > div:nth-child(4) { order: 3; } /* Options Evaluated - Column 1, Row 2 */
 
   /* Header adjustments */
   .terminal-header {
@@ -735,9 +757,9 @@ datalist {
    *   → Hide: Column 2 (RecipeID)
    *
    * Main Report tables (9 columns):
-   *   1. Expand  2. Ticker  3. Recipe ID  4. Scenario  5. Chain Profit/Day
-   *   6. Chain Area/Day  7. ROI (narrow)  8. ROI (broad)  9. Profit P/A
-   *   → Hide: Columns 5, 6, 7, 8 (Chain Profit/Day, Chain Area/Day, both ROIs)
+   *   1. Expand  2. Ticker  3. Recipe ID  4. Scenario  5. Chain P/D (Area)
+   *   6. ROI (narrow)  7. ROI (broad)  8. Full Base P/D  9. Profit P/A
+   *   → Hide: Columns 5, 6, 7, 8 (Chain P/D, ROI narrow, ROI broad, Full Base P/D)
    */
 
   /* Best Recipes page - hide RecipeID column (column 2 in 6-column table) */

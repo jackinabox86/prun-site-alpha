@@ -45,7 +45,13 @@ export default function ReportClient() {
   const [excludeRecipe, setExcludeRecipe] = useState<string>("");
   const [showRecipeList, setShowRecipeList] = useState(false);
   const [showExtractionPlanets, setShowExtractionPlanets] = useState(false);
-  const [analysisCollapsed, setAnalysisCollapsed] = useState(false);
+  const [analysisCollapsed, setAnalysisCollapsed] = useState(() => {
+    // Default to collapsed on mobile
+    if (typeof window !== 'undefined') {
+      return window.innerWidth <= 768;
+    }
+    return false;
+  });
   const [systemControlsCollapsed, setSystemControlsCollapsed] = useState(true);
   const [showTickerDropdown, setShowTickerDropdown] = useState(false);
   const [extractionMode, setExtractionMode] = usePersistedSettings(
@@ -750,7 +756,7 @@ VEG_2 - HYF: 16xH2O-1xNS=>6xVEG`}
               </span>
             </div>
 
-            <div style={{
+            <div className="analysis-results-grid" style={{
               display: "grid",
               gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))",
               gap: "1rem",

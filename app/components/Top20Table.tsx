@@ -65,6 +65,7 @@ export default function Top20Table({ options, exchange, priceType }: { options: 
               <th style={{ textAlign: "center" }}>Chain P/D (Area)</th>
               <th style={{ textAlign: "center" }}>ROI (narrow)</th>
               <th style={{ textAlign: "center" }}>ROI (broad)</th>
+              <th style={{ textAlign: "center" }}>Full Base P/D</th>
               <th style={{ textAlign: "center" }}>Profit P/A</th>
             </tr>
           </thead>
@@ -106,12 +107,15 @@ export default function Top20Table({ options, exchange, priceType }: { options: 
                     {option.roiBroadDays != null ? `${fmt(option.roiBroadDays)} days` : <span style={{ color: "var(--color-text-muted)" }}>n/a</span>}
                   </td>
                   <td style={{ textAlign: "center", fontFamily: "var(--font-mono)" }}>
+                    {option.totalProfitPA != null && Number.isFinite(option.totalProfitPA) ? <span className="status-success">{money(option.totalProfitPA * 500)}</span> : <span style={{ color: "var(--color-text-muted)" }}>n/a</span>}
+                  </td>
+                  <td style={{ textAlign: "center", fontFamily: "var(--font-mono)" }}>
                     {option.totalProfitPA != null && Number.isFinite(option.totalProfitPA) ? <span className="status-success">{getCurrencySymbol(exchange ?? "ANT")}{fmt(option.totalProfitPA)}</span> : <span style={{ color: "var(--color-text-muted)" }}>n/a</span>}
                   </td>
                 </tr>
                 {expandedRows.has(index) && (
                   <tr>
-                    <td colSpan={8} style={{
+                    <td colSpan={9} style={{
                       padding: "1rem",
                       background: "var(--color-bg-primary)",
                       border: "1px solid var(--color-border-secondary)"
