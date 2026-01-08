@@ -7,6 +7,8 @@ import Top20Table from "./Top20Table";
 import CondensedOptionsTable from "./CondensedOptionsTable";
 import { scenarioDisplayName } from "@/core/scenario";
 import { formatCurrency, formatCurrencyRounded, getCurrencySymbol } from "@/lib/formatting";
+import { usePersistedSettings } from "@/hooks/usePersistedSettings";
+import { getExchangeDisplayName } from "@/lib/exchanges";
 
 type ApiReport = {
   schemaVersion: number;
@@ -25,8 +27,16 @@ type ApiReport = {
 export default function ReportClient() {
   const [tickers, setTickers] = useState<string[]>([]);
   const [tickerInput, setTickerInput] = useState<string>("CBS");
-  const [exchange, setExchange] = useState<Exchange>("ANT");
-  const [priceType, setPriceType] = useState<PriceType>("bid");
+  const [exchange, setExchange] = usePersistedSettings<Exchange>(
+    "prun:settings:exchange",
+    "ANT",
+    { urlParamName: "exchange", updateUrl: true }
+  );
+  const [priceType, setPriceType] = usePersistedSettings<PriceType>(
+    "prun:settings:priceType",
+    "bid",
+    { urlParamName: "priceType", updateUrl: true }
+  );
   const [priceSource, setPriceSource] = useState<"local" | "gcs">("gcs");
   const [urlParamsChecked, setUrlParamsChecked] = useState(false);
   const [forceMake, setForceMake] = useState<string>("");
@@ -38,12 +48,21 @@ export default function ReportClient() {
   const [analysisCollapsed, setAnalysisCollapsed] = useState(false);
   const [systemControlsCollapsed, setSystemControlsCollapsed] = useState(true);
   const [showTickerDropdown, setShowTickerDropdown] = useState(false);
-  const [extractionMode, setExtractionMode] = useState(false);
+  const [extractionMode, setExtractionMode] = usePersistedSettings(
+    "prun:settings:extractionMode",
+    false,
+    { urlParamName: "extractionMode", updateUrl: true }
+  );
 
   const [loading, setLoading] = useState(false);
   const [report, setReport] = useState<ApiReport | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [readmeHidden, setReadmeHidden] = useState(false);
+  const [readmeHidden, setReadmeHidden] = usePersistedSettings(
+    "prun:mainPage:readmeHidden",
+    false,
+    { updateUrl: false }
+  );
+  const [showCopiedMessage, setShowCopiedMessage] = useState(false);
 
   useEffect(() => {
     const params = new URLSearchParams();
@@ -174,6 +193,16 @@ TIO     KI-401b     24.28`,
     ICA: null, // Add data when available
     NCC: null, // Add data when available
     UNV: null  // Add data when available
+  };
+
+  const handleShareClick = () => {
+    const url = window.location.href;
+    navigator.clipboard.writeText(url).then(() => {
+      setShowCopiedMessage(true);
+      setTimeout(() => setShowCopiedMessage(false), 2000);
+    }).catch((err) => {
+      console.error("Failed to copy URL:", err);
+    });
   };
 
   return (
@@ -346,11 +375,11 @@ TIO     KI-401b     24.28`,
               className="terminal-select"
               style={{ width: "100%", padding: "0.65rem 1rem" }}
             >
-              <option value="ANT">ANT</option>
-              <option value="CIS">CIS</option>
-              <option value="ICA">ICA</option>
-              <option value="NCC">NCC</option>
-              <option value="UNV">UNV</option>
+              <option value="ANT">{getExchangeDisplayName("ANT")}</option>
+              <option value="CIS">{getExchangeDisplayName("CIS")}</option>
+              <option value="ICA">{getExchangeDisplayName("ICA")}</option>
+              <option value="NCC">{getExchangeDisplayName("NCC")}</option>
+              <option value="UNV">{getExchangeDisplayName("UNV")}</option>
             </select>
           </div>
 
@@ -691,17 +720,36 @@ VEG_2 - HYF: 16xH2O-1xNS=>6xVEG`}
           {/* Summary Box - Collapsible */}
           <div className="terminal-box" style={{ marginBottom: "2rem" }}>
             <div
-              onClick={() => setAnalysisCollapsed(!analysisCollapsed)}
               style={{
                 display: "flex",
                 alignItems: "center",
                 justifyContent: "space-between",
-                cursor: "pointer",
                 marginBottom: analysisCollapsed ? 0 : "1rem"
               }}
             >
-              <div className="terminal-header" style={{ margin: 0 }}>Analysis Results</div>
-              <span className="text-mono" style={{ fontSize: "0.875rem", color: "var(--color-text-muted)" }}>
+              <div style={{ display: "flex", alignItems: "center", gap: "1rem" }}>
+                <div className="terminal-header" style={{ margin: 0, paddingBottom: 0, borderBottom: "none" }}>Analysis Results</div>
+                <button
+                  onClick={handleShareClick}
+                  className="terminal-button"
+                  style={{
+                    fontSize: "0.875rem",
+                    padding: "0.4rem 0.8rem"
+                  }}
+                  title="Copy shareable link to clipboard"
+                >
+                  {showCopiedMessage ? "Copied!" : "Share"}
+                </button>
+              </div>
+              <span
+                onClick={() => setAnalysisCollapsed(!analysisCollapsed)}
+                className="text-mono"
+                style={{
+                  fontSize: "0.875rem",
+                  color: "var(--color-text-muted)",
+                  cursor: "pointer"
+                }}
+              >
                 {analysisCollapsed ? "[+] EXPAND" : "[-] COLLAPSE"}
               </span>
             </div>
@@ -730,6 +778,14 @@ VEG_2 - HYF: 16xH2O-1xNS=>6xVEG`}
                 </div>
                 <div className="status-success" style={{ fontSize: "1.5rem", fontFamily: "var(--font-mono)", fontWeight: "bold" }}>
                   {formatCurrency(report.bestPA, report.exchange)}
+                </div>
+              </div>
+              <div>
+                <div style={{ fontSize: "0.75rem", color: "var(--color-text-muted)", textTransform: "uppercase", marginBottom: "0.25rem", fontFamily: "var(--font-mono)" }}>
+                  Full Base P/D
+                </div>
+                <div className="status-success" style={{ fontSize: "1.5rem", fontFamily: "var(--font-mono)", fontWeight: "bold" }}>
+                  {formatCurrencyRounded(report.bestPA ? report.bestPA * 500 : null, report.exchange)}
                 </div>
               </div>
               <div>

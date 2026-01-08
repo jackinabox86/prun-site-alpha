@@ -62,8 +62,7 @@ export default function Top20Table({ options, exchange, priceType }: { options: 
               <th style={{ textAlign: "center" }}>Ticker</th>
               <th style={{ textAlign: "center" }}>Recipe ID</th>
               <th style={{ textAlign: "center" }}>Scenario</th>
-              <th style={{ textAlign: "center" }}>Chain Profit/Day</th>
-              <th style={{ textAlign: "center" }}>Chain Area/Day</th>
+              <th style={{ textAlign: "center" }}>Chain P/D (Area)</th>
               <th style={{ textAlign: "center" }}>ROI (narrow)</th>
               <th style={{ textAlign: "center" }}>ROI (broad)</th>
               <th style={{ textAlign: "center" }}>Profit P/A</th>
@@ -97,10 +96,9 @@ export default function Top20Table({ options, exchange, priceType }: { options: 
                   >
                     {option.scenario ? scenarioDisplayName(option.scenario) : <span style={{ color: "var(--color-text-muted)" }}>—</span>}
                   </td>
-                  <td style={{ textAlign: "center", fontFamily: "var(--font-mono)" }}>
-                    <span className="status-success">{money(option.baseProfitPerDay)}</span>
+                  <td style={{ textAlign: "center", fontFamily: "var(--font-mono)", color: "var(--color-text-secondary)" }}>
+                    {money(option.baseProfitPerDay)} ({fmt(option.totalAreaPerDay)})
                   </td>
-                  <td style={{ textAlign: "center", fontFamily: "var(--font-mono)" }}>{fmt(option.totalAreaPerDay)}</td>
                   <td style={{ textAlign: "center", fontFamily: "var(--font-mono)" }}>
                     {option.roiNarrowDays != null ? `${fmt(option.roiNarrowDays)} days` : <span style={{ color: "var(--color-text-muted)" }}>n/a</span>}
                   </td>
@@ -113,7 +111,7 @@ export default function Top20Table({ options, exchange, priceType }: { options: 
                 </tr>
                 {expandedRows.has(index) && (
                   <tr>
-                    <td colSpan={9} style={{
+                    <td colSpan={8} style={{
                       padding: "1rem",
                       background: "var(--color-bg-primary)",
                       border: "1px solid var(--color-border-secondary)"

@@ -5,6 +5,8 @@ import { scenarioDisplayName } from "@/core/scenario";
 import { tickerFilterGroups } from "@/lib/tickerFilters";
 import type { Exchange } from "@/types";
 import { formatProfitPerArea } from "@/lib/formatting";
+import { usePersistedSettings } from "@/hooks/usePersistedSettings";
+import { getExchangeDisplayName } from "@/lib/exchanges";
 
 interface BestRecipeResult {
   ticker: string;
@@ -44,54 +46,36 @@ export default function BestRecipesClient() {
   const [loading, setLoading] = useState(false);
   const [data, setData] = useState<BestRecipeResult[]>([]);
   const [error, setError] = useState<string | null>(null);
-  const [sortColumn, setSortColumn] = useState<keyof BestRecipeResult>("ticker");
-  const [sortDirection, setSortDirection] = useState<"asc" | "desc">("asc");
+  const [sortColumn, setSortColumn] = useState<keyof BestRecipeResult>("profitPA");
+  const [sortDirection, setSortDirection] = useState<"asc" | "desc">("desc");
   const [filterText, setFilterText] = useState("");
   const [selectedFilterGroupId, setSelectedFilterGroupId] = useState<string>("all");
   const [selectedBuilding, setSelectedBuilding] = useState<string>("all");
-  const [exchange, setExchange] = useState<string>("ANT");
-  const [sellAt, setSellAt] = useState<string>("bid");
-  const [extractionMode, setExtractionMode] = useState<boolean>(false);
-
-  // Read exchange, sellAt, and extractionMode from URL params on mount
-  useEffect(() => {
-    const params = new URLSearchParams(window.location.search);
-    const exchangeParam = params.get("exchange")?.toUpperCase();
-    if (exchangeParam) {
-      // Check if it's a valid display value
-      const validDisplay = EXCHANGE_DISPLAYS.find(ex => ex.display === exchangeParam);
-      if (validDisplay) {
-        setExchange(validDisplay.display);
-      }
-    }
-    const sellAtParam = params.get("sellAt")?.toLowerCase();
-    if (sellAtParam) {
-      const validSellAt = SELL_AT_OPTIONS.find(opt => opt.value === sellAtParam);
-      if (validSellAt) {
-        setSellAt(validSellAt.value);
-      }
-    }
-    const extractionModeParam = params.get("extractionMode");
-    if (extractionModeParam === "true") {
-      setExtractionMode(true);
-    }
-  }, []);
+  const [exchange, setExchange] = usePersistedSettings<string>(
+    "prun:settings:exchange",
+    "ANT",
+    { urlParamName: "exchange", updateUrl: true }
+  );
+  const [sellAt, setSellAt] = usePersistedSettings<string>(
+    "prun:settings:priceType",
+    "bid",
+    { urlParamName: "sellAt", updateUrl: true }
+  );
+  const [extractionMode, setExtractionMode] = usePersistedSettings<boolean>(
+    "prun:settings:extractionMode",
+    false,
+    { urlParamName: "extractionMode", updateUrl: true }
+  );
+  const [readmeHidden, setReadmeHidden] = usePersistedSettings(
+    "prun:bestRecipes:readmeHidden",
+    false,
+    { updateUrl: false }
+  );
 
   const loadData = async () => {
     setLoading(true);
     setError(null);
     try {
-      // Update URL with current exchange, sellAt, and extractionMode
-      const url = new URL(window.location.href);
-      url.searchParams.set("exchange", exchange);
-      url.searchParams.set("sellAt", sellAt);
-      if (extractionMode) {
-        url.searchParams.set("extractionMode", "true");
-      } else {
-        url.searchParams.delete("extractionMode");
-      }
-      window.history.replaceState({}, "", url);
-
       // Add a longer timeout for this computation-heavy request
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), 300000); // 5 min timeout
@@ -153,6 +137,14 @@ export default function BestRecipesClient() {
     return ["all", ...Array.from(buildings).sort()];
   }, [data]);
 
+  // Mapping of buildings to tickers they can produce
+  // Some buildings share tickers with others but may not have the best recipe
+  const buildingTickerMap: Record<string, string[]> = {
+    HYF: ["ALG", "CAF", "MUS", "HCP", "MAI", "RCO", "VEG"],
+    WEL: ["DRF"],
+    PP2: ["BBH", "BSE", "BDE", "BTA"],
+  };
+
   // Filter and sort data
   // First, apply ticker group filter
   const selectedGroup = tickerFilterGroups.find(g => g.id === selectedFilterGroupId);
@@ -163,7 +155,16 @@ export default function BestRecipesClient() {
   // Second, apply building filter
   const buildingFilteredData = selectedBuilding === "all"
     ? groupFilteredData
-    : groupFilteredData.filter((row) => row.building === selectedBuilding);
+    : groupFilteredData.filter((row) => {
+        // Check if the building matches exactly OR if this building can produce this ticker
+        if (row.building === selectedBuilding) return true;
+
+        // Check if the selected building has a mapping and can produce this ticker
+        const canProduce = buildingTickerMap[selectedBuilding];
+        if (canProduce && canProduce.includes(row.ticker)) return true;
+
+        return false;
+      });
 
   // Then, apply text search within the filtered results (ticker name only)
   // Support exact match when wrapped in quotes: "C" matches only C, not CRU
@@ -198,19 +199,33 @@ export default function BestRecipesClient() {
     <>
       {/* Header Section */}
       <div className="terminal-box" style={{ marginBottom: "2rem" }}>
-        <h1 className="terminal-header" style={{ margin: 0, fontSize: "1.2rem" }}>
-          BEST RECIPE DATABASE // {exchange} // SELL_AT_{sellAt.toUpperCase()}
-          {extractionMode && exchange === "ANT" && <span style={{ color: "var(--color-warning)" }}> // EXTRACTION_MODE</span>}
-        </h1>
-        <p style={{ marginTop: "1rem", marginBottom: 0, color: "var(--color-text-secondary)", fontSize: "0.875rem", lineHeight: "1.6" }}>
-          This tool determines the best production recipe for each ticker on the {exchange} exchange, calculated in dependency order using streamlined pruning;
-          results may differ slightly from a full analysis done on the main page.
-          Inputs are always purchased at <span className="text-accent">Ask</span> price, and outputs are sold at the price type chosen by the user.
-          Each ticker shows its optimal recipe ID, scenario, profit per area (P/A), and the P/A if all inputs are bought (Buy All P/A).
-          <span className="text-mono" style={{ display: "block", marginTop: "0.5rem", fontSize: "0.75rem", color: "var(--color-text-muted)" }}>
-            Data refreshed hourly from FIO price feeds.
-          </span>
-        </p>
+        <div style={{ display: "flex", alignItems: "center", gap: "1rem", marginBottom: "1rem" }}>
+          <h1 className="terminal-header" style={{ flex: 1, margin: 0, fontSize: "1.2rem", paddingBottom: 0, borderBottom: "none", fontWeight: "normal" }}>
+            BEST RECIPE DATABASE // {exchange} // SELL_AT_{sellAt.toUpperCase()}
+            {extractionMode && exchange === "ANT" && <span style={{ color: "var(--color-warning)" }}> // EXTRACTION_MODE</span>}
+          </h1>
+          <button
+            onClick={() => setReadmeHidden(!readmeHidden)}
+            className="terminal-button"
+            style={{ fontSize: "0.75rem", padding: "0.5rem 1rem" }}
+          >
+            {readmeHidden ? "[+] Expand" : "[-] Hide"} Readme
+          </button>
+        </div>
+
+        {!readmeHidden && (
+          <div style={{ color: "var(--color-text-secondary)", fontSize: "0.875rem", lineHeight: "1.6" }}>
+            <p style={{ marginBottom: 0 }}>
+              This tool determines the best production recipe for each ticker on the {exchange} exchange, calculated in dependency order using streamlined pruning;
+              results may differ slightly from a full analysis done on the main page.
+              Inputs are always purchased at <span className="text-accent">Ask</span> price, and outputs are sold at the price type chosen by the user.
+              Each ticker shows its optimal recipe ID, scenario, profit per area (P/A), and the P/A if all inputs are bought (Buy All P/A).
+              <span className="text-mono" style={{ display: "block", marginTop: "0.5rem", fontSize: "0.75rem", color: "var(--color-text-muted)" }}>
+                Data refreshed hourly from FIO price feeds.
+              </span>
+            </p>
+          </div>
+        )}
       </div>
 
       {/* Exchange Selection */}
@@ -235,7 +250,7 @@ export default function BestRecipesClient() {
                 borderColor: exchange === exConfig.display ? "var(--color-accent-primary)" : "var(--color-border-primary)"
               }}
             >
-              {exConfig.display}
+              {getExchangeDisplayName(exConfig.value)}
             </a>
           ))}
         </div>
