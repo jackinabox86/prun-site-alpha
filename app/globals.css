@@ -711,6 +711,14 @@ datalist {
     font-size: 16px; /* Match input/select font size on mobile */
   }
 
+  /* Ensure all controls in main report grid have consistent heights */
+  .main-report-controls-grid .terminal-select,
+  .main-report-controls-grid .terminal-input,
+  .main-report-controls-grid .terminal-button {
+    height: 44px;
+    box-sizing: border-box;
+  }
+
   /* Analysis results grid - 2 column layout on mobile */
   .analysis-results-grid {
     grid-template-columns: 1fr 1fr !important;
