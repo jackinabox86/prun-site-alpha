@@ -201,7 +201,7 @@ export default function BestRecipesClient() {
       <div className="terminal-box" style={{ marginBottom: "2rem" }}>
         <div style={{ display: "flex", alignItems: "center", gap: "1rem", marginBottom: "1rem" }}>
           <h1 className="terminal-header" style={{ flex: 1, margin: 0, fontSize: "1.2rem", paddingBottom: 0, borderBottom: "none", fontWeight: "normal" }}>
-            BEST RECIPE DATABASE // {exchange} // SELL_AT_{sellAt.toUpperCase()}
+            BEST RECIPE DATABASE // {exchange}
             {extractionMode && exchange === "ANT" && <span style={{ color: "var(--color-warning)" }}> // EXTRACTION_MODE</span>}
           </h1>
           <button

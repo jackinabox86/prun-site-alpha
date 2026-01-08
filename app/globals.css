@@ -114,7 +114,7 @@ body {
     border: none;
     border-bottom: 1px solid rgba(42, 63, 95, 0.3);
     border-radius: 0;
-    padding: 1.5rem 0;
+    padding: 1rem 0;
     margin-bottom: 0.5rem;
     box-shadow: none;
   }
@@ -481,6 +481,37 @@ datalist {
   }
 }
 
+/* Main report system controls grid - mobile first */
+.main-report-controls-grid {
+  display: grid;
+  gap: 1rem;
+  grid-template-columns: repeat(4, 1fr);
+  align-items: end;
+}
+
+/* Execute button spans full width on mobile */
+.main-report-controls-grid > div:last-child {
+  grid-column: 1 / -1;
+}
+
+/* Hide OPTIMAL_EXCHANGE label text on mobile */
+@media (max-width: 768px) {
+  .main-report-controls-grid > div:last-child > label {
+    display: none;
+  }
+}
+
+@media (min-width: 769px) {
+  .main-report-controls-grid {
+    grid-template-columns: 80px 80px 80px 80px 1fr;
+  }
+
+  /* Reset execute button to single column on desktop */
+  .main-report-controls-grid > div:last-child {
+    grid-column: auto;
+  }
+}
+
 /* Responsive 2-column grid */
 .responsive-grid-2 {
   display: grid;
@@ -607,7 +638,7 @@ datalist {
     max-width: 100%;
   }
 
-  /* Navigation - Main Report on top, then Best Recipes and Recipe History side by side */
+  /* Navigation - PRUN// and Main Report on first row, Best Recipes and Recipe History on second row */
   .terminal-nav {
     display: grid;
     grid-template-columns: 1fr 1fr;
@@ -617,14 +648,17 @@ datalist {
   }
 
   .terminal-nav::before {
-    grid-column: 1 / -1; /* PRUN// header spans both columns */
+    grid-column: 1; /* PRUN// header in first column */
     margin-right: 0;
-    margin-bottom: 0.5rem;
+    margin-bottom: 0;
+    display: flex;
+    align-items: center;
   }
 
-  /* Main Report - full width first row */
+  /* Main Report - next to PRUN// in first row */
   .terminal-nav a:nth-of-type(1) {
-    grid-column: 1 / -1;
+    grid-column: 2;
+    grid-row: 1;
     width: 100%;
     padding: 0.75rem 1rem;
     border: 1px solid var(--color-border-primary);
@@ -658,6 +692,11 @@ datalist {
     min-height: 44px;
     font-size: 16px; /* Prevent iOS zoom */
     width: 100%;
+  }
+
+  /* Ensure buttons in system controls have consistent font size with inputs/selects */
+  .terminal-button {
+    font-size: 16px; /* Match input/select font size on mobile */
   }
 
   /* Header adjustments */
@@ -741,10 +780,16 @@ datalist {
     margin-bottom: 0.75rem !important;
   }
 
-  /* Remove border line below button groups in selection sections */
+  /* Remove border line below button groups in selection sections (Exchange, Price Type, Extraction Mode) */
   .terminal-box:has(.terminal-button[href])::after,
   .terminal-box:has(button.terminal-button[style*="0.5rem 1.5rem"])::after {
-    display: none;
+    display: none !important;
+  }
+
+  /* Also remove bottom border for these sections */
+  .terminal-box:has(.terminal-button[href]),
+  .terminal-box:has(button.terminal-button[style*="0.5rem 1.5rem"]) {
+    border-bottom: none !important;
   }
 
   /* Grid adjustments - stack on mobile */

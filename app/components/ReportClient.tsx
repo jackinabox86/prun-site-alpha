@@ -239,7 +239,7 @@ TIO     KI-401b     24.28`,
       <div className="terminal-box" style={{ marginBottom: "2rem" }}>
         <div style={{ display: "flex", alignItems: "center", gap: "1rem", marginBottom: "1rem" }}>
           <h1 className="terminal-header" style={{ flex: 1, margin: 0, fontSize: "1.2rem", paddingBottom: 0, borderBottom: "none", fontWeight: "normal" }}>
-            TICKER ANALYSIS // BEST PROFIT PER AREA SCENARIO
+            TICKER ANALYSIS // BEST PROFIT PER AREA
           </h1>
           <button
             onClick={() => setReadmeHidden(!readmeHidden)}
@@ -295,11 +295,7 @@ TIO     KI-401b     24.28`,
           </span>
         </div>
 
-        <div style={{
-          display: "grid",
-          gap: "1rem",
-          gridTemplateColumns: "80px 80px 80px 80px 1fr",
-          alignItems: "end",
+        <div className="main-report-controls-grid" style={{
           marginBottom: systemControlsCollapsed ? "0.5rem" : "1.5rem"
         }}>
           <div style={{ position: "relative" }}>
@@ -315,7 +311,7 @@ TIO     KI-401b     24.28`,
               onFocus={() => setShowTickerDropdown(true)}
               onBlur={() => setTimeout(() => setShowTickerDropdown(false), 200)}
               className="terminal-input"
-              style={{ width: "100%", textAlign: "center", fontWeight: "bold", padding: "0.70rem 1rem" }}
+              style={{ width: "100%", textAlign: "center", padding: "0.70rem 1rem" }}
               placeholder="Type ticker..."
             />
             {showTickerDropdown && filteredTickers.length > 0 && (
@@ -373,7 +369,7 @@ TIO     KI-401b     24.28`,
               value={exchange}
               onChange={(e) => setExchange(e.target.value as Exchange)}
               className="terminal-select"
-              style={{ width: "100%", padding: "0.65rem 1rem" }}
+              style={{ width: "100%", padding: "0.70rem 1rem" }}
             >
               <option value="ANT">{getExchangeDisplayName("ANT")}</option>
               <option value="CIS">{getExchangeDisplayName("CIS")}</option>
@@ -416,7 +412,7 @@ TIO     KI-401b     24.28`,
               value={priceType}
               onChange={(e) => setPriceType(e.target.value as PriceType)}
               className="terminal-select"
-              style={{ width: "100%", padding: "0.65rem 1rem" }}
+              style={{ width: "100%", padding: "0.70rem 1rem" }}
             >
               <option value="ask">Ask</option>
               <option value="bid">Bid</option>

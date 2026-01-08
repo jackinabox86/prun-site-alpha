@@ -81,7 +81,7 @@ export default function CondensedOptionsTable({ options, exchange, priceType }: 
                         onClick={() => toggleRow(index)}
                         className="terminal-button"
                         style={{
-                          padding: "0.25rem 0.75rem",
+                          padding: "0.5rem 1.5rem",
                           fontSize: "0.875rem"
                         }}
                       >
