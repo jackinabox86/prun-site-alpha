@@ -62,10 +62,10 @@ export default function Top20Table({ options, exchange, priceType }: { options: 
               <th style={{ textAlign: "center" }}>Ticker</th>
               <th style={{ textAlign: "center" }}>Recipe ID</th>
               <th style={{ textAlign: "center" }}>Scenario</th>
-              <th style={{ textAlign: "center" }}>Chain Profit/Day</th>
-              <th style={{ textAlign: "center" }}>Chain Area/Day</th>
+              <th style={{ textAlign: "center" }}>Chain P/D (Area)</th>
               <th style={{ textAlign: "center" }}>ROI (narrow)</th>
               <th style={{ textAlign: "center" }}>ROI (broad)</th>
+              <th style={{ textAlign: "center" }}>Full Base P/D</th>
               <th style={{ textAlign: "center" }}>Profit P/A</th>
             </tr>
           </thead>
@@ -81,7 +81,7 @@ export default function Top20Table({ options, exchange, priceType }: { options: 
                         onClick={() => toggleRow(index)}
                         className="terminal-button"
                         style={{
-                          padding: "0.25rem 0.75rem",
+                          padding: "0.5rem 1.5rem",
                           fontSize: "0.875rem"
                         }}
                       >
@@ -97,15 +97,17 @@ export default function Top20Table({ options, exchange, priceType }: { options: 
                   >
                     {option.scenario ? scenarioDisplayName(option.scenario) : <span style={{ color: "var(--color-text-muted)" }}>—</span>}
                   </td>
-                  <td style={{ textAlign: "center", fontFamily: "var(--font-mono)" }}>
-                    <span className="status-success">{money(option.baseProfitPerDay)}</span>
+                  <td style={{ textAlign: "center", fontFamily: "var(--font-mono)", color: "var(--color-text-secondary)" }}>
+                    {money(option.baseProfitPerDay)} ({fmt(option.totalAreaPerDay)})
                   </td>
-                  <td style={{ textAlign: "center", fontFamily: "var(--font-mono)" }}>{fmt(option.totalAreaPerDay)}</td>
                   <td style={{ textAlign: "center", fontFamily: "var(--font-mono)" }}>
                     {option.roiNarrowDays != null ? `${fmt(option.roiNarrowDays)} days` : <span style={{ color: "var(--color-text-muted)" }}>n/a</span>}
                   </td>
                   <td style={{ textAlign: "center", fontFamily: "var(--font-mono)" }}>
                     {option.roiBroadDays != null ? `${fmt(option.roiBroadDays)} days` : <span style={{ color: "var(--color-text-muted)" }}>n/a</span>}
+                  </td>
+                  <td style={{ textAlign: "center", fontFamily: "var(--font-mono)" }}>
+                    {option.totalProfitPA != null && Number.isFinite(option.totalProfitPA) ? <span className="status-success">{money(option.totalProfitPA * 500)}</span> : <span style={{ color: "var(--color-text-muted)" }}>n/a</span>}
                   </td>
                   <td style={{ textAlign: "center", fontFamily: "var(--font-mono)" }}>
                     {option.totalProfitPA != null && Number.isFinite(option.totalProfitPA) ? <span className="status-success">{getCurrencySymbol(exchange ?? "ANT")}{fmt(option.totalProfitPA)}</span> : <span style={{ color: "var(--color-text-muted)" }}>n/a</span>}

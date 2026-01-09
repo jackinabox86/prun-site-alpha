@@ -46,11 +46,9 @@ interface MultiExchangeResponse {
 }
 
 export default function InflationClient() {
-  // Calculate default index date (276 days in the past)
+  // Default index date
   const getDefaultIndexDate = () => {
-    const date = new Date();
-    date.setUTCDate(date.getUTCDate() - 276);
-    return date.toISOString().split("T")[0];
+    return "2025-02-01";
   };
 
   // State

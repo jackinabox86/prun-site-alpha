@@ -1,6 +1,6 @@
 // src/server/report.ts
 import { loadAllFromCsv } from "@/lib/loadFromCsv";
-import { findAllMakeOptions, buildScenarioRows } from "@/core/engine";
+import { findAllMakeOptions, buildScenarioRows, clearScenarioCache } from "@/core/engine";
 import { computeRoiNarrow, computeRoiBroad } from "@/core/roi";
 import { computeInputPayback } from "@/core/inputPayback";
 import { cachedBestRecipes } from "@/server/cachedBestRecipes";
@@ -34,6 +34,10 @@ export async function buildReport(opts: {
 }) {
   const { ticker, exchange, priceType, priceSource = "local", forceMake, forceBuy, forceRecipe, excludeRecipe, extractionMode = false } = opts;
 
+  // Clear scenario cache at the start of each request to prevent extraction mode contamination
+  // The engine caches results by ticker/exchange/priceType but doesn't include extractionMode in the key
+  clearScenarioCache();
+
   // Parse force constraints into sets
   const forceMakeSet = forceMake
     ? new Set(forceMake.split(',').map(t => t.trim().toUpperCase()).filter(t => t.length > 0))
@@ -65,6 +69,18 @@ export async function buildReport(opts: {
     { bestMap }
   );
 
+  // Deep clone recipeMap to prevent mutation of cached data when merging expanded recipes
+  // The csvCache returns the same object reference across requests, so we must clone before mutating
+  const clonedRecipeMap = {
+    headers: [...recipeMap.headers],
+    map: Object.fromEntries(
+      Object.entries(recipeMap.map).map(([ticker, recipes]) => [
+        ticker,
+        recipes.map(recipe => [...recipe])
+      ])
+    )
+  };
+
   // If extraction mode is enabled for ANT, merge expanded recipes into recipeMap for runtime analysis
   // The bestMap already includes extraction scenarios from the extraction best recipes file
   if (extractionMode && exchange === "ANT") {
@@ -78,28 +94,40 @@ export async function buildReport(opts: {
         { bestMap } // Use the extraction-mode bestMap for consistency
       );
 
+      // CRITICAL: Clone expandedData.recipeMap before mutating to prevent CSV cache corruption
+      // loadAllFromCsv returns cached data, so we must clone before splice operations
+      const clonedExpandedRecipeMap = {
+        headers: [...expandedData.recipeMap.headers],
+        map: Object.fromEntries(
+          Object.entries(expandedData.recipeMap.map).map(([ticker, recipes]) => [
+            ticker,
+            recipes.map(recipe => [...recipe])
+          ])
+        )
+      };
+
       // Transform expanded recipes to match standard format
       // Expanded recipes have an extra "Planet" column that needs to be removed
-      const planetIndex = expandedData.recipeMap.headers.indexOf("Planet");
+      const planetIndex = clonedExpandedRecipeMap.headers.indexOf("Planet");
 
       if (planetIndex !== -1) {
         // Remove "Planet" from headers to match standard format
-        expandedData.recipeMap.headers.splice(planetIndex, 1);
+        clonedExpandedRecipeMap.headers.splice(planetIndex, 1);
 
         // Remove "Planet" column data from all recipe rows
-        for (const recipes of Object.values(expandedData.recipeMap.map)) {
+        for (const recipes of Object.values(clonedExpandedRecipeMap.map)) {
           for (const recipe of recipes) {
             recipe.splice(planetIndex, 1);
           }
         }
       }
 
-      // Merge the transformed expanded recipes into the main recipeMap
-      for (const [ticker, recipes] of Object.entries(expandedData.recipeMap.map)) {
-        if (!recipeMap.map[ticker]) {
-          recipeMap.map[ticker] = [];
+      // Merge the transformed expanded recipes into the cloned recipeMap
+      for (const [ticker, recipes] of Object.entries(clonedExpandedRecipeMap.map)) {
+        if (!clonedRecipeMap.map[ticker]) {
+          clonedRecipeMap.map[ticker] = [];
         }
-        recipeMap.map[ticker].push(...recipes);
+        clonedRecipeMap.map[ticker].push(...recipes);
       }
     } catch (error: any) {
       throw new Error(`Failed to load ANT expanded recipes: ${error.message || error}`);
@@ -179,8 +207,8 @@ export async function buildReport(opts: {
 
     // Build recipe ID to ticker map
     const recipeToTicker = new Map<string, string>();
-    for (const [ticker, rows] of Object.entries(recipeMap.map)) {
-      const recipeIdIdx = recipeMap.headers.indexOf("RecipeID");
+    for (const [ticker, rows] of Object.entries(clonedRecipeMap.map)) {
+      const recipeIdIdx = clonedRecipeMap.headers.indexOf("RecipeID");
       if (recipeIdIdx !== -1) {
         for (const row of rows) {
           const recipeId = String(row[recipeIdIdx] ?? "").toUpperCase();
@@ -230,8 +258,8 @@ export async function buildReport(opts: {
 
       for (const ticker of tickersWithRecipes) {
         // Get all recipe IDs for this ticker
-        const recipeIdIdx = recipeMap.headers.indexOf("RecipeID");
-        const tickerRecipes = recipeMap.map[ticker] || [];
+        const recipeIdIdx = clonedRecipeMap.headers.indexOf("RecipeID");
+        const tickerRecipes = clonedRecipeMap.map[ticker] || [];
         const allRecipeIdsForTicker = tickerRecipes
           .map(row => String(row[recipeIdIdx] ?? "").toUpperCase())
           .filter(id => id.length > 0);
@@ -276,7 +304,7 @@ export async function buildReport(opts: {
     }
   }
 
-  const options = findAllMakeOptions(ticker, recipeMap, pricesMap, exchange, priceType, bestMap, 0, true, honorRecipeIdFilter, forceMakeSet, forceBuySet, forceRecipeSet, excludeRecipeSet);
+  const options = findAllMakeOptions(ticker, clonedRecipeMap, pricesMap, exchange, priceType, bestMap, 0, true, honorRecipeIdFilter, forceMakeSet, forceBuySet, forceRecipeSet, excludeRecipeSet);
   if (!options.length) {
     return {
       schemaVersion: 3,

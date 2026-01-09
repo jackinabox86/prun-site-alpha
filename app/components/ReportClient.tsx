@@ -7,6 +7,8 @@ import Top20Table from "./Top20Table";
 import CondensedOptionsTable from "./CondensedOptionsTable";
 import { scenarioDisplayName } from "@/core/scenario";
 import { formatCurrency, formatCurrencyRounded, getCurrencySymbol } from "@/lib/formatting";
+import { usePersistedSettings } from "@/hooks/usePersistedSettings";
+import { getExchangeDisplayName } from "@/lib/exchanges";
 
 type ApiReport = {
   schemaVersion: number;
@@ -25,8 +27,16 @@ type ApiReport = {
 export default function ReportClient() {
   const [tickers, setTickers] = useState<string[]>([]);
   const [tickerInput, setTickerInput] = useState<string>("CBS");
-  const [exchange, setExchange] = useState<Exchange>("ANT");
-  const [priceType, setPriceType] = useState<PriceType>("bid");
+  const [exchange, setExchange] = usePersistedSettings<Exchange>(
+    "prun:settings:exchange",
+    "ANT",
+    { urlParamName: "exchange", updateUrl: true }
+  );
+  const [priceType, setPriceType] = usePersistedSettings<PriceType>(
+    "prun:settings:priceType",
+    "bid",
+    { urlParamName: "priceType", updateUrl: true }
+  );
   const [priceSource, setPriceSource] = useState<"local" | "gcs">("gcs");
   const [urlParamsChecked, setUrlParamsChecked] = useState(false);
   const [forceMake, setForceMake] = useState<string>("");
@@ -35,15 +45,30 @@ export default function ReportClient() {
   const [excludeRecipe, setExcludeRecipe] = useState<string>("");
   const [showRecipeList, setShowRecipeList] = useState(false);
   const [showExtractionPlanets, setShowExtractionPlanets] = useState(false);
-  const [analysisCollapsed, setAnalysisCollapsed] = useState(false);
+  const [analysisCollapsed, setAnalysisCollapsed] = useState(() => {
+    // Default to collapsed on mobile
+    if (typeof window !== 'undefined') {
+      return window.innerWidth <= 768;
+    }
+    return false;
+  });
   const [systemControlsCollapsed, setSystemControlsCollapsed] = useState(true);
   const [showTickerDropdown, setShowTickerDropdown] = useState(false);
-  const [extractionMode, setExtractionMode] = useState(false);
+  const [extractionMode, setExtractionMode] = usePersistedSettings(
+    "prun:settings:extractionMode",
+    false,
+    { urlParamName: "extractionMode", updateUrl: true }
+  );
 
   const [loading, setLoading] = useState(false);
   const [report, setReport] = useState<ApiReport | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [readmeHidden, setReadmeHidden] = useState(false);
+  const [readmeHidden, setReadmeHidden] = usePersistedSettings(
+    "prun:mainPage:readmeHidden",
+    false,
+    { updateUrl: false }
+  );
+  const [showCopiedMessage, setShowCopiedMessage] = useState(false);
 
   useEffect(() => {
     const params = new URLSearchParams();
@@ -176,6 +201,16 @@ TIO     KI-401b     24.28`,
     UNV: null  // Add data when available
   };
 
+  const handleShareClick = () => {
+    const url = window.location.href;
+    navigator.clipboard.writeText(url).then(() => {
+      setShowCopiedMessage(true);
+      setTimeout(() => setShowCopiedMessage(false), 2000);
+    }).catch((err) => {
+      console.error("Failed to copy URL:", err);
+    });
+  };
+
   return (
     <>
       <style>{`
@@ -210,7 +245,7 @@ TIO     KI-401b     24.28`,
       <div className="terminal-box" style={{ marginBottom: "2rem" }}>
         <div style={{ display: "flex", alignItems: "center", gap: "1rem", marginBottom: "1rem" }}>
           <h1 className="terminal-header" style={{ flex: 1, margin: 0, fontSize: "1.2rem", paddingBottom: 0, borderBottom: "none", fontWeight: "normal" }}>
-            TICKER ANALYSIS // BEST PROFIT PER AREA SCENARIO
+            TICKER ANALYSIS // BEST PROFIT PER AREA
           </h1>
           <button
             onClick={() => setReadmeHidden(!readmeHidden)}
@@ -266,11 +301,7 @@ TIO     KI-401b     24.28`,
           </span>
         </div>
 
-        <div style={{
-          display: "grid",
-          gap: "1rem",
-          gridTemplateColumns: "80px 80px 80px 80px 1fr",
-          alignItems: "end",
+        <div className="main-report-controls-grid" style={{
           marginBottom: systemControlsCollapsed ? "0.5rem" : "1.5rem"
         }}>
           <div style={{ position: "relative" }}>
@@ -286,7 +317,7 @@ TIO     KI-401b     24.28`,
               onFocus={() => setShowTickerDropdown(true)}
               onBlur={() => setTimeout(() => setShowTickerDropdown(false), 200)}
               className="terminal-input"
-              style={{ width: "100%", textAlign: "center", fontWeight: "bold", padding: "0.70rem 1rem" }}
+              style={{ width: "100%", textAlign: "center", padding: "0.70rem 1rem" }}
               placeholder="Type ticker..."
             />
             {showTickerDropdown && filteredTickers.length > 0 && (
@@ -344,13 +375,13 @@ TIO     KI-401b     24.28`,
               value={exchange}
               onChange={(e) => setExchange(e.target.value as Exchange)}
               className="terminal-select"
-              style={{ width: "100%", padding: "0.65rem 1rem" }}
+              style={{ width: "100%", padding: "0.70rem 1rem" }}
             >
-              <option value="ANT">ANT</option>
-              <option value="CIS">CIS</option>
-              <option value="ICA">ICA</option>
-              <option value="NCC">NCC</option>
-              <option value="UNV">UNV</option>
+              <option value="ANT">{getExchangeDisplayName("ANT")}</option>
+              <option value="CIS">{getExchangeDisplayName("CIS")}</option>
+              <option value="ICA">{getExchangeDisplayName("ICA")}</option>
+              <option value="NCC">{getExchangeDisplayName("NCC")}</option>
+              <option value="UNV">{getExchangeDisplayName("UNV")}</option>
             </select>
           </div>
 
@@ -387,7 +418,7 @@ TIO     KI-401b     24.28`,
               value={priceType}
               onChange={(e) => setPriceType(e.target.value as PriceType)}
               className="terminal-select"
-              style={{ width: "100%", padding: "0.65rem 1rem" }}
+              style={{ width: "100%", padding: "0.70rem 1rem" }}
             >
               <option value="ask">Ask</option>
               <option value="bid">Bid</option>
@@ -691,22 +722,41 @@ VEG_2 - HYF: 16xH2O-1xNS=>6xVEG`}
           {/* Summary Box - Collapsible */}
           <div className="terminal-box" style={{ marginBottom: "2rem" }}>
             <div
-              onClick={() => setAnalysisCollapsed(!analysisCollapsed)}
               style={{
                 display: "flex",
                 alignItems: "center",
                 justifyContent: "space-between",
-                cursor: "pointer",
                 marginBottom: analysisCollapsed ? 0 : "1rem"
               }}
             >
-              <div className="terminal-header" style={{ margin: 0 }}>Analysis Results</div>
-              <span className="text-mono" style={{ fontSize: "0.875rem", color: "var(--color-text-muted)" }}>
+              <div style={{ display: "flex", alignItems: "center", gap: "1rem" }}>
+                <div className="terminal-header" style={{ margin: 0, paddingBottom: 0, borderBottom: "none" }}>Analysis Results</div>
+                <button
+                  onClick={handleShareClick}
+                  className="terminal-button"
+                  style={{
+                    fontSize: "0.875rem",
+                    padding: "0.4rem 0.8rem"
+                  }}
+                  title="Copy shareable link to clipboard"
+                >
+                  {showCopiedMessage ? "Copied!" : "Share"}
+                </button>
+              </div>
+              <span
+                onClick={() => setAnalysisCollapsed(!analysisCollapsed)}
+                className="text-mono"
+                style={{
+                  fontSize: "0.875rem",
+                  color: "var(--color-text-muted)",
+                  cursor: "pointer"
+                }}
+              >
                 {analysisCollapsed ? "[+] EXPAND" : "[-] COLLAPSE"}
               </span>
             </div>
 
-            <div style={{
+            <div className="analysis-results-grid" style={{
               display: "grid",
               gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))",
               gap: "1rem",
@@ -730,6 +780,14 @@ VEG_2 - HYF: 16xH2O-1xNS=>6xVEG`}
                 </div>
                 <div className="status-success" style={{ fontSize: "1.5rem", fontFamily: "var(--font-mono)", fontWeight: "bold" }}>
                   {formatCurrency(report.bestPA, report.exchange)}
+                </div>
+              </div>
+              <div>
+                <div style={{ fontSize: "0.75rem", color: "var(--color-text-muted)", textTransform: "uppercase", marginBottom: "0.25rem", fontFamily: "var(--font-mono)" }}>
+                  Full Base P/D
+                </div>
+                <div className="status-success" style={{ fontSize: "1.5rem", fontFamily: "var(--font-mono)", fontWeight: "bold" }}>
+                  {formatCurrencyRounded(report.bestPA ? report.bestPA * 500 : null, report.exchange)}
                 </div>
               </div>
               <div>
@@ -876,7 +934,7 @@ VEG_2 - HYF: 16xH2O-1xNS=>6xVEG`}
           <div className="terminal-box" style={{ marginBottom: "2rem" }}>
             <div className="terminal-header">Best Options - Condensed</div>
             <p style={{ margin: "0 0 1rem 0", color: "var(--color-text-secondary)", fontSize: "0.875rem" }}>
-              Best performing option for each unique display scenario (up to 20). Display scenarios show only the buy/make decisions for direct inputs, not their sub-components.
+              Best performing option for each unique high-level scenario (up to 20). This condensed table only shows scenarios where the buy/make decisions for direct inputs, not their sub-components, are unique.
             </p>
             <CondensedOptionsTable options={report.topDisplayScenarios} exchange={report.exchange} priceType={report.priceType} />
           </div>
@@ -884,7 +942,7 @@ VEG_2 - HYF: 16xH2O-1xNS=>6xVEG`}
           <div className="terminal-box">
             <div className="terminal-header">Best Options - Expanded</div>
             <p style={{ margin: "0 0 1rem 0", color: "var(--color-text-secondary)", fontSize: "0.875rem" }}>
-              List of up to 20 other production scenarios ranked by profit per area, including multiple full scenarios per display scenario.
+              List of the top 20 production scenarios ranked by profit per area without requiring unique buy/make combinations for high-level inputs.
             </p>
             <Top20Table options={report.top20} exchange={report.exchange} priceType={report.priceType} />
           </div>

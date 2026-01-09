@@ -42,6 +42,8 @@
 
 html {
   font-size: 16px;
+  width: 100%;
+  overflow-x: hidden;
 }
 
 body {
@@ -50,6 +52,8 @@ body {
   color: var(--color-text-primary);
   line-height: 1.6;
   min-height: 100vh;
+  width: 100%;
+  overflow-x: hidden;
 }
 
 /* Terminal-style scrollbar */
@@ -73,7 +77,7 @@ body {
   box-shadow: var(--glow-sm);
 }
 
-/* Terminal box styling */
+/* Terminal box styling - Desktop default (boxed design) */
 .terminal-box {
   background: var(--color-bg-secondary);
   border: 1px solid var(--color-border-primary);
@@ -101,6 +105,47 @@ body {
 .terminal-box:hover {
   border-color: var(--color-border-glow);
   box-shadow: var(--glow-sm), inset 0 0 0 1px rgba(61, 156, 219, 0.2);
+}
+
+/* Mobile override: Switch to clean divider approach */
+@media (max-width: 768px) {
+  .terminal-box {
+    background: transparent;
+    border: none;
+    border-bottom: 1px solid rgba(42, 63, 95, 0.3);
+    border-radius: 0;
+    padding: 0.75rem 0;
+    margin-bottom: 0.5rem;
+    box-shadow: none;
+  }
+
+  .terminal-box::before {
+    display: none;
+  }
+
+  .terminal-box::after {
+    content: '';
+    position: absolute;
+    bottom: -1px;
+    left: 0;
+    right: 0;
+    height: 1px;
+    background: linear-gradient(90deg,
+      transparent,
+      var(--color-accent-primary),
+      transparent
+    );
+    opacity: 0.15;
+  }
+
+  .terminal-box:hover {
+    border-color: initial;
+    box-shadow: none;
+  }
+
+  .terminal-box:hover::after {
+    opacity: 0.3;
+  }
 }
 
 /* Terminal header styling */
@@ -182,6 +227,7 @@ body {
   background: var(--color-bg-primary);
   color: var(--color-text-primary);
   border: 1px solid var(--color-border-primary);
+  border-radius: 0;
   padding: 0.5rem;
   font-family: var(--font-mono);
   font-size: 0.875rem;
@@ -279,10 +325,12 @@ body {
   font-size: 0.875rem;
   text-transform: uppercase;
   letter-spacing: 0.05em;
-  padding: 0.5rem 1rem;
+  padding: 0.5rem 0.75rem;
   border: 1px solid transparent;
   transition: all 0.2s ease;
   position: relative;
+  text-align: center;
+  min-width: fit-content;
 }
 
 .terminal-nav a::before {
@@ -415,4 +463,420 @@ datalist {
 
 .terminal-collapsible-content {
   padding: 1rem;
+}
+/* ========================================
+   RESPONSIVE UTILITY CLASSES
+   ======================================== */
+
+/* Responsive grid for control panels */
+.responsive-control-grid {
+  display: grid;
+  gap: 1rem;
+  grid-template-columns: repeat(auto-fit, minmax(80px, 1fr));
+  align-items: end;
+}
+
+@media (min-width: 769px) {
+  .responsive-control-grid {
+    grid-template-columns: 80px 80px 80px 80px 1fr;
+  }
+}
+
+/* Main report system controls grid - mobile first */
+.main-report-controls-grid {
+  display: grid;
+  gap: 1rem;
+  grid-template-columns: repeat(4, 1fr);
+  align-items: end;
+}
+
+/* Execute button spans full width on mobile */
+.main-report-controls-grid > div:last-child {
+  grid-column: 1 / -1;
+}
+
+/* Hide OPTIMAL_EXCHANGE label text on mobile */
+@media (max-width: 768px) {
+  .main-report-controls-grid > div:last-child > label {
+    display: none;
+  }
+}
+
+@media (min-width: 769px) {
+  .main-report-controls-grid {
+    grid-template-columns: 80px 80px 80px 80px 1fr;
+  }
+
+  /* Reset execute button to single column on desktop */
+  .main-report-controls-grid > div:last-child {
+    grid-column: auto;
+  }
+}
+
+/* Responsive 2-column grid */
+.responsive-grid-2 {
+  display: grid;
+  gap: 1rem;
+  grid-template-columns: 1fr;
+}
+
+@media (min-width: 769px) {
+  .responsive-grid-2 {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+/* Responsive flex wrapping for buttons */
+.responsive-button-group {
+  display: flex;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+/* Stack vertically on mobile, horizontal on desktop */
+.responsive-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+@media (min-width: 769px) {
+  .responsive-stack {
+    flex-direction: row;
+    align-items: center;
+  }
+}
+
+/* Responsive auto-fit grid for cards */
+.responsive-card-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 1rem;
+}
+
+@media (min-width: 480px) {
+  .responsive-card-grid {
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  }
+}
+
+@media (min-width: 769px) {
+  .responsive-card-grid {
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  }
+}
+
+/* Mobile-friendly table wrapper */
+.table-wrapper {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  border: 1px solid var(--color-border-secondary);
+  border-radius: 2px;
+}
+
+@media (max-width: 768px) {
+  .table-wrapper {
+    margin: 0 -1rem; /* Extend to container edges on mobile */
+    border-left: none;
+    border-right: none;
+    border-radius: 0;
+  }
+}
+
+/* Responsive chart containers */
+.chart-container {
+  width: 100%;
+  min-height: 300px;
+  position: relative;
+}
+
+@media (max-width: 768px) {
+  .chart-container {
+    min-height: 250px;
+    margin: 0 -0.5rem; /* Slight extension for better chart visibility */
+    /* Fix flickering on mobile scroll */
+    transform: translateZ(0);
+    -webkit-transform: translateZ(0);
+    backface-visibility: hidden;
+    -webkit-backface-visibility: hidden;
+  }
+
+  /* Prevent Plotly charts from flickering during scroll */
+  .chart-container > div,
+  .chart-container .js-plotly-plot,
+  .chart-container .plotly {
+    transform: translateZ(0);
+    -webkit-transform: translateZ(0);
+    will-change: transform;
+  }
+}
+
+/* Better spacing for collapsible sections on mobile */
+@media (max-width: 768px) {
+  .terminal-collapsible {
+    margin: 0.5rem 0;
+  }
+
+  .terminal-collapsible-content {
+    padding: 0.75rem;
+  }
+}
+
+/* ========================================
+   MOBILE RESPONSIVE STYLES
+   ======================================== */
+
+/* Mobile-first adjustments */
+@media (max-width: 768px) {
+  html {
+    font-size: 14px; /* Slightly smaller base for mobile */
+  }
+
+  /* Container adjustments */
+  .terminal-container {
+    padding: 0.5rem;
+    max-width: 100%;
+  }
+
+  /* Navigation - PRUN// and Main Report on first row, Best Recipes and Recipe History on second row */
+  .terminal-nav {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr 1fr;
+    grid-template-rows: auto auto;
+    padding: 1rem;
+    gap: 0.5rem;
+  }
+
+  .terminal-nav::before {
+    grid-column: 1; /* PRUN// header in first column (25%) */
+    margin-right: 0;
+    margin-bottom: 0;
+    display: flex;
+    align-items: center;
+  }
+
+  /* Main Report - spans 3 columns for 75% width */
+  .terminal-nav a:nth-of-type(1) {
+    grid-column: 2 / 5;
+    grid-row: 1;
+    width: 100%;
+    padding: 0.75rem 1rem;
+    border: 1px solid var(--color-border-primary);
+    text-align: center;
+  }
+
+  /* Best Recipes - spans 2 columns for 50% width */
+  .terminal-nav a:nth-of-type(2) {
+    grid-column: 1 / 3;
+    grid-row: 2;
+    width: 100%;
+    padding: 0.75rem 1rem;
+    border: 1px solid var(--color-border-primary);
+    text-align: center;
+  }
+
+  /* Recipe History - spans 2 columns for 50% width */
+  .terminal-nav a:nth-of-type(3) {
+    grid-column: 3 / 5;
+    grid-row: 2;
+    width: 100%;
+    padding: 0.75rem 1rem;
+    border: 1px solid var(--color-border-primary);
+    text-align: center;
+  }
+
+  /* Hide XIT Converter on mobile */
+  .terminal-nav a:nth-of-type(4) {
+    display: none;
+  }
+
+  /* Button touch targets - minimum 44px */
+  .terminal-button {
+    min-height: 44px;
+    padding: 0.75rem 1rem;
+    font-size: 0.875rem;
+  }
+
+  /* Input fields - full width and proper touch targets */
+  .terminal-input,
+  .terminal-select {
+    min-height: 44px;
+    font-size: 16px; /* Prevent iOS zoom */
+    width: 100%;
+  }
+
+  /* Ensure buttons in system controls have consistent font size with inputs/selects */
+  .terminal-button {
+    font-size: 16px; /* Match input/select font size on mobile */
+  }
+
+  /* Ensure all controls in main report grid have consistent heights */
+  .main-report-controls-grid .terminal-select,
+  .main-report-controls-grid .terminal-input,
+  .main-report-controls-grid .terminal-button {
+    height: 44px;
+    box-sizing: border-box;
+  }
+
+  /* Analysis results grid - 2 column layout on mobile */
+  .analysis-results-grid {
+    grid-template-columns: 1fr 1fr !important;
+  }
+
+  .analysis-results-grid > div:nth-child(1) { order: 1; } /* Ticker - Column 1, Row 1 */
+  .analysis-results-grid > div:nth-child(2) { order: 2; } /* Best P/A - Column 2, Row 1 */
+  .analysis-results-grid > div:nth-child(3) { order: 4; } /* Full Base P/D - Column 2, Row 2 */
+  .analysis-results-grid > div:nth-child(4) { order: 3; } /* Options Evaluated - Column 1, Row 2 */
+
+  /* Header adjustments */
+  .terminal-header {
+    font-size: 1rem;
+    flex-wrap: wrap;
+  }
+
+  /* Table improvements - just reduce font and padding, allow natural scrolling */
+  .terminal-table {
+    font-size: 0.75rem;
+  }
+
+  .terminal-table th,
+  .terminal-table td {
+    padding: 0.5rem;
+    white-space: nowrap;
+  }
+
+  /* Ensure scenario column stays small on mobile */
+  .terminal-table td[title] {
+    font-size: 0.75rem !important;
+    max-width: 100px !important;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  /*
+   * MOBILE TABLE COLUMN HIDING
+   *
+   * IMPORTANT: If table column counts or order changes, update these selectors!
+   *
+   * Best Recipes table (6 columns):
+   *   1. Ticker  2. RecipeID  3. Scenario  4. Profit P/A  5. Buy All P/A  6. Analysis
+   *   → Hide: Column 2 (RecipeID)
+   *
+   * Main Report tables (9 columns):
+   *   1. Expand  2. Ticker  3. Recipe ID  4. Scenario  5. Chain P/D (Area)
+   *   6. ROI (narrow)  7. ROI (broad)  8. Full Base P/D  9. Profit P/A
+   *   → Hide: Columns 5, 6, 7, 8 (Chain P/D, ROI narrow, ROI broad, Full Base P/D)
+   */
+
+  /* Best Recipes page - hide RecipeID column (column 2 in 6-column table) */
+  .terminal-table:has(th:nth-child(6):last-child) th:nth-child(2),
+  .terminal-table:has(th:nth-child(6):last-child) td:nth-child(2) {
+    display: none;
+  }
+
+  /* Main Report page tables - hide Chain Profit/Day, Chain Area/Day, ROI columns */
+  /* Columns 5, 6, 7, 8 in 9-column table (after Expand column) */
+  .terminal-table:has(th:nth-child(9)) th:nth-child(5),
+  .terminal-table:has(th:nth-child(9)) td:nth-child(5),
+  .terminal-table:has(th:nth-child(9)) th:nth-child(6),
+  .terminal-table:has(th:nth-child(9)) td:nth-child(6),
+  .terminal-table:has(th:nth-child(9)) th:nth-child(7),
+  .terminal-table:has(th:nth-child(9)) td:nth-child(7),
+  .terminal-table:has(th:nth-child(9)) th:nth-child(8),
+  .terminal-table:has(th:nth-child(9)) td:nth-child(8) {
+    display: none;
+  }
+
+  /* Reduce button height in selection sections on mobile (Best Recipes only) */
+  .terminal-box .terminal-button[href] {
+    padding: 0.35rem 1rem !important;
+    min-height: auto !important;
+    font-size: 0.8rem;
+  }
+
+  /* Keep extraction mode toggle buttons compact on Best Recipes */
+  .terminal-box button.terminal-button[style*="0.5rem 1.5rem"] {
+    padding: 0.35rem 1rem !important;
+    min-height: auto !important;
+    font-size: 0.8rem;
+  }
+
+  /* Reduce vertical whitespace for selection sections on Best Recipes */
+  .terminal-box:has(.terminal-button[href]),
+  .terminal-box:has(button.terminal-button[style*="0.5rem 1.5rem"]) {
+    padding: 0.75rem 0 !important;
+    margin-bottom: 0.75rem !important;
+  }
+
+  /* Remove border line below button groups in selection sections (Exchange, Price Type, Extraction Mode) */
+  .terminal-box:has(.terminal-button[href])::after,
+  .terminal-box:has(button.terminal-button[style*="0.5rem 1.5rem"])::after {
+    display: none !important;
+  }
+
+  /* Also remove bottom border for these sections */
+  .terminal-box:has(.terminal-button[href]),
+  .terminal-box:has(button.terminal-button[style*="0.5rem 1.5rem"]) {
+    border-bottom: none !important;
+  }
+
+  /* Grid adjustments - stack on mobile */
+  .terminal-grid-2 {
+    grid-template-columns: 1fr;
+  }
+
+  /* Badge sizing */
+  .terminal-badge {
+    font-size: 0.7rem;
+    padding: 0.3rem 0.5rem;
+  }
+
+  /* Reduce glow effects on mobile for performance */
+  .terminal-box:hover::after,
+  .terminal-button:hover,
+  .terminal-input:focus,
+  .terminal-nav a:hover {
+    box-shadow: none;
+  }
+}
+
+/* Tablet adjustments */
+@media (min-width: 769px) and (max-width: 1023px) {
+  .terminal-container {
+    padding: 1.5rem;
+  }
+
+  .terminal-nav {
+    flex-wrap: wrap;
+  }
+
+  .terminal-table {
+    font-size: 0.8rem;
+  }
+}
+
+/* Desktop optimizations */
+@media (min-width: 1024px) {
+  /* Keep existing desktop styles */
+  .terminal-container {
+    max-width: 1400px;
+  }
+}
+
+/* Print styles */
+@media print {
+  .terminal-nav {
+    display: none;
+  }
+
+  .terminal-box {
+    border: 1px solid #ccc;
+    page-break-inside: avoid;
+  }
+
+  .terminal-button {
+    display: none;
+  }
 }

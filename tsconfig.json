@@ -31,6 +31,9 @@
       "@/lib/*": [
         "src/lib/*"
       ],
+      "@/hooks/*": [
+        "src/hooks/*"
+      ],
       "@/types": [
         "src/types"
       ],
@@ -39,7 +42,7 @@
       ],
       "@/components/*": [
         "app/components/*"
-      ] // <— add this line
+      ]
     },
     "allowJs": true,
     "skipLibCheck": true,
