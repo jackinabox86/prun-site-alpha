@@ -289,7 +289,7 @@ async function validateLast100Days(dryRun: boolean = false) {
 
     const batchPromises = batch.map(async ({ ticker, exchange }) => {
       const fnarExchange = EXCHANGE_MAP[exchange];
-      const url = `https://rest.fnar.net/exchange/cxpc/${ticker.toLowerCase()}.${fnarExchange}/${endTimestamp}`;
+      const url = `https://rest.fnar.net/exchange/cxpc/${ticker.toLowerCase()}.${fnarExchange}`;
 
       console.log(`   📡 Validating ${ticker}.${exchange}...`);
 

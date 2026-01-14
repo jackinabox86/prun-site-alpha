@@ -256,7 +256,7 @@ async function updateDailyHistoricalPrices(dryRun: boolean = false) {
 
     const batchPromises = batch.map(async ({ ticker, exchange }) => {
       const fnarExchange = EXCHANGE_MAP[exchange];
-      const url = `https://rest.fnar.net/exchange/cxpc/${ticker.toLowerCase()}.${fnarExchange}/${timestamp}`;
+      const url = `https://rest.fnar.net/exchange/cxpc/${ticker.toLowerCase()}.${fnarExchange}`;
 
       console.log(`   📡 Fetching ${ticker}.${exchange} for ${isoDate}...`);
 
