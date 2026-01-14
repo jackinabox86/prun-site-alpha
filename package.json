@@ -14,6 +14,7 @@
     "backfill-dates": "tsx scripts/backfill-specific-dates.ts",
     "delete-vwap-dates": "tsx scripts/delete-vwap-dates.ts",
     "update-daily-historical": "tsx scripts/update-daily-historical.ts",
+    "validate-100-days": "tsx scripts/validate-100-days.ts",
     "retry-missed-days": "tsx scripts/retry-missed-days.ts",
     "upload-missing-gcs": "tsx scripts/upload-missing-to-gcs.ts",
     "move-to-production-gcs": "tsx scripts/move-to-production-gcs.ts",
