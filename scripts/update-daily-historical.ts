@@ -6,15 +6,21 @@ import type { HistoricalPriceData, MissedDaysLog, MissedDayEntry } from "../src/
 /**
  * Daily Historical Price Data Update Script
  *
- * Fetches yesterday's price data for all tickers and appends to existing files.
+ * Fetches yesterday's price data for all tickers and updates existing files.
  * Uses the FNAR API endpoint: /exchange/cxpc/{ticker}/{timestamp}
  *
  * Features:
- * - Fetches specific day using timestamp parameter
+ * - Fetches data using yesterday's timestamp parameter
+ * - Processes last 7 days from API response to catch corrections
  * - Downloads existing files from GCS
- * - Appends new data points
+ * - Adds new data points and updates changed data points
  * - Tracks missed/failed fetches in GCS
  * - Retries with exponential backoff
+ *
+ * Data Correction Window:
+ * - Checks last 7 days for updates (late-arriving trades, corrections)
+ * - Updates existing data if values changed
+ * - No additional API calls (data already in response)
  *
  * Usage:
  *   npm run update-daily-historical
@@ -30,6 +36,9 @@ const EXCHANGE_MAP: Record<string, string> = {
 };
 
 const EXCHANGES = ["ANT", "CIS", "ICA", "NCC"] as const;
+
+// Constants
+const DATA_CORRECTION_WINDOW = 7; // Check last 7 days for data corrections/updates
 
 // GCS paths
 const GCS_BUCKET = "prun-site-alpha-bucket";
@@ -220,7 +229,8 @@ async function updateDailyHistoricalPrices(dryRun: boolean = false) {
     ticker: string;
     exchange: string;
     success: boolean;
-    newDataPoint: boolean;
+    newDataPoints: number;
+    updatedDataPoints: number;
     error?: string;
   }> = [];
 
@@ -260,7 +270,7 @@ async function updateDailyHistoricalPrices(dryRun: boolean = false) {
         // Log missed day
         logMissedDay(missedDaysLog, ticker, exchange, isoDate, timestamp, errorMsg);
 
-        return { ticker, exchange, success: false, newDataPoint: false, error: errorMsg };
+        return { ticker, exchange, success: false, newDataPoints: 0, updatedDataPoints: 0, error: errorMsg };
       }
 
       // Check if API returned data
@@ -271,7 +281,7 @@ async function updateDailyHistoricalPrices(dryRun: boolean = false) {
         // Log as missed so we can retry for a few days
         logMissedDay(missedDaysLog, ticker, exchange, isoDate, timestamp, errorMsg);
 
-        return { ticker, exchange, success: false, newDataPoint: false, error: errorMsg };
+        return { ticker, exchange, success: false, newDataPoints: 0, updatedDataPoints: 0, error: errorMsg };
       }
 
       // Filter for daily data
@@ -284,7 +294,7 @@ async function updateDailyHistoricalPrices(dryRun: boolean = false) {
         // Log as missed so we can retry for a few days
         logMissedDay(missedDaysLog, ticker, exchange, isoDate, timestamp, errorMsg);
 
-        return { ticker, exchange, success: false, newDataPoint: false, error: errorMsg };
+        return { ticker, exchange, success: false, newDataPoints: 0, updatedDataPoints: 0, error: errorMsg };
       }
 
       // Download existing file from GCS
@@ -300,29 +310,64 @@ async function updateDailyHistoricalPrices(dryRun: boolean = false) {
         };
       }
 
-      // Check if this data point already exists
-      const alreadyExists = existingData.data.some(
-        (d) => d.DateEpochMs === timestamp
-      );
+      // Process last N days to catch corrections and late-arriving data
+      const oldestTimestamp = timestamp - (DATA_CORRECTION_WINDOW - 1) * 24 * 60 * 60 * 1000;
+      let newDataPoints = 0;
+      let updatedDataPoints = 0;
 
-      if (alreadyExists) {
-        console.log(`   ✓ ${ticker}.${exchange}: Data already exists, skipping`);
-        return { ticker, exchange, success: true, newDataPoint: false };
+      for (const dataPoint of dailyData) {
+        // Only process data points in our correction window (last 7 days)
+        if (dataPoint.DateEpochMs >= oldestTimestamp && dataPoint.DateEpochMs <= timestamp) {
+          const existingIndex = existingData.data.findIndex(
+            (d) => d.DateEpochMs === dataPoint.DateEpochMs
+          );
+
+          if (existingIndex >= 0) {
+            // Data point exists - check if it changed
+            const existing = existingData.data[existingIndex];
+            const hasChanged =
+              existing.Open !== dataPoint.Open ||
+              existing.Close !== dataPoint.Close ||
+              existing.High !== dataPoint.High ||
+              existing.Low !== dataPoint.Low ||
+              existing.Volume !== dataPoint.Volume ||
+              existing.Traded !== dataPoint.Traded;
+
+            if (hasChanged) {
+              const dateStr = new Date(dataPoint.DateEpochMs).toISOString().split("T")[0];
+              console.log(`   🔄 ${ticker}.${exchange}: Updated data for ${dateStr}`);
+
+              existingData.data[existingIndex] = {
+                DateEpochMs: dataPoint.DateEpochMs,
+                Open: dataPoint.Open,
+                Close: dataPoint.Close,
+                High: dataPoint.High,
+                Low: dataPoint.Low,
+                Volume: dataPoint.Volume,
+                Traded: dataPoint.Traded,
+              };
+              updatedDataPoints++;
+            }
+          } else {
+            // New data point - add it
+            existingData.data.push({
+              DateEpochMs: dataPoint.DateEpochMs,
+              Open: dataPoint.Open,
+              Close: dataPoint.Close,
+              High: dataPoint.High,
+              Low: dataPoint.Low,
+              Volume: dataPoint.Volume,
+              Traded: dataPoint.Traded,
+            });
+            newDataPoints++;
+          }
+        }
       }
 
-      // Append new data point(s)
-      for (const dataPoint of dailyData) {
-        if (dataPoint.DateEpochMs === timestamp) {
-          existingData.data.push({
-            DateEpochMs: dataPoint.DateEpochMs,
-            Open: dataPoint.Open,
-            Close: dataPoint.Close,
-            High: dataPoint.High,
-            Low: dataPoint.Low,
-            Volume: dataPoint.Volume,
-            Traded: dataPoint.Traded,
-          });
-        }
+      // If no new or updated data, skip upload
+      if (newDataPoints === 0 && updatedDataPoints === 0) {
+        console.log(`   ✓ ${ticker}.${exchange}: No changes in last ${DATA_CORRECTION_WINDOW} days`);
+        return { ticker, exchange, success: true, newDataPoints: 0, updatedDataPoints: 0 };
       }
 
       // Sort data by date
@@ -342,13 +387,16 @@ async function updateDailyHistoricalPrices(dryRun: boolean = false) {
         if (!uploaded) {
           const errorMsg = "Failed to upload to GCS";
           logMissedDay(missedDaysLog, ticker, exchange, isoDate, timestamp, errorMsg);
-          return { ticker, exchange, success: false, newDataPoint: true, error: errorMsg };
+          return { ticker, exchange, success: false, newDataPoints: 0, updatedDataPoints: 0, error: errorMsg };
         }
       }
 
-      console.log(`   ✅ ${ticker}.${exchange}: Added data point, total: ${existingData.data.length} days`);
+      const summary = [];
+      if (newDataPoints > 0) summary.push(`${newDataPoints} new`);
+      if (updatedDataPoints > 0) summary.push(`${updatedDataPoints} updated`);
+      console.log(`   ✅ ${ticker}.${exchange}: ${summary.join(", ")} (total: ${existingData.data.length} days)`);
 
-      return { ticker, exchange, success: true, newDataPoint: true };
+      return { ticker, exchange, success: true, newDataPoints, updatedDataPoints };
     });
 
     const batchResults = await Promise.all(batchPromises);
@@ -393,16 +441,21 @@ async function updateDailyHistoricalPrices(dryRun: boolean = false) {
 
   const successful = results.filter((r) => r.success).length;
   const failed = results.filter((r) => !r.success).length;
-  const newDataPoints = results.filter((r) => r.newDataPoint).length;
-  const skipped = results.filter((r) => r.success && !r.newDataPoint).length;
+  const totalNewDataPoints = results.reduce((sum, r) => sum + r.newDataPoints, 0);
+  const totalUpdatedDataPoints = results.reduce((sum, r) => sum + r.updatedDataPoints, 0);
+  const endpointsWithChanges = results.filter((r) => r.newDataPoints > 0 || r.updatedDataPoints > 0).length;
+  const skipped = results.filter((r) => r.success && r.newDataPoints === 0 && r.updatedDataPoints === 0).length;
 
   console.log(`\n📊 Summary:`);
   console.log(`   Date: ${isoDate}`);
+  console.log(`   Data correction window: Last ${DATA_CORRECTION_WINDOW} days`);
   console.log(`   Total endpoints: ${results.length}`);
   console.log(`   ✅ Successful: ${successful}`);
   console.log(`   ❌ Failed: ${failed}`);
-  console.log(`   📥 New data points added: ${newDataPoints}`);
-  console.log(`   ⏭️  Skipped (no new data): ${skipped}`);
+  console.log(`   📥 New data points added: ${totalNewDataPoints}`);
+  console.log(`   🔄 Data points updated: ${totalUpdatedDataPoints}`);
+  console.log(`   📊 Endpoints with changes: ${endpointsWithChanges}`);
+  console.log(`   ⏭️  Skipped (no changes): ${skipped}`);
   console.log(`   📋 Total missed days in log: ${missedDaysLog.failures.length}`);
 
   if (failed > 0) {
