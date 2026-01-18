@@ -83,13 +83,36 @@ export default function ReportClient() {
       .catch(() => setTickers([]));
   }, [extractionMode]);
 
-  // Read ticker from URL params on mount
+  // Read ticker and optional parameters from URL params on mount
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
+
     const tickerParam = params.get("ticker");
     if (tickerParam) {
       setTickerInput(tickerParam.toUpperCase());
     }
+
+    // Load optional parameters from URL if present
+    const forceMakeParam = params.get("forceMake");
+    if (forceMakeParam) {
+      setForceMake(forceMakeParam);
+    }
+
+    const forceBuyParam = params.get("forceBuy");
+    if (forceBuyParam) {
+      setForceBuy(forceBuyParam);
+    }
+
+    const forceRecipeParam = params.get("forceRecipe");
+    if (forceRecipeParam) {
+      setForceRecipe(forceRecipeParam);
+    }
+
+    const excludeRecipeParam = params.get("excludeRecipe");
+    if (excludeRecipeParam) {
+      setExcludeRecipe(excludeRecipeParam);
+    }
+
     setUrlParamsChecked(true);
   }, []);
 
@@ -202,7 +225,36 @@ TIO     KI-401b     24.28`,
   };
 
   const handleShareClick = () => {
-    const url = window.location.href;
+    // Construct URL with all current state parameters
+    const params = new URLSearchParams();
+
+    // Add ticker if present
+    if (tickerInput.trim()) {
+      params.set("ticker", tickerInput.trim().toUpperCase());
+    }
+
+    // Add exchange, priceType, and extractionMode (always include these)
+    params.set("exchange", exchange);
+    params.set("priceType", priceType);
+    params.set("extractionMode", extractionMode.toString());
+
+    // Add optional parameters if they have values
+    if (forceMake.trim()) {
+      params.set("forceMake", forceMake.trim());
+    }
+    if (forceBuy.trim()) {
+      params.set("forceBuy", forceBuy.trim());
+    }
+    if (forceRecipe.trim()) {
+      params.set("forceRecipe", forceRecipe.trim());
+    }
+    if (excludeRecipe.trim()) {
+      params.set("excludeRecipe", excludeRecipe.trim());
+    }
+
+    // Construct the full URL
+    const url = `${window.location.origin}${window.location.pathname}?${params.toString()}`;
+
     navigator.clipboard.writeText(url).then(() => {
       setShowCopiedMessage(true);
       setTimeout(() => setShowCopiedMessage(false), 2000);
