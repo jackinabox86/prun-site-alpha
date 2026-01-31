@@ -1,5 +1,7 @@
-import { writeFileSync, mkdirSync, readFileSync, existsSync } from "fs";
+import { writeFileSync, mkdirSync, readFileSync, existsSync, rmSync } from "fs";
 import { execSync } from "child_process";
+import { tmpdir } from "os";
+import { join } from "path";
 import { ApiRateLimiter } from "./lib/rate-limiter.js";
 import type { HistoricalPriceData } from "../src/types";
 
@@ -7,19 +9,17 @@ import type { HistoricalPriceData } from "../src/types";
  * Fetch historical price data from FNAR API
  *
  * This script fetches OHLC (Open, High, Low, Close) data for materials
- * from the FNAR exchange API and saves them locally.
+ * from the FNAR exchange API and uploads directly to GCS.
  *
  * Branch-aware behavior:
- * - main branch: saves to production folder (public/data/historical-prices)
- *               - skipExisting enabled: only fetches NEW tickers, skips existing files
- * - other branches: saves to test folder (public/data/historical-prices-test)
+ * - main branch: uploads to production GCS path (historical-prices)
+ *               - skipExisting enabled: only fetches NEW tickers, skips existing in GCS
+ * - other branches: uploads to test GCS path (historical-prices-test/{branch})
  *                  - skipExisting disabled: re-fetches all data for testing
- *
- * This ensures that when merged to main, the script won't re-download
- * the 1332 existing files, only new tickers or updates.
  *
  * Usage:
  *   npm run fetch-historical
+ *   npm run fetch-historical -- --dry-run  # Test without uploading to GCS
  */
 
 // Detect current git branch with multiple fallback methods
@@ -128,12 +128,11 @@ function loadTickersFromFile(filepath: string): string[] {
 interface FetchConfig {
   tickers: string[];
   exchanges: Array<keyof typeof EXCHANGE_MAP>;
-  outputDir: string;
   gcsBucket: string;
   gcsPath: string;
   batchSize: number;
   delayMs: number;
-  skipExisting?: boolean; // Skip files that already exist locally
+  skipExisting?: boolean; // Skip files that already exist in GCS
 }
 
 // Detect current branch and set paths accordingly
@@ -143,13 +142,10 @@ const IS_PRODUCTION = isProductionBranch(CURRENT_BRANCH);
 // Configuration options
 // Uncomment the one you want to use:
 
-// Option 1: Single ticker for testing (default)
+// Option 1: Single ticker for testing
 // const CONFIG: FetchConfig = {
 //   tickers: ["RAT"],
 //   exchanges: ["ANT"], // Just one exchange for quick testing
-//   outputDir: IS_PRODUCTION
-//     ? "public/data/historical-prices"
-//     : `public/data/historical-prices-test`,
 //   gcsBucket: "prun-site-alpha-bucket",
 //   gcsPath: IS_PRODUCTION
 //     ? "historical-prices"
@@ -158,15 +154,11 @@ const IS_PRODUCTION = isProductionBranch(CURRENT_BRANCH);
 //   delayMs: 500,
 // };
 
-// Option 2: All tickers from file × all exchanges (~1332 endpoints)
-// IMPORTANT: This will take 20-25 minutes and make ~1332 API requests
-// On production (main branch), skipExisting is enabled to avoid re-downloading existing data
+// All tickers from file × all exchanges
+// On production (main branch), skipExisting checks GCS to avoid re-downloading existing data
 const CONFIG: FetchConfig = {
   tickers: loadTickersFromFile("scripts/config/tickers.txt"),
   exchanges: ["ANT", "CIS", "ICA", "NCC"], // All 4 exchanges
-  outputDir: IS_PRODUCTION
-    ? "public/data/historical-prices"
-    : `public/data/historical-prices-test`,
   gcsBucket: "prun-site-alpha-bucket",
   gcsPath: IS_PRODUCTION
     ? "historical-prices"
@@ -175,6 +167,10 @@ const CONFIG: FetchConfig = {
   delayMs: 1000, // 1 second between batches
   skipExisting: IS_PRODUCTION, // Skip existing files on production to save time
 };
+
+// Parse command line arguments
+const args = process.argv.slice(2);
+const DRY_RUN = args.includes("--dry-run");
 
 // Future expansion configurations (commented out for now)
 // const ESSENTIALS_CONFIG: FetchConfig = {
@@ -193,23 +189,58 @@ const CONFIG: FetchConfig = {
 //   delayMs: 1000,
 // };
 
+/**
+ * Get set of all existing files in GCS path (single API call)
+ */
+function listGCSFiles(gcsBucket: string, gcsPath: string): Set<string> {
+  try {
+    const output = execSync(`gsutil ls "gs://${gcsBucket}/${gcsPath}/*.json"`, {
+      encoding: "utf8",
+      stdio: ["pipe", "pipe", "pipe"],
+    });
+    // Extract just filenames from full paths
+    const files = output
+      .split("\n")
+      .filter((line) => line.trim())
+      .map((path) => path.split("/").pop() || "");
+    return new Set(files);
+  } catch (error) {
+    // No files exist or path doesn't exist
+    return new Set();
+  }
+}
+
+/**
+ * Upload a file to GCS
+ */
+function uploadToGCS(localPath: string, gcsBucket: string, gcsPath: string, filename: string): boolean {
+  try {
+    execSync(`gsutil cp "${localPath}" "gs://${gcsBucket}/${gcsPath}/${filename}"`, {
+      encoding: "utf8",
+      stdio: ["pipe", "pipe", "pipe"],
+    });
+    return true;
+  } catch (error) {
+    console.error(`   ❌ Failed to upload ${filename}: ${error}`);
+    return false;
+  }
+}
+
 async function fetchHistoricalPrices(config: FetchConfig) {
   console.log("\n🚀 Starting historical price fetch");
   console.log(`   Branch: ${CURRENT_BRANCH}`);
   console.log(`   Mode: ${IS_PRODUCTION ? "🟢 PRODUCTION" : "🟡 TEST"}`);
-  console.log(`   Tickers: ${config.tickers.join(", ")}`);
+  console.log(`   Tickers: ${config.tickers.length} tickers`);
   console.log(`   Exchanges: ${config.exchanges.join(", ")}`);
   console.log(`   Total endpoints: ${config.tickers.length * config.exchanges.length}`);
-  console.log(`   Skip existing: ${config.skipExisting ? "✅ YES" : "❌ NO"}`);
-  console.log(`   Local output: ${config.outputDir}`);
+  console.log(`   Skip existing in GCS: ${config.skipExisting ? "✅ YES" : "❌ NO"}`);
+  console.log(`   Dry run: ${DRY_RUN ? "✅ YES" : "❌ NO"}`);
   console.log(`   GCS path: gs://${config.gcsBucket}/${config.gcsPath}\n`);
 
-  // Create output directory if it doesn't exist
-  try {
-    mkdirSync(config.outputDir, { recursive: true });
-  } catch (err) {
-    // Directory might already exist
-  }
+  // Create temp directory for intermediate files
+  const tempDir = join(tmpdir(), `historical-prices-${Date.now()}`);
+  mkdirSync(tempDir, { recursive: true });
+  console.log(`   Temp directory: ${tempDir}\n`);
 
   const rateLimiter = new ApiRateLimiter({
     maxRetries: 3,
@@ -228,24 +259,28 @@ async function fetchHistoricalPrices(config: FetchConfig) {
     }
   }
 
-  // Filter out existing files if skipExisting is enabled
+  // Filter out existing files in GCS if skipExisting is enabled
   let endpoints = allEndpoints;
   let skippedCount = 0;
   if (config.skipExisting) {
+    console.log("🔍 Listing existing files in GCS...");
+    const existingFiles = listGCSFiles(config.gcsBucket, config.gcsPath);
+    console.log(`   Found ${existingFiles.size} existing files`);
+
     endpoints = allEndpoints.filter(({ ticker, exchange }) => {
       const fnarExchange = EXCHANGE_MAP[exchange];
-      const filepath = `${config.outputDir}/${ticker}-${fnarExchange}.json`;
-      const exists = existsSync(filepath);
-      if (exists) {
+      const filename = `${ticker}-${fnarExchange}.json`;
+      if (existingFiles.has(filename)) {
         skippedCount++;
+        return false;
       }
-      return !exists;
+      return true;
     });
 
     if (skippedCount > 0) {
-      console.log(`⏭️  Skipping ${skippedCount} existing files`);
-      console.log(`📥 Fetching ${endpoints.length} new/updated files\n`);
+      console.log(`⏭️  Skipping ${skippedCount} existing files in GCS`);
     }
+    console.log(`📥 Fetching ${endpoints.length} new files\n`);
   }
 
   if (endpoints.length === 0) {
@@ -272,9 +307,9 @@ async function fetchHistoricalPrices(config: FetchConfig) {
       const result = await rateLimiter.fetchWithRateLimit(url, ticker, exchange);
 
       if (result.success && result.data) {
-        // Save to file
+        // Save to temp file
         const filename = `${ticker}-${fnarExchange}.json`;
-        const filepath = `${config.outputDir}/${filename}`;
+        const filepath = join(tempDir, filename);
 
         const historicalData: HistoricalPriceData = {
           ticker,
@@ -284,6 +319,15 @@ async function fetchHistoricalPrices(config: FetchConfig) {
         };
 
         writeFileSync(filepath, JSON.stringify(historicalData, null, 2));
+
+        // Upload to GCS (unless dry run)
+        if (!DRY_RUN) {
+          const uploaded = uploadToGCS(filepath, config.gcsBucket, config.gcsPath, filename);
+          if (!uploaded) {
+            console.log(`   ❌ ${ticker}.${exchange}: Failed to upload to GCS`);
+            return { ticker, exchange, success: false };
+          }
+        }
 
         console.log(`   ✅ ${ticker}.${exchange}: ${historicalData.data.length} days (${result.responseTime}ms)`);
 
@@ -348,12 +392,34 @@ async function fetchHistoricalPrices(config: FetchConfig) {
     }
   }
 
-  console.log(`\n📁 Files saved locally to: ${config.outputDir}/`);
-  console.log(`📤 To upload to GCS, run:`);
-  console.log(`   gsutil -m cp -r ${config.outputDir}/* gs://${config.gcsBucket}/${config.gcsPath}/`);
+  // Generate and upload manifest (unless dry run)
+  if (!DRY_RUN && successful > 0) {
+    console.log("\n📋 Generating historical prices manifest...");
+    try {
+      execSync("npm run generate-manifest", { stdio: "inherit" });
+      console.log("✅ Manifest generated and uploaded successfully");
+    } catch (error) {
+      console.warn("⚠️  Failed to generate manifest, but data was uploaded successfully");
+      console.warn("   You can manually run: npm run generate-manifest");
+    }
+  }
+
+  // Clean up temp directory
+  try {
+    rmSync(tempDir, { recursive: true, force: true });
+    console.log(`\n🧹 Cleaned up temp directory`);
+  } catch (error) {
+    console.warn(`⚠️  Failed to clean up temp directory: ${tempDir}`);
+  }
+
+  if (DRY_RUN) {
+    console.log(`\n🔧 DRY RUN: No files uploaded to GCS`);
+  } else {
+    console.log(`\n✅ Files uploaded to: gs://${config.gcsBucket}/${config.gcsPath}/`);
+  }
 
   if (!IS_PRODUCTION) {
-    console.log(`\n⚠️  TEST MODE: Data will be uploaded to test folder, not production`);
+    console.log(`\n⚠️  TEST MODE: Data uploaded to test folder, not production`);
   }
   console.log();
 }
