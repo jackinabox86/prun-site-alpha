@@ -1,10 +1,128 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import dynamic from "next/dynamic";
+import Highcharts from "highcharts/highstock";
+import HighchartsReact from "highcharts-react-official";
 
-// Dynamically import Plotly to avoid SSR issues
-const Plot = dynamic(() => import("react-plotly.js"), { ssr: false });
+// Initialize Highcharts modules
+if (typeof Highcharts === "object") {
+  // Set global dark theme
+  Highcharts.setOptions({
+    chart: {
+      backgroundColor: "#0a0e14",
+      style: {
+        fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif",
+      },
+    },
+    title: {
+      style: {
+        color: "#e6e8eb",
+      },
+    },
+    xAxis: {
+      gridLineColor: "#1a2332",
+      lineColor: "#2a3f5f",
+      tickColor: "#2a3f5f",
+      labels: {
+        style: {
+          color: "#a0a8b5",
+        },
+      },
+    },
+    yAxis: {
+      gridLineColor: "#1a2332",
+      lineColor: "#2a3f5f",
+      tickColor: "#2a3f5f",
+      labels: {
+        style: {
+          color: "#a0a8b5",
+        },
+      },
+      title: {
+        style: {
+          color: "#a0a8b5",
+        },
+      },
+    },
+    legend: {
+      itemStyle: {
+        color: "#a0a8b5",
+      },
+      itemHoverStyle: {
+        color: "#e6e8eb",
+      },
+    },
+    tooltip: {
+      backgroundColor: "#1a1f26",
+      borderColor: "#2a3f5f",
+      style: {
+        color: "#e6e8eb",
+      },
+    },
+    navigator: {
+      maskFill: "rgba(255, 149, 0, 0.1)",
+      outlineColor: "#2a3f5f",
+      handles: {
+        backgroundColor: "#ff9500",
+        borderColor: "#ff7a00",
+      },
+      xAxis: {
+        gridLineColor: "#1a2332",
+        labels: {
+          style: {
+            color: "#6b7280",
+          },
+        },
+      },
+      series: {
+        color: "#ff9500",
+        lineColor: "#ff9500",
+      },
+    },
+    scrollbar: {
+      barBackgroundColor: "#2a3f5f",
+      barBorderColor: "#2a3f5f",
+      buttonBackgroundColor: "#1a1f26",
+      buttonBorderColor: "#2a3f5f",
+      rifleColor: "#a0a8b5",
+      trackBackgroundColor: "#101419",
+      trackBorderColor: "#1a2332",
+    },
+    rangeSelector: {
+      buttonTheme: {
+        fill: "#1a1f26",
+        stroke: "#2a3f5f",
+        style: {
+          color: "#a0a8b5",
+        },
+        states: {
+          hover: {
+            fill: "#2a3f5f",
+            stroke: "#ff9500",
+            style: {
+              color: "#ff9500",
+            },
+          },
+          select: {
+            fill: "#ff9500",
+            stroke: "#ff7a00",
+            style: {
+              color: "#0a0e14",
+            },
+          },
+        },
+      },
+      inputStyle: {
+        backgroundColor: "#101419",
+        color: "#e6e8eb",
+      },
+      labelStyle: {
+        color: "#a0a8b5",
+      },
+    },
+  });
+}
 
 interface ChartDataPoint {
   date: string;
@@ -40,12 +158,27 @@ const POPULAR_TICKERS = [
   "PE", "PG", "HMS", "REP", "EXO", "MED", "FIM", "GRN", "HCP"
 ];
 
-// Exchange colors
-const EXCHANGE_COLORS: Record<string, { primary: string; secondary: string; volume: string }> = {
-  ANT: { primary: "#ff7b3d", secondary: "#ff9f6d", volume: "rgba(255, 123, 61, 0.5)" },
-  CIS: { primary: "#ff1744", secondary: "#ff5a72", volume: "rgba(255, 23, 68, 0.5)" },
-  ICA: { primary: "#00cc66", secondary: "#33e085", volume: "rgba(0, 204, 102, 0.5)" },
-  NCC: { primary: "#ffdd66", secondary: "#ffe999", volume: "rgba(255, 221, 102, 0.5)" },
+// Exchange colors - vibrant but professional
+const EXCHANGE_COLORS: Record<string, { primary: string; up: string; down: string }> = {
+  ANT: { primary: "#ff9500", up: "#26a69a", down: "#ef5350" },
+  CIS: { primary: "#e91e63", up: "#26a69a", down: "#ef5350" },
+  ICA: { primary: "#00bcd4", up: "#26a69a", down: "#ef5350" },
+  NCC: { primary: "#ffeb3b", up: "#26a69a", down: "#ef5350" },
+};
+
+// Calculate date one year ago
+const getOneYearAgo = () => {
+  const date = new Date();
+  date.setFullYear(date.getFullYear() - 1);
+  return date.getTime();
+};
+
+// Calculate cutoff date (10 days before today)
+const getCutoffDate = () => {
+  const cutoff = new Date();
+  cutoff.setUTCDate(cutoff.getUTCDate() - 10);
+  cutoff.setUTCHours(23, 59, 59, 999);
+  return cutoff.getTime();
 };
 
 export default function MarketChartsClient() {
@@ -106,28 +239,13 @@ export default function MarketChartsClient() {
     fetchData(selectedTicker);
   };
 
-  // Calculate cutoff date (10 days before today) for chart display
-  const getCutoffDate = () => {
-    const cutoff = new Date();
-    cutoff.setUTCDate(cutoff.getUTCDate() - 10);
-    cutoff.setUTCHours(0, 0, 0, 0);
-    return cutoff.getTime();
-  };
   const cutoffTimestamp = getCutoffDate();
+  const oneYearAgo = getOneYearAgo();
 
-  // Build chart for each exchange
-  const renderChart = (exchangeInfo: ExchangeChartData) => {
+  // Build Highcharts options for each exchange
+  const buildChartOptions = (exchangeInfo: ExchangeChartData): Highcharts.Options | null => {
     if (!exchangeInfo.found || exchangeInfo.data.length === 0) {
-      return (
-        <div className="terminal-box" key={exchangeInfo.exchange} style={{ marginBottom: "1.5rem" }}>
-          <div className="terminal-header" style={{ fontSize: "0.875rem", marginBottom: "0.5rem" }}>
-            {exchangeInfo.ticker}.{exchangeInfo.exchange} - {exchangeInfo.exchangeName}
-          </div>
-          <div className="text-mono" style={{ color: "var(--color-text-muted)", textAlign: "center", padding: "2rem" }}>
-            No market data available for {exchangeInfo.ticker}.{exchangeInfo.exchange}
-          </div>
-        </div>
-      );
+      return null;
     }
 
     const colors = EXCHANGE_COLORS[exchangeInfo.exchange] || EXCHANGE_COLORS.ANT;
@@ -135,149 +253,230 @@ export default function MarketChartsClient() {
     // Filter data to only include points up to 10 days before today
     const filteredData = exchangeInfo.data.filter((d) => d.timestamp <= cutoffTimestamp);
 
-    // Filter for days with actual trading (non-zero open/close)
-    const tradingDays = filteredData.filter((d) => d.open !== null && d.close !== null && d.open > 0 && d.close > 0);
+    // Prepare OHLC data (only days with actual trading)
+    const ohlcData: [number, number, number, number, number][] = [];
+    const volumeData: [number, number][] = [];
 
-    const dates = tradingDays.map((d) => d.date);
-    const opens = tradingDays.map((d) => d.open);
-    const closes = tradingDays.map((d) => d.close);
-    const highs = tradingDays.map((d) => d.high || Math.max(d.open || 0, d.close || 0));
-    const lows = tradingDays.map((d) => d.low || Math.min(d.open || 0, d.close || 0));
-    const volumes = tradingDays.map((d) => d.volume);
-
-    // VWAP data (use all filtered data points where vwap7d exists)
-    const vwapData = filteredData.filter((d) => d.vwap7d !== null);
-    const vwapDates = vwapData.map((d) => d.date);
-    const vwap7dValues = vwapData.map((d) => d.vwap7d);
-
-    // Calculate y-axis range for price (with some padding)
-    const allPrices = [...opens.filter(Boolean), ...closes.filter(Boolean), ...highs.filter(Boolean), ...lows.filter(Boolean), ...vwap7dValues.filter(Boolean)] as number[];
-    const minPrice = allPrices.length > 0 ? Math.min(...allPrices) : 0;
-    const maxPrice = allPrices.length > 0 ? Math.max(...allPrices) : 100;
-    const priceRange = maxPrice - minPrice;
-    const yMin = Math.max(0, minPrice - priceRange * 0.1);
-    const yMax = maxPrice + priceRange * 0.1;
-
-    // Max volume for scaling
-    const maxVolume = Math.max(...volumes, 1);
-
-    // Build traces
-    const traces: any[] = [];
-
-    // Candlestick trace
-    traces.push({
-      type: "candlestick",
-      x: dates,
-      open: opens,
-      high: highs,
-      low: lows,
-      close: closes,
-      name: "OHLC",
-      increasing: { line: { color: "#00ff88" }, fillcolor: "#00ff88" },
-      decreasing: { line: { color: "#ff4466" }, fillcolor: "#ff4466" },
-      hoverinfo: "x+text",
-      text: tradingDays.map((d) =>
-        `O: ${d.open?.toFixed(2) || "N/A"}<br>H: ${d.high?.toFixed(2) || "N/A"}<br>L: ${d.low?.toFixed(2) || "N/A"}<br>C: ${d.close?.toFixed(2) || "N/A"}<br>Vol: ${d.volume.toLocaleString()}`
-      ),
-      yaxis: "y2",
+    filteredData.forEach((d) => {
+      if (d.open !== null && d.close !== null && d.open > 0 && d.close > 0) {
+        const high = d.high || Math.max(d.open, d.close);
+        const low = d.low || Math.min(d.open, d.close);
+        ohlcData.push([d.timestamp, d.open, high, low, d.close]);
+        volumeData.push([d.timestamp, d.volume]);
+      }
     });
 
-    // VWAP line
-    if (showVwap && vwapDates.length > 0) {
-      traces.push({
-        type: "scatter",
-        mode: "lines",
-        x: vwapDates,
-        y: vwap7dValues,
+    // Prepare VWAP data - simple line connecting each day's VWAP value
+    const vwapData: [number, number][] = [];
+    filteredData.forEach((d) => {
+      if (d.vwap7d !== null && d.vwap7d > 0) {
+        vwapData.push([d.timestamp, d.vwap7d]);
+      }
+    });
+
+    // Sort all data by timestamp
+    ohlcData.sort((a, b) => a[0] - b[0]);
+    volumeData.sort((a, b) => a[0] - b[0]);
+    vwapData.sort((a, b) => a[0] - b[0]);
+
+    // Build series array
+    const series: Highcharts.SeriesOptionsType[] = [
+      {
+        type: "candlestick",
+        name: "OHLC",
+        id: "ohlc",
+        data: ohlcData,
+        color: colors.down,
+        upColor: colors.up,
+        lineColor: colors.down,
+        upLineColor: colors.up,
+        tooltip: {
+          pointFormat:
+            '<span style="color:{point.color}">\u25CF</span> <b>{series.name}</b><br/>' +
+            "Open: {point.open:.2f}<br/>" +
+            "High: {point.high:.2f}<br/>" +
+            "Low: {point.low:.2f}<br/>" +
+            "Close: {point.close:.2f}<br/>",
+        },
+      },
+    ];
+
+    // Add VWAP line if enabled
+    if (showVwap && vwapData.length > 0) {
+      series.push({
+        type: "line",
         name: "7d VWAP",
-        line: {
-          color: colors.primary,
-          width: 2,
-          dash: "solid",
-        },
-        hovertemplate: "<b>%{x}</b><br>7d VWAP: %{y:.2f}<extra></extra>",
-        yaxis: "y2",
-      });
-    }
-
-    // Volume bars
-    if (showVolume) {
-      traces.push({
-        type: "bar",
-        x: dates,
-        y: volumes,
-        name: "Volume",
+        data: vwapData,
+        color: colors.primary,
+        lineWidth: 2,
         marker: {
-          color: tradingDays.map((d) =>
-            (d.close || 0) >= (d.open || 0) ? "rgba(0, 255, 136, 0.5)" : "rgba(255, 68, 102, 0.5)"
-          ),
+          enabled: false,
         },
-        hovertemplate: "<b>%{x}</b><br>Volume: %{y:,.0f}<extra></extra>",
-        yaxis: "y",
+        tooltip: {
+          pointFormat:
+            '<span style="color:{point.color}">\u25CF</span> <b>{series.name}</b>: {point.y:.2f}<br/>',
+        },
+        yAxis: 0,
       });
     }
 
-    const layout: any = {
+    // Add volume if enabled
+    if (showVolume && volumeData.length > 0) {
+      series.push({
+        type: "column",
+        name: "Volume",
+        data: volumeData,
+        yAxis: 1,
+        color: "rgba(100, 150, 200, 0.5)",
+        tooltip: {
+          pointFormat:
+            '<span style="color:{point.color}">\u25CF</span> <b>{series.name}</b>: {point.y:,.0f}<br/>',
+        },
+      });
+    }
+
+    const options: Highcharts.Options = {
+      chart: {
+        height: showVolume ? 500 : 400,
+        backgroundColor: "#0a0e14",
+        plotBackgroundColor: "#101419",
+        plotBorderColor: "#2a3f5f",
+        plotBorderWidth: 1,
+      },
       title: {
-        text: `${exchangeInfo.ticker}.${exchangeInfo.exchange} - ${exchangeInfo.exchangeName}`,
-        font: { color: colors.primary, family: "-apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif", size: 16 },
+        text: `${exchangeInfo.ticker}.${exchangeInfo.exchange}`,
+        style: {
+          color: colors.primary,
+          fontSize: "16px",
+          fontWeight: "600",
+        },
       },
-      paper_bgcolor: "#0a0e14",
-      plot_bgcolor: "#101419",
-      font: { color: "#e6e8eb", family: "-apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif" },
-      xaxis: {
-        type: "category",
-        gridcolor: "#2a3f5f",
-        showgrid: true,
-        color: "#a0a8b5",
-        rangeslider: { visible: false },
-        tickangle: -45,
-        nticks: 20,
+      subtitle: {
+        text: exchangeInfo.exchangeName,
+        style: {
+          color: "#a0a8b5",
+          fontSize: "12px",
+        },
       },
-      yaxis: {
-        title: showVolume ? "Volume" : "",
-        gridcolor: "#2a3f5f",
-        showgrid: true,
-        color: "#a0a8b5",
-        domain: showVolume ? [0, 0.2] : [0, 0],
-        fixedrange: true,
+      rangeSelector: {
+        buttons: [
+          { type: "month", count: 1, text: "1M" },
+          { type: "month", count: 3, text: "3M" },
+          { type: "month", count: 6, text: "6M" },
+          { type: "year", count: 1, text: "1Y" },
+          { type: "all", text: "All" },
+        ],
+        selected: 3, // Default to 1Y
+        inputEnabled: true,
       },
-      yaxis2: {
-        title: "Price",
-        gridcolor: "#2a3f5f",
-        showgrid: true,
-        color: "#a0a8b5",
-        domain: showVolume ? [0.25, 1] : [0, 1],
-        range: [yMin, yMax],
-        side: "right",
+      xAxis: {
+        type: "datetime",
+        min: oneYearAgo,
+        crosshair: {
+          color: "rgba(255, 149, 0, 0.3)",
+          dashStyle: "Dash",
+        },
       },
-      showlegend: true,
+      yAxis: [
+        {
+          title: {
+            text: "Price",
+          },
+          height: showVolume ? "70%" : "100%",
+          lineWidth: 1,
+          resize: {
+            enabled: true,
+          },
+          crosshair: {
+            color: "rgba(255, 149, 0, 0.3)",
+            dashStyle: "Dash",
+          },
+        },
+        ...(showVolume
+          ? [
+              {
+                title: {
+                  text: "Volume",
+                },
+                top: "75%",
+                height: "25%",
+                offset: 0,
+                lineWidth: 1,
+              },
+            ]
+          : []),
+      ],
       legend: {
-        x: 0,
-        y: 1.15,
-        orientation: "h",
-        bgcolor: "transparent",
-        font: { color: "#a0a8b5", size: 11 },
+        enabled: true,
+        align: "left" as const,
+        verticalAlign: "top" as const,
+        floating: true,
+        x: 60,
+        y: 0,
       },
-      margin: { l: 50, r: 60, t: 80, b: 80 },
-      hovermode: "x unified",
+      tooltip: {
+        split: false,
+        shared: true,
+        backgroundColor: "#1a1f26",
+        borderColor: "#2a3f5f",
+        style: {
+          color: "#e6e8eb",
+        },
+        xDateFormat: "%Y-%m-%d",
+      },
+      navigator: {
+        enabled: true,
+        series: {
+          color: colors.primary,
+          lineColor: colors.primary,
+        },
+      },
+      scrollbar: {
+        enabled: true,
+      },
+      credits: {
+        enabled: false,
+      },
+      series,
     };
 
-    const config = {
-      displayModeBar: true,
-      modeBarButtonsToRemove: ["lasso2d", "select2d", "autoScale2d"],
-      displaylogo: false,
-      responsive: true,
-    };
+    return options;
+  };
+
+  // Render chart for an exchange
+  const renderChart = (exchangeInfo: ExchangeChartData) => {
+    if (!exchangeInfo.found || exchangeInfo.data.length === 0) {
+      return (
+        <div className="terminal-box" key={exchangeInfo.exchange} style={{ marginBottom: "1.5rem" }}>
+          <div
+            className="terminal-header"
+            style={{ fontSize: "0.875rem", marginBottom: "0.5rem" }}
+          >
+            {exchangeInfo.ticker}.{exchangeInfo.exchange} - {exchangeInfo.exchangeName}
+          </div>
+          <div
+            className="text-mono"
+            style={{
+              color: "var(--color-text-muted)",
+              textAlign: "center",
+              padding: "2rem",
+            }}
+          >
+            No market data available for {exchangeInfo.ticker}.{exchangeInfo.exchange}
+          </div>
+        </div>
+      );
+    }
+
+    const chartOptions = buildChartOptions(exchangeInfo);
+    if (!chartOptions) return null;
 
     return (
-      <div className="terminal-box" key={exchangeInfo.exchange} style={{ marginBottom: "1.5rem" }}>
-        <Plot
-          data={traces}
-          layout={layout}
-          config={config}
-          style={{ width: "100%", height: "450px" }}
-          useResizeHandler={true}
+      <div className="terminal-box" key={exchangeInfo.exchange} style={{ marginBottom: "1.5rem", padding: "0.5rem" }}>
+        <HighchartsReact
+          highcharts={Highcharts}
+          constructorType={"stockChart"}
+          options={chartOptions}
         />
       </div>
     );
@@ -287,14 +486,40 @@ export default function MarketChartsClient() {
     <div>
       {/* Search Controls */}
       <div className="terminal-box" style={{ marginBottom: "2rem" }}>
-        <h1 className="terminal-header" style={{ margin: 0, marginBottom: "1.5rem", fontSize: "1.2rem", paddingBottom: 0, borderBottom: "none", fontWeight: "normal" }}>
+        <h1
+          className="terminal-header"
+          style={{
+            margin: 0,
+            marginBottom: "1.5rem",
+            fontSize: "1.2rem",
+            paddingBottom: 0,
+            borderBottom: "none",
+            fontWeight: "normal",
+          }}
+        >
           MARKET CHARTS
         </h1>
 
         <div style={{ display: "grid", gap: "1.5rem" }}>
           {/* Quick Select Tickers */}
-          <div style={{ display: "flex", gap: "0.5rem", alignItems: "center", flexWrap: "wrap" }}>
-            <span style={{ fontSize: "0.875rem", fontFamily: "var(--font-display)", color: "var(--color-text-primary)", textTransform: "uppercase", letterSpacing: "0.05em", fontWeight: 500 }}>
+          <div
+            style={{
+              display: "flex",
+              gap: "0.5rem",
+              alignItems: "center",
+              flexWrap: "wrap",
+            }}
+          >
+            <span
+              style={{
+                fontSize: "0.875rem",
+                fontFamily: "var(--font-display)",
+                color: "var(--color-text-primary)",
+                textTransform: "uppercase",
+                letterSpacing: "0.05em",
+                fontWeight: 500,
+              }}
+            >
               Popular:
             </span>
             {POPULAR_TICKERS.map((t) => (
@@ -305,7 +530,8 @@ export default function MarketChartsClient() {
                 style={{
                   fontSize: "0.7rem",
                   padding: "0.3rem 0.5rem",
-                  backgroundColor: ticker === t ? "var(--color-accent-primary)" : undefined,
+                  backgroundColor:
+                    ticker === t ? "var(--color-accent-primary)" : undefined,
                   color: ticker === t ? "var(--color-bg-primary)" : undefined,
                 }}
               >
@@ -315,9 +541,19 @@ export default function MarketChartsClient() {
           </div>
 
           {/* Ticker Search */}
-          <div style={{ display: "flex", gap: "1rem", alignItems: "flex-end", flexWrap: "wrap" }}>
+          <div
+            style={{
+              display: "flex",
+              gap: "1rem",
+              alignItems: "flex-end",
+              flexWrap: "wrap",
+            }}
+          >
             <div style={{ flex: 1, minWidth: "150px" }}>
-              <label className="terminal-header" style={{ fontSize: "0.75rem", marginBottom: "0.5rem" }}>
+              <label
+                className="terminal-header"
+                style={{ fontSize: "0.75rem", marginBottom: "0.5rem" }}
+              >
                 Ticker Symbol
               </label>
               <input
@@ -342,21 +578,39 @@ export default function MarketChartsClient() {
 
           {/* Display Options */}
           <div style={{ display: "flex", gap: "1.5rem", alignItems: "center" }}>
-            <label style={{ display: "flex", alignItems: "center", gap: "0.5rem", cursor: "pointer" }}>
+            <label
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: "0.5rem",
+                cursor: "pointer",
+              }}
+            >
               <input
                 type="checkbox"
                 checked={showVwap}
                 onChange={(e) => setShowVwap(e.target.checked)}
               />
-              <span className="text-mono" style={{ fontSize: "0.875rem" }}>Show 7-Day VWAP</span>
+              <span className="text-mono" style={{ fontSize: "0.875rem" }}>
+                Show 7-Day VWAP
+              </span>
             </label>
-            <label style={{ display: "flex", alignItems: "center", gap: "0.5rem", cursor: "pointer" }}>
+            <label
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: "0.5rem",
+                cursor: "pointer",
+              }}
+            >
               <input
                 type="checkbox"
                 checked={showVolume}
                 onChange={(e) => setShowVolume(e.target.checked)}
               />
-              <span className="text-mono" style={{ fontSize: "0.875rem" }}>Show Volume</span>
+              <span className="text-mono" style={{ fontSize: "0.875rem" }}>
+                Show Volume
+              </span>
             </label>
           </div>
         </div>
@@ -364,7 +618,10 @@ export default function MarketChartsClient() {
 
       {/* Error Display */}
       {error && (
-        <div className="terminal-box" style={{ marginBottom: "2rem", borderColor: "var(--color-error)" }}>
+        <div
+          className="terminal-box"
+          style={{ marginBottom: "2rem", borderColor: "var(--color-error)" }}
+        >
           <div className="status-error">Warning: {error}</div>
         </div>
       )}
@@ -372,17 +629,31 @@ export default function MarketChartsClient() {
       {/* Info Banner */}
       {ticker && exchangeData.length > 0 && !error && (
         <div className="terminal-box" style={{ marginBottom: "2rem" }}>
-          <div style={{ display: "flex", gap: "1rem", alignItems: "center", flexWrap: "wrap", fontSize: "0.875rem" }}>
-            <span className="text-accent" style={{ fontFamily: "var(--font-mono)" }}>
+          <div
+            style={{
+              display: "flex",
+              gap: "1rem",
+              alignItems: "center",
+              flexWrap: "wrap",
+              fontSize: "0.875rem",
+            }}
+          >
+            <span
+              className="text-accent"
+              style={{ fontFamily: "var(--font-mono)" }}
+            >
               Showing: {ticker}
             </span>
             <span style={{ color: "var(--color-text-secondary)" }}>|</span>
             <span style={{ color: "var(--color-text-secondary)" }}>
-              {exchangeData.filter((e) => e.found).length} of 4 exchanges have data
+              {exchangeData.filter((e) => e.found).length} of 4 exchanges have
+              data
             </span>
             <span style={{ color: "var(--color-text-secondary)" }}>|</span>
-            <span style={{ color: "var(--color-text-muted)", fontSize: "0.75rem" }}>
-              Data cutoff: 10 days ago (to ensure VWAP accuracy)
+            <span
+              style={{ color: "var(--color-text-muted)", fontSize: "0.75rem" }}
+            >
+              Default view: Past year (use range selector to adjust)
             </span>
           </div>
         </div>
@@ -390,7 +661,13 @@ export default function MarketChartsClient() {
 
       {/* Charts */}
       {exchangeData.length > 0 && (
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(600px, 1fr))", gap: "1rem" }}>
+        <div
+          style={{
+            display: "grid",
+            gridTemplateColumns: "repeat(auto-fit, minmax(600px, 1fr))",
+            gap: "1rem",
+          }}
+        >
           {exchangeData.map((ex) => renderChart(ex))}
         </div>
       )}
@@ -398,7 +675,10 @@ export default function MarketChartsClient() {
       {/* Loading State */}
       {loading && (
         <div className="terminal-box">
-          <div className="text-mono terminal-loading" style={{ textAlign: "center", padding: "3rem" }}>
+          <div
+            className="text-mono terminal-loading"
+            style={{ textAlign: "center", padding: "3rem" }}
+          >
             Loading market data for {inputValue}
           </div>
         </div>
@@ -407,7 +687,14 @@ export default function MarketChartsClient() {
       {/* Empty State */}
       {!loading && exchangeData.length === 0 && !error && (
         <div className="terminal-box">
-          <div className="text-mono" style={{ color: "var(--color-text-muted)", textAlign: "center", padding: "2rem" }}>
+          <div
+            className="text-mono"
+            style={{
+              color: "var(--color-text-muted)",
+              textAlign: "center",
+              padding: "2rem",
+            }}
+          >
             Enter a ticker symbol and click "Load Charts" to view market data
           </div>
         </div>
