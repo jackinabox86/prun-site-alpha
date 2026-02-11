@@ -1,0 +1,106 @@
+name: Classify Production Volume
+
+on:
+  schedule:
+    # Run weekly on Monday at 07:00 UTC (after daily VWAP update at 06:00 UTC)
+    - cron: '0 7 * * 1'
+
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: 'Run in dry-run mode (no uploads to GCS)'
+        required: false
+        type: boolean
+        default: false
+      region:
+        description: 'Region to classify (ANT, or future: BEN, HRT, MOR)'
+        required: false
+        type: string
+        default: 'ANT'
+
+jobs:
+  classify:
+    # Only run on main branch
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Authenticate to Google Cloud
+        uses: google-github-actions/auth@v2
+        with:
+          credentials_json: ${{ secrets.GCP_SA_KEY }}
+
+      - name: Set up Cloud SDK
+        uses: google-github-actions/setup-gcloud@v2
+
+      - name: Run production volume classification
+        id: classify
+        run: |
+          REGION="${{ github.event.inputs.region || 'ANT' }}"
+
+          echo "## 📊 Production Volume Classification" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Date:** $(date -u +"%Y-%m-%d %H:%M:%S UTC")" >> $GITHUB_STEP_SUMMARY
+          echo "**Region:** ${REGION}" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+
+          if [[ "${{ github.event.inputs.dry_run }}" == "true" ]]; then
+            echo "**Mode:** 🔧 DRY RUN (no uploads)" >> $GITHUB_STEP_SUMMARY
+            npm run classify-production-volume -- --dry-run --region "${REGION}"
+          else
+            echo "**Mode:** 🟢 PRODUCTION" >> $GITHUB_STEP_SUMMARY
+            npm run classify-production-volume -- --region "${REGION}"
+          fi
+
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "✅ Classification completed successfully" >> $GITHUB_STEP_SUMMARY
+
+      - name: Generate summary
+        if: always()
+        run: |
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "## 📋 Workflow Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "- **Workflow:** ${{ github.workflow }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Run:** #${{ github.run_number }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Branch:** ${{ github.ref_name }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Triggered by:** ${{ github.event_name }}" >> $GITHUB_STEP_SUMMARY
+
+          if [[ "${{ steps.classify.outcome }}" == "success" ]]; then
+            echo "- **Classification:** ✅ Success" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "- **Classification:** ❌ Failed" >> $GITHUB_STEP_SUMMARY
+          fi
+
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "---" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "💡 **Details:**" >> $GITHUB_STEP_SUMMARY
+          echo "- Classifies each recipe's output against 30-day average trading volume" >> $GITHUB_STEP_SUMMARY
+          echo "- Categories: extremely low, low, medium, high, no data" >> $GITHUB_STEP_SUMMARY
+          echo "- Output: \`gs://prun-site-alpha-bucket/static/production volume classification - {REGION} dynamic.csv\`" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "📅 **Schedule:** Runs weekly on Monday at 07:00 UTC" >> $GITHUB_STEP_SUMMARY
+          echo "🔗 **Related workflows:**" >> $GITHUB_STEP_SUMMARY
+          echo "- Update Daily VWAP (06:00 UTC) - Provides trading volume data" >> $GITHUB_STEP_SUMMARY
+
+      - name: Upload logs on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: volume-classification-logs-${{ github.run_number }}
+          path: |
+            public/data/temp-volume-classification/
+          retention-days: 30
