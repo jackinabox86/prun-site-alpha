@@ -102,5 +102,5 @@ jobs:
         with:
           name: volume-classification-logs-${{ github.run_number }}
           path: |
-            tmp/volume-classification/
+            public/data/temp-volume-classification/
           retention-days: 30

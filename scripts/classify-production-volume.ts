@@ -32,7 +32,7 @@ const GCS_BUCKET = "prun-site-alpha-bucket";
 const GCS_VWAP_BASE = `https://storage.googleapis.com/${GCS_BUCKET}/historical-prices-vwap`;
 const GCS_STATIC_BASE = `https://storage.googleapis.com/${GCS_BUCKET}/static`;
 const GCS_DYNAMIC_PATH = "dynamic";
-const LOCAL_TEMP_DIR = "tmp/volume-classification";
+const LOCAL_TEMP_DIR = "public/data/temp-volume-classification";
 
 const REGION_CONFIGS: Record<string, RegionConfig> = {
   ANT: {
