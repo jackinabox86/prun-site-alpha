@@ -1,4 +1,4 @@
-import { writeFileSync, mkdirSync, readFileSync, existsSync, rmSync } from "fs";
+import { writeFileSync, mkdirSync, readFileSync, rmSync } from "fs";
 import { execSync } from "child_process";
 import { tmpdir } from "os";
 import { join } from "path";
@@ -13,9 +13,7 @@ import type { HistoricalPriceData } from "../src/types";
  *
  * Branch-aware behavior:
  * - main branch: uploads to production GCS path (historical-prices)
- *               - skipExisting enabled: only fetches NEW tickers, skips existing in GCS
  * - other branches: uploads to test GCS path (historical-prices-test/{branch})
- *                  - skipExisting disabled: re-fetches all data for testing
  *
  * Usage:
  *   npm run fetch-historical
@@ -132,7 +130,6 @@ interface FetchConfig {
   gcsPath: string;
   batchSize: number;
   delayMs: number;
-  skipExisting?: boolean; // Skip files that already exist in GCS
 }
 
 // Detect current branch and set paths accordingly
@@ -155,7 +152,6 @@ const IS_PRODUCTION = isProductionBranch(CURRENT_BRANCH);
 // };
 
 // All tickers from file × all exchanges
-// On production (main branch), skipExisting checks GCS to avoid re-downloading existing data
 const CONFIG: FetchConfig = {
   tickers: loadTickersFromFile("scripts/config/tickers.txt"),
   exchanges: ["ANT", "CIS", "ICA", "NCC"], // All 4 exchanges
@@ -165,7 +161,6 @@ const CONFIG: FetchConfig = {
     : `historical-prices-test/${CURRENT_BRANCH}`,
   batchSize: 10, // 10 concurrent requests
   delayMs: 1000, // 1 second between batches
-  skipExisting: IS_PRODUCTION, // Skip existing files on production to save time
 };
 
 // Parse command line arguments
@@ -190,27 +185,6 @@ const DRY_RUN = args.includes("--dry-run");
 // };
 
 /**
- * Get set of all existing files in GCS path (single API call)
- */
-function listGCSFiles(gcsBucket: string, gcsPath: string): Set<string> {
-  try {
-    const output = execSync(`gsutil ls "gs://${gcsBucket}/${gcsPath}/*.json"`, {
-      encoding: "utf8",
-      stdio: ["pipe", "pipe", "pipe"],
-    });
-    // Extract just filenames from full paths
-    const files = output
-      .split("\n")
-      .filter((line) => line.trim())
-      .map((path) => path.split("/").pop() || "");
-    return new Set(files);
-  } catch (error) {
-    // No files exist or path doesn't exist
-    return new Set();
-  }
-}
-
-/**
  * Upload a file to GCS
  */
 function uploadToGCS(localPath: string, gcsBucket: string, gcsPath: string, filename: string): boolean {
@@ -233,7 +207,6 @@ async function fetchHistoricalPrices(config: FetchConfig) {
   console.log(`   Tickers: ${config.tickers.length} tickers`);
   console.log(`   Exchanges: ${config.exchanges.join(", ")}`);
   console.log(`   Total endpoints: ${config.tickers.length * config.exchanges.length}`);
-  console.log(`   Skip existing in GCS: ${config.skipExisting ? "✅ YES" : "❌ NO"}`);
   console.log(`   Dry run: ${DRY_RUN ? "✅ YES" : "❌ NO"}`);
   console.log(`   GCS path: gs://${config.gcsBucket}/${config.gcsPath}\n`);
 
@@ -252,40 +225,11 @@ async function fetchHistoricalPrices(config: FetchConfig) {
   const results: Array<{ ticker: string; exchange: string; success: boolean; dataPoints?: number }> = [];
 
   // Build list of all endpoints to fetch
-  const allEndpoints: Array<{ ticker: string; exchange: keyof typeof EXCHANGE_MAP }> = [];
+  const endpoints: Array<{ ticker: string; exchange: keyof typeof EXCHANGE_MAP }> = [];
   for (const ticker of config.tickers) {
     for (const exchange of config.exchanges) {
-      allEndpoints.push({ ticker, exchange });
+      endpoints.push({ ticker, exchange });
     }
-  }
-
-  // Filter out existing files in GCS if skipExisting is enabled
-  let endpoints = allEndpoints;
-  let skippedCount = 0;
-  if (config.skipExisting) {
-    console.log("🔍 Listing existing files in GCS...");
-    const existingFiles = listGCSFiles(config.gcsBucket, config.gcsPath);
-    console.log(`   Found ${existingFiles.size} existing files`);
-
-    endpoints = allEndpoints.filter(({ ticker, exchange }) => {
-      const fnarExchange = EXCHANGE_MAP[exchange];
-      const filename = `${ticker}-${fnarExchange}.json`;
-      if (existingFiles.has(filename)) {
-        skippedCount++;
-        return false;
-      }
-      return true;
-    });
-
-    if (skippedCount > 0) {
-      console.log(`⏭️  Skipping ${skippedCount} existing files in GCS`);
-    }
-    console.log(`📥 Fetching ${endpoints.length} new files\n`);
-  }
-
-  if (endpoints.length === 0) {
-    console.log("✅ All files already exist. Nothing to fetch!");
-    return;
   }
 
   // Fetch in batches

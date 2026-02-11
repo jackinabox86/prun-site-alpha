@@ -8,10 +8,10 @@ import { execSync } from "child_process";
  * Looks at target date = today - 6 days to allow time for data to arrive.
  *
  * Strategy:
- * - Calculate VWAP for dates from (target - 40) to target
- *   - 30 days for baseline calculation
+ * - Calculate VWAP for dates from (target - 20) to target
+ *   - 7 days for reference price calculation
  *   - 7 days for rolling window
- *   - 3 days buffer
+ *   - 6 days buffer
  * - Merge with existing VWAP file (keep old dates, update recent)
  * - Much faster than full recalculation
  *
@@ -46,16 +46,17 @@ interface VWAPDataPoint {
   rawHigh: number;
   rawLow: number;
   dailyVWAP: number | null;
-  rollingMedian30d: number | null;
-  rollingQ1_30d: number | null;
-  rollingQ3_30d: number | null;
-  rollingIQR_30d: number | null;
+  referencePrice: number | null;
   lowerFloor: number | null;
   upperCap: number | null;
   clippedDailyVWAP: number | null;
   vwap7d: number | null;
   tradingDaysInWindow: number;
   wasForwardFilled: boolean;
+  traded7d: number;
+  traded30d: number;
+  averageTraded7d: number;
+  averageTraded30d: number;
 }
 
 interface VWAPHistoricalData {
@@ -91,7 +92,7 @@ const LOCAL_TEMP_DIR = "public/data/temp-vwap-update";
 
 // Constants
 const LOOKBACK_DAYS = 6; // Look at date 6 days in the past
-const CALCULATION_WINDOW = 40; // Recalculate last 40 days (30 baseline + 7 rolling + buffer)
+const CALCULATION_WINDOW = 20; // Recalculate last 20 days (7 reference + 7 rolling + buffer)
 
 /**
  * Load tickers from config file
@@ -180,41 +181,16 @@ function uploadVWAPToGCS(ticker: string, fnarExchange: string): boolean {
   }
 }
 
-// Statistical helper functions (same as calculate-vwap.ts)
-function calculateMedian(values: number[]): number {
-  if (values.length === 0) return 0;
-  const sorted = [...values].sort((a, b) => a - b);
-  const mid = Math.floor(sorted.length / 2);
-  if (sorted.length % 2 === 0) {
-    return (sorted[mid - 1] + sorted[mid]) / 2;
-  }
-  return sorted[mid];
-}
-
-function calculateQuartiles(values: number[]): { q1: number; q3: number } {
-  if (values.length < 4) return { q1: values[0] || 0, q3: values[values.length - 1] || 0 };
-
-  const sorted = [...values].sort((a, b) => a - b);
-  const n = sorted.length;
-
-  const q1Index = Math.floor(n * 0.25);
-  const q1 = sorted[q1Index];
-
-  const q3Index = Math.floor(n * 0.75);
-  const q3 = sorted[q3Index];
-
-  return { q1, q3 };
-}
-
 /**
- * Expand data to include all calendar days
+ * Expand data to include all calendar days from first date to endDate
  */
-function expandToAllDays(rawDataPoints: RawDataPoint[]): RawDataPoint[] {
+function expandToAllDays(rawDataPoints: RawDataPoint[], endDate?: number): RawDataPoint[] {
   if (rawDataPoints.length === 0) return [];
 
   const sorted = [...rawDataPoints].sort((a, b) => a.DateEpochMs - b.DateEpochMs);
   const firstDate = sorted[0].DateEpochMs;
-  const lastDate = sorted[sorted.length - 1].DateEpochMs;
+  // Use provided endDate or fall back to last date in raw data
+  const lastDate = endDate !== undefined ? endDate : sorted[sorted.length - 1].DateEpochMs;
 
   const dataMap = new Map<number, RawDataPoint>();
   for (const point of sorted) {
@@ -256,14 +232,14 @@ function calculateIncrementalVWAP(
   const startTimestamp = targetTimestamp - (CALCULATION_WINDOW * oneDayMs);
 
   // IMPORTANT: We need extra data for lookback calculations
-  // - 30 days for rolling statistics baseline
+  // - 7 days for reference price calculation
   // - 7 days for vwap7d window
-  // Total extra: 37 days, but use 40 for safety
-  const LOOKBACK_BUFFER = 40;
+  // Total extra: 14 days, but use 20 for safety
+  const LOOKBACK_BUFFER = 20;
   const dataStartTimestamp = startTimestamp - (LOOKBACK_BUFFER * oneDayMs);
 
-  // Expand and filter raw data - include lookback buffer
-  const expandedData = expandToAllDays(rawData.data);
+  // Expand raw data to target timestamp, then filter to include lookback buffer
+  const expandedData = expandToAllDays(rawData.data, targetTimestamp);
   const filteredData = expandedData.filter(
     (d) => d.DateEpochMs >= dataStartTimestamp && d.DateEpochMs <= targetTimestamp
   );
@@ -293,72 +269,85 @@ function calculateIncrementalVWAP(
     }
   }
 
+  // Pre-calculate clipped daily VWAPs for all days using 5x rule
+  const clippedDailyVWAPsArray: (number | null)[] = [];
+
   // Step 2: Process each day
   for (let i = 0; i < filteredData.length; i++) {
     const day = filteredData[i];
     const dailyVWAP = dailyVWAPs[i];
 
-    // Calculate 30-day rolling statistics
-    let rollingMedian30d: number | null = null;
-    let rollingQ1_30d: number | null = null;
-    let rollingQ3_30d: number | null = null;
-    let rollingIQR_30d: number | null = null;
+    // Determine reference price for 5x clipping rule
+    let referencePrice: number | null = null;
     let lowerFloor: number | null = null;
     let upperCap: number | null = null;
 
-    if (i >= 29) {
-      const window30d = dailyVWAPs.slice(i - 29, i + 1).filter((v): v is number => v !== null);
-
-      if (window30d.length >= 15) {
-        rollingMedian30d = calculateMedian(window30d);
-        const { q1, q3 } = calculateQuartiles(window30d);
-        rollingQ1_30d = q1;
-        rollingQ3_30d = q3;
-        rollingIQR_30d = q3 - q1;
-        lowerFloor = q1 - 3 * rollingIQR_30d;
-        upperCap = q3 + 3 * rollingIQR_30d;
+    if (i >= 7) {
+      // Use prior 7-day VWAP as reference (days i-7 to i-1, not including today)
+      let sumValue = 0;
+      let sumTraded = 0;
+      for (let j = i - 7; j < i; j++) {
+        const dayData = filteredData[j];
+        const dayClippedVWAP = clippedDailyVWAPsArray[j];
+        if (dayData.Traded > 0 && dayClippedVWAP !== null) {
+          sumValue += dayClippedVWAP * dayData.Traded;
+          sumTraded += dayData.Traded;
+        }
       }
+      if (sumTraded > 0) {
+        referencePrice = sumValue / sumTraded;
+      } else {
+        // No trades in prior 7 days, use last available clipped VWAP
+        for (let j = i - 1; j >= 0; j--) {
+          if (clippedDailyVWAPsArray[j] !== null) {
+            referencePrice = clippedDailyVWAPsArray[j];
+            break;
+          }
+        }
+      }
+    } else if (i >= 1) {
+      // Use prior day's clipped VWAP as reference
+      referencePrice = clippedDailyVWAPsArray[i - 1];
+    }
+    // If i === 0 (first day), no clipping - referencePrice stays null
+
+    // Calculate fences based on reference price
+    if (referencePrice !== null) {
+      lowerFloor = referencePrice / 5;
+      upperCap = referencePrice * 5;
     }
 
     // Apply clipping
     let clippedDailyVWAP: number | null = null;
-    if (dailyVWAP !== null && lowerFloor !== null && upperCap !== null) {
+    if (dailyVWAP !== null && referencePrice !== null && lowerFloor !== null && upperCap !== null) {
       clippedDailyVWAP = Math.max(lowerFloor, Math.min(dailyVWAP, upperCap));
       if (clippedDailyVWAP !== dailyVWAP) {
         clippedDays++;
       }
     } else if (dailyVWAP !== null) {
+      // No reference yet (first day), use raw VWAP
       clippedDailyVWAP = dailyVWAP;
     }
 
-    // Calculate 7-day rolling VWAP
+    // Store clipped value for use in subsequent days' reference price calculation
+    clippedDailyVWAPsArray.push(clippedDailyVWAP);
+
+    // Calculate 7-day rolling VWAP (available from day 0)
     let vwap7d: number | null = null;
     let tradingDaysInWindow = 0;
     let wasForwardFilled = false;
 
-    if (i >= 6 && i >= 29) {
+    if (i >= 0) { // Calculate from day 1 (changed from requiring 30 days)
       let sumClippedValue = 0;
       let sumTraded = 0;
 
-      for (let j = i - 6; j <= i; j++) {
+      // Look at available days (up to 7)
+      const windowStart = Math.max(0, i - 6);
+      for (let j = windowStart; j <= i; j++) {
         const dayData = filteredData[j];
-        const dayVWAP = dailyVWAPs[j];
+        const dayClippedVWAP = clippedDailyVWAPsArray[j];
 
-        if (dayData.Traded > 0 && dayVWAP !== null) {
-          let dayClippedVWAP = dayVWAP;
-
-          if (j >= 29) {
-            const window30dForJ = dailyVWAPs.slice(j - 29, j + 1).filter((v): v is number => v !== null);
-
-            if (window30dForJ.length >= 15) {
-              const { q1, q3 } = calculateQuartiles(window30dForJ);
-              const iqr = q3 - q1;
-              const lowerFloorJ = q1 - 3 * iqr;
-              const upperCapJ = q3 + 3 * iqr;
-              dayClippedVWAP = Math.max(lowerFloorJ, Math.min(dayVWAP, upperCapJ));
-            }
-          }
-
+        if (dayData.Traded > 0 && dayClippedVWAP !== null) {
           const clippedValue = dayClippedVWAP * dayData.Traded;
           sumClippedValue += clippedValue;
           sumTraded += dayData.Traded;
@@ -376,6 +365,23 @@ function calculateIncrementalVWAP(
       }
     }
 
+    // Calculate 7-day and 30-day traded sums
+    let traded7d = 0;
+    let traded30d = 0;
+
+    // 7-day sum (last 7 days including today)
+    for (let j = Math.max(0, i - 6); j <= i; j++) {
+      traded7d += filteredData[j].Traded;
+    }
+
+    // 30-day sum (last 30 days including today)
+    for (let j = Math.max(0, i - 29); j <= i; j++) {
+      traded30d += filteredData[j].Traded;
+    }
+
+    const averageTraded7d = traded7d / 7;
+    const averageTraded30d = traded30d / 30;
+
     vwapData.push({
       DateEpochMs: day.DateEpochMs,
       rawVolume: day.Volume,
@@ -385,16 +391,17 @@ function calculateIncrementalVWAP(
       rawHigh: day.High,
       rawLow: day.Low,
       dailyVWAP,
-      rollingMedian30d,
-      rollingQ1_30d,
-      rollingQ3_30d,
-      rollingIQR_30d,
+      referencePrice,
       lowerFloor,
       upperCap,
       clippedDailyVWAP,
       vwap7d,
       tradingDaysInWindow,
       wasForwardFilled,
+      traded7d,
+      traded30d,
+      averageTraded7d,
+      averageTraded30d,
     });
   }
 

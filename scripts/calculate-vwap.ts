@@ -7,12 +7,17 @@ import { execSync } from "child_process";
  *
  * Methodology:
  * 1. Calculate Daily VWAP = Volume / Traded
- * 2. Establish 30-day rolling median, Q1, Q3, IQR baseline
- * 3. Define UpperCap = Q3 + 3*IQR, LowerFloor = Q1 - 3*IQR
- * 4. Clip daily prices: Clipped_VWAP = max(LowerFloor, min(DailyVWAP, UpperCap))
- * 5. Reconstruct clipped value: Clipped_Value = Clipped_VWAP × Traded
- * 6. Calculate 7-day VWAP = Σ(Clipped_Value) / Σ(Traded) over 7 days
- * 7. Forward-fill for zero-volume periods
+ * 2. Determine reference price:
+ *    - Days 7+: prior 7-day VWAP (days i-7 to i-1)
+ *    - Days 1-6: prior day's VWAP
+ *    - Day 0: no clipping (first trading day)
+ * 3. Apply 5x clipping rule:
+ *    - LowerFloor = referencePrice / 5
+ *    - UpperCap = referencePrice * 5
+ *    - Clipped_VWAP = max(LowerFloor, min(DailyVWAP, UpperCap))
+ * 4. Reconstruct clipped value: Clipped_Value = Clipped_VWAP × Traded
+ * 5. Calculate 7-day VWAP = Σ(Clipped_Value) / Σ(Traded) over 7 days
+ * 6. Forward-fill for zero-volume periods
  *
  * Output: JSON files in GCS historical-prices-vwap/ folder
  */
@@ -48,13 +53,10 @@ interface VWAPDataPoint {
   // Calculated daily VWAP
   dailyVWAP: number | null;  // Volume / Traded
 
-  // 30-day rolling statistics
-  rollingMedian30d: number | null;
-  rollingQ1_30d: number | null;
-  rollingQ3_30d: number | null;
-  rollingIQR_30d: number | null;
+  // Reference price for clipping (prior 7-day VWAP or prior daily VWAP)
+  referencePrice: number | null;
 
-  // Outlier fences
+  // Outlier fences (5x rule: lowerFloor = referencePrice/5, upperCap = referencePrice*5)
   lowerFloor: number | null;
   upperCap: number | null;
 
@@ -65,6 +67,12 @@ interface VWAPDataPoint {
   vwap7d: number | null;
   tradingDaysInWindow: number;
   wasForwardFilled: boolean;
+
+  // Rolling traded sums and averages
+  traded7d: number;
+  traded30d: number;
+  averageTraded7d: number;
+  averageTraded30d: number;
 }
 
 interface VWAPHistoricalData {
@@ -80,34 +88,6 @@ interface VWAPHistoricalData {
     forwardFilledDays: number;
     avgVWAP7d: number | null;
   };
-}
-
-// Statistical helper functions
-function calculateMedian(values: number[]): number {
-  if (values.length === 0) return 0;
-  const sorted = [...values].sort((a, b) => a - b);
-  const mid = Math.floor(sorted.length / 2);
-  if (sorted.length % 2 === 0) {
-    return (sorted[mid - 1] + sorted[mid]) / 2;
-  }
-  return sorted[mid];
-}
-
-function calculateQuartiles(values: number[]): { q1: number; q3: number } {
-  if (values.length < 4) return { q1: values[0] || 0, q3: values[values.length - 1] || 0 };
-
-  const sorted = [...values].sort((a, b) => a - b);
-  const n = sorted.length;
-
-  // Q1 is 25th percentile
-  const q1Index = Math.floor(n * 0.25);
-  const q1 = sorted[q1Index];
-
-  // Q3 is 75th percentile
-  const q3Index = Math.floor(n * 0.75);
-  const q3 = sorted[q3Index];
-
-  return { q1, q3 };
 }
 
 // Exchange code mapping
@@ -132,15 +112,16 @@ function loadTickersFromFile(filepath: string): string[] {
   }
 }
 
-// Expand data to include all calendar days from first to last date
-function expandToAllDays(rawDataPoints: RawDataPoint[]): RawDataPoint[] {
+// Expand data to include all calendar days from first date to endDate
+function expandToAllDays(rawDataPoints: RawDataPoint[], endDate?: number): RawDataPoint[] {
   if (rawDataPoints.length === 0) return [];
 
   // Sort by date to ensure chronological order
   const sorted = [...rawDataPoints].sort((a, b) => a.DateEpochMs - b.DateEpochMs);
 
   const firstDate = sorted[0].DateEpochMs;
-  const lastDate = sorted[sorted.length - 1].DateEpochMs;
+  // Use provided endDate or fall back to last date in raw data
+  const lastDate = endDate !== undefined ? endDate : sorted[sorted.length - 1].DateEpochMs;
 
   // Create a map of existing data points by date
   const dataMap = new Map<number, RawDataPoint>();
@@ -150,7 +131,7 @@ function expandToAllDays(rawDataPoints: RawDataPoint[]): RawDataPoint[] {
     dataMap.set(dayStart, point);
   }
 
-  // Generate all days from first to last
+  // Generate all days from first to last (or endDate)
   const expanded: RawDataPoint[] = [];
   const oneDayMs = 86400000; // 24 hours in milliseconds
 
@@ -186,10 +167,6 @@ function calculateVWAP(
   console.log(`\n📊 Calculating VWAP for ${ticker}.${exchange}`);
   console.log(`   Raw data points: ${rawData.data.length}`);
 
-  // Expand data to include ALL calendar days from first to last date
-  const expandedData = expandToAllDays(rawData.data);
-  console.log(`   Expanded to ${expandedData.length} days (including gaps)`);
-
   // Calculate cutoff date: stop 4 days before today to allow late-arriving data
   const today = new Date();
   today.setUTCHours(0, 0, 0, 0);
@@ -197,7 +174,11 @@ function calculateVWAP(
   cutoffDate.setUTCDate(cutoffDate.getUTCDate() - 4);
   const cutoffTimestamp = cutoffDate.getTime();
 
-  // Filter to only include dates up to cutoff
+  // Expand data to include ALL calendar days from first date to cutoff date
+  const expandedData = expandToAllDays(rawData.data, cutoffTimestamp);
+  console.log(`   Expanded to ${expandedData.length} days (including gaps, up to cutoff)`);
+
+  // Filter to only include dates up to cutoff (should be a no-op now, but kept for safety)
   const filteredData = expandedData.filter(d => d.DateEpochMs <= cutoffTimestamp);
 
   if (filteredData.length < expandedData.length) {
@@ -233,85 +214,87 @@ function calculateVWAP(
   const forwardFilledDailyCount = dailyVWAPs.filter((v, i) => v !== null && filteredData[i].Traded === 0).length;
   console.log(`   Days with trading activity: ${tradingDaysCount}`);
 
+  // Pre-calculate clipped daily VWAPs for all days using 5x rule
+  // This array stores the clipped values to be used in vwap7d calculation
+  const clippedDailyVWAPsArray: (number | null)[] = [];
+
   // Process each day
   for (let i = 0; i < filteredData.length; i++) {
     const day = filteredData[i];
     const dailyVWAP = dailyVWAPs[i];
 
-    // Calculate 30-day rolling statistics (need at least 30 days)
-    let rollingMedian30d: number | null = null;
-    let rollingQ1_30d: number | null = null;
-    let rollingQ3_30d: number | null = null;
-    let rollingIQR_30d: number | null = null;
+    // Determine reference price for 5x clipping rule
+    let referencePrice: number | null = null;
     let lowerFloor: number | null = null;
     let upperCap: number | null = null;
 
-    if (i >= 29) {
-      // Get last 30 days of valid VWAPs
-      const window30d = dailyVWAPs
-        .slice(i - 29, i + 1)
-        .filter((v): v is number => v !== null);
-
-      if (window30d.length >= 15) { // Require at least 15 trading days in 30-day window
-        rollingMedian30d = calculateMedian(window30d);
-        const { q1, q3 } = calculateQuartiles(window30d);
-        rollingQ1_30d = q1;
-        rollingQ3_30d = q3;
-        rollingIQR_30d = q3 - q1;
-
-        // Calculate outlier fences
-        lowerFloor = q1 - 3 * rollingIQR_30d;
-        upperCap = q3 + 3 * rollingIQR_30d;
+    if (i >= 7) {
+      // Use prior 7-day VWAP as reference (days i-7 to i-1, not including today)
+      // Calculate volume-weighted average of days i-7 to i-1
+      let sumValue = 0;
+      let sumTraded = 0;
+      for (let j = i - 7; j < i; j++) {
+        const dayData = filteredData[j];
+        const dayClippedVWAP = clippedDailyVWAPsArray[j];
+        if (dayData.Traded > 0 && dayClippedVWAP !== null) {
+          sumValue += dayClippedVWAP * dayData.Traded;
+          sumTraded += dayData.Traded;
+        }
       }
+      if (sumTraded > 0) {
+        referencePrice = sumValue / sumTraded;
+      } else {
+        // No trades in prior 7 days, use last available clipped VWAP
+        for (let j = i - 1; j >= 0; j--) {
+          if (clippedDailyVWAPsArray[j] !== null) {
+            referencePrice = clippedDailyVWAPsArray[j];
+            break;
+          }
+        }
+      }
+    } else if (i >= 1) {
+      // Use prior day's clipped VWAP as reference
+      referencePrice = clippedDailyVWAPsArray[i - 1];
+    }
+    // If i === 0 (first day), no clipping - referencePrice stays null
+
+    // Calculate fences based on reference price
+    if (referencePrice !== null) {
+      lowerFloor = referencePrice / 5;
+      upperCap = referencePrice * 5;
     }
 
     // Apply clipping to daily VWAP
     let clippedDailyVWAP: number | null = null;
-    if (dailyVWAP !== null && lowerFloor !== null && upperCap !== null) {
+    if (dailyVWAP !== null && referencePrice !== null && lowerFloor !== null && upperCap !== null) {
       clippedDailyVWAP = Math.max(lowerFloor, Math.min(dailyVWAP, upperCap));
       if (clippedDailyVWAP !== dailyVWAP) {
         clippedDays++;
       }
     } else if (dailyVWAP !== null) {
-      // No fences yet, use raw VWAP
+      // No reference yet (first day), use raw VWAP
       clippedDailyVWAP = dailyVWAP;
     }
 
-    // Calculate 7-day rolling VWAP (need at least 7 days and 30 days for baseline)
+    // Store clipped value for use in subsequent days' reference price calculation
+    clippedDailyVWAPsArray.push(clippedDailyVWAP);
+
+    // Calculate 7-day rolling VWAP (available from day 0)
     let vwap7d: number | null = null;
     let tradingDaysInWindow = 0;
     let wasForwardFilled = false;
 
-    if (i >= 6 && i >= 29) { // Need 7 days for rolling + 30 days for baseline
+    if (i >= 0) { // Calculate from day 1 (changed from requiring 30 days)
       let sumClippedValue = 0;
       let sumTraded = 0;
 
-      // Look at last 7 days
-      for (let j = i - 6; j <= i; j++) {
+      // Look at available days (up to 7)
+      const windowStart = Math.max(0, i - 6);
+      for (let j = windowStart; j <= i; j++) {
         const dayData = filteredData[j];
-        const dayVWAP = dailyVWAPs[j];
+        const dayClippedVWAP = clippedDailyVWAPsArray[j];
 
-        if (dayData.Traded > 0 && dayVWAP !== null) {
-          // Get the clipped VWAP for this day
-          // Need to use the fences calculated at day j, not current day i
-          let dayClippedVWAP = dayVWAP;
-
-          // Calculate fences for day j
-          if (j >= 29) {
-            const window30dForJ = dailyVWAPs
-              .slice(j - 29, j + 1)
-              .filter((v): v is number => v !== null);
-
-            if (window30dForJ.length >= 15) {
-              const { q1, q3 } = calculateQuartiles(window30dForJ);
-              const iqr = q3 - q1;
-              const lowerFloorJ = q1 - 3 * iqr;
-              const upperCapJ = q3 + 3 * iqr;
-
-              dayClippedVWAP = Math.max(lowerFloorJ, Math.min(dayVWAP, upperCapJ));
-            }
-          }
-
+        if (dayData.Traded > 0 && dayClippedVWAP !== null) {
           // Reconstruct clipped value
           const clippedValue = dayClippedVWAP * dayData.Traded;
           sumClippedValue += clippedValue;
@@ -332,6 +315,23 @@ function calculateVWAP(
       }
     }
 
+    // Calculate 7-day and 30-day traded sums
+    let traded7d = 0;
+    let traded30d = 0;
+
+    // 7-day sum (last 7 days including today)
+    for (let j = Math.max(0, i - 6); j <= i; j++) {
+      traded7d += filteredData[j].Traded;
+    }
+
+    // 30-day sum (last 30 days including today)
+    for (let j = Math.max(0, i - 29); j <= i; j++) {
+      traded30d += filteredData[j].Traded;
+    }
+
+    const averageTraded7d = traded7d / 7;
+    const averageTraded30d = traded30d / 30;
+
     vwapData.push({
       DateEpochMs: day.DateEpochMs,
       rawVolume: day.Volume,
@@ -341,16 +341,17 @@ function calculateVWAP(
       rawHigh: day.High,
       rawLow: day.Low,
       dailyVWAP,
-      rollingMedian30d,
-      rollingQ1_30d,
-      rollingQ3_30d,
-      rollingIQR_30d,
+      referencePrice,
       lowerFloor,
       upperCap,
       clippedDailyVWAP,
       vwap7d,
       tradingDaysInWindow,
       wasForwardFilled,
+      traded7d,
+      traded30d,
+      averageTraded7d,
+      averageTraded30d,
     });
   }
 
