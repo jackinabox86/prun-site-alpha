@@ -107,17 +107,17 @@ export default function BestRecipesClient() {
         if (lines.length < 2) return;
 
         const header = lines[0].split(",");
-        const recipeIdIndex = header.findIndex((h) => h.trim() === "RecipeID");
+        const tickerIndex = header.findIndex((h) => h.trim() === "Ticker");
         const workforceIndex = header.findIndex((h) => h.trim() === "Workforce");
-        if (recipeIdIndex === -1 || workforceIndex === -1) return;
+        if (tickerIndex === -1 || workforceIndex === -1) return;
 
         const tierMap = new Map<string, WorkforceTier>();
         for (let i = 1; i < lines.length; i++) {
           const cols = lines[i].split(",");
-          const recipeId = cols[recipeIdIndex]?.trim();
+          const ticker = cols[tickerIndex]?.trim();
           const workforceName = cols[workforceIndex]?.trim();
-          if (recipeId && workforceName && WORKFORCE_NAME_TO_TIER[workforceName]) {
-            tierMap.set(recipeId, WORKFORCE_NAME_TO_TIER[workforceName]);
+          if (ticker && workforceName && WORKFORCE_NAME_TO_TIER[workforceName]) {
+            tierMap.set(ticker, WORKFORCE_NAME_TO_TIER[workforceName]);
           }
         }
         setWorkforceTierMap(tierMap);
@@ -251,9 +251,8 @@ export default function BestRecipesClient() {
 
   // Apply workforce tier filter
   const workforceFilteredData = filteredData.filter((row) => {
-    if (!row.recipeId) return true;
-    const tier = workforceTierMap.get(row.recipeId);
-    if (!tier) return true; // Keep recipes not in the map
+    const tier = workforceTierMap.get(row.ticker);
+    if (!tier) return true; // Keep tickers not in the map
     return selectedWorkforceTiers.has(tier);
   });
 
