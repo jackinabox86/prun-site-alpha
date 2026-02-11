@@ -31,7 +31,8 @@ interface RegionConfig {
 const GCS_BUCKET = "prun-site-alpha-bucket";
 const GCS_VWAP_BASE = `https://storage.googleapis.com/${GCS_BUCKET}/historical-prices-vwap`;
 const GCS_STATIC_BASE = `https://storage.googleapis.com/${GCS_BUCKET}/static`;
-const LOCAL_TEMP_DIR = "public/data/temp-volume-classification";
+const GCS_DYNAMIC_PATH = "dynamic";
+const LOCAL_TEMP_DIR = "tmp/volume-classification";
 
 const REGION_CONFIGS: Record<string, RegionConfig> = {
   ANT: {
@@ -211,7 +212,7 @@ async function classifyProductionVolume(dryRun: boolean, regionName: string) {
   // Step 6: Upload to GCS
   if (!dryRun) {
     console.log("\n📤 Uploading to GCS...");
-    const gcsOutputPath = `gs://${GCS_BUCKET}/static/${regionConfig.outputFilename}`;
+    const gcsOutputPath = `gs://${GCS_BUCKET}/${GCS_DYNAMIC_PATH}/${regionConfig.outputFilename}`;
     try {
       execSync(
         `gsutil -h "Cache-Control:public, max-age=3600" -h "Content-Type:text/csv" cp "${localOutputPath}" "${gcsOutputPath}"`,

@@ -90,7 +90,7 @@ jobs:
           echo "💡 **Details:**" >> $GITHUB_STEP_SUMMARY
           echo "- Classifies each recipe's output against 30-day average trading volume" >> $GITHUB_STEP_SUMMARY
           echo "- Categories: extremely low, low, medium, high, no data" >> $GITHUB_STEP_SUMMARY
-          echo "- Output: \`gs://prun-site-alpha-bucket/static/production volume classification - {REGION} dynamic.csv\`" >> $GITHUB_STEP_SUMMARY
+          echo "- Output: \`gs://prun-site-alpha-bucket/dynamic/production volume classification - {REGION} dynamic.csv\`" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "📅 **Schedule:** Runs weekly on Monday at 07:00 UTC" >> $GITHUB_STEP_SUMMARY
           echo "🔗 **Related workflows:**" >> $GITHUB_STEP_SUMMARY
@@ -102,5 +102,5 @@ jobs:
         with:
           name: volume-classification-logs-${{ github.run_number }}
           path: |
-            public/data/temp-volume-classification/
+            tmp/volume-classification/
           retention-days: 30
