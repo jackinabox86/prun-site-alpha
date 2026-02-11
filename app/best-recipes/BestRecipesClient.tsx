@@ -52,16 +52,64 @@ const WORKFORCE_TIERS: { id: WorkforceTier; label: string; fullName: string }[] 
   { id: "SCI", label: "SCI", fullName: "Scientist" },
 ];
 
-const WORKFORCE_NAME_TO_TIER: Record<string, WorkforceTier> = {
-  Pioneer: "PIO",
-  Settler: "SET",
-  Technician: "TEC",
-  Engineer: "ENG",
-  Scientist: "SCI",
+// Static mapping of ticker to workforce tier (from game data)
+const TICKER_TO_WORKFORCE_TIER: Record<string, WorkforceTier> = {
+  AAR: "TEC", ADR: "TEC", ADS: "ENG", AEF: "SET", AFR: "SET", AGS: "ENG",
+  AHP: "TEC", AIR: "ENG", AL: "PIO", ALE: "SET", ALG: "SET", ALO: "PIO",
+  ALR: "ENG", AMM: "PIO", ANZ: "SCI", APT: "ENG", AR: "PIO", ARP: "ENG",
+  ASE: "ENG", AST: "ENG", ATA: "ENG", ATP: "TEC", AU: "PIO", AUO: "PIO",
+  AWF: "TEC", AWH: "TEC", BAC: "TEC", BAI: "TEC", BBH: "PIO", BDE: "PIO",
+  BE: "ENG", BEA: "PIO", BER: "PIO", BFP: "SCI", BHP: "TEC", BID: "SET",
+  BL: "TEC", BLE: "TEC", BMF: "TEC", BND: "TEC", BOR: "PIO", BOS: "ENG",
+  BPT: "ENG", BR1: "SET", BR2: "SET", BRM: "PIO", BRP: "ENG", BRS: "SET",
+  BSC: "TEC", BSE: "PIO", BSU: "SET", BTA: "PIO", BWH: "TEC", BWS: "TEC",
+  C: "PIO", CA: "SET", CAF: "SET", CAP: "TEC", CBL: "TEC", CBM: "TEC",
+  CBS: "TEC", CBU: "SET", CCD: "ENG", CD: "TEC", CF: "PIO", CHA: "PIO",
+  CL: "SET", CLI: "PIO", COM: "ENG", COT: "SET", CPU: "SET", CQL: "SET",
+  CQM: "SET", CQS: "SET", CQT: "SET", CRU: "SCI", CST: "TEC", CTF: "ENG",
+  CU: "PIO", CUO: "PIO", DA: "ENG", DCH: "ENG", DCL: "SET", DCM: "SET",
+  DCS: "SET", DD: "ENG", DEC: "SET", DIS: "TEC", DOU: "SET", DRF: "ENG",
+  DV: "ENG", DW: "PIO", EBU: "SET", EDC: "ENG", EES: "SCI", ENG: "SCI",
+  EPO: "SET", ES: "SCI", ETC: "TEC", F: "PIO", FAL: "ENG", FAN: "TEC",
+  FC: "PIO", FE: "PIO", FEO: "PIO", FET: "ENG", FF: "SET", FFC: "ENG",
+  FIM: "PIO", FIR: "TEC", FLO: "SET", FLP: "PIO", FLX: "SET", FOD: "PIO",
+  FUN: "SET", GAL: "PIO", GC: "PIO", GCH: "SET", GEN: "SET", GIN: "SET",
+  GL: "SET", GN: "SET", GNZ: "SET", GRA: "TEC", GRN: "PIO", GV: "PIO",
+  GWS: "SCI", H: "PIO", HAB: "SET", HAL: "PIO", HAM: "SET", HCP: "PIO",
+  HD: "TEC", HE: "PIO", HE3: "SET", HEL: "PIO", HER: "PIO", HHP: "TEC",
+  HMS: "SET", HOG: "SET", HOP: "TEC", HPC: "TEC", HPR: "SCI", HSS: "SET",
+  HTE: "SCI", HYR: "SCI", I: "PIO", IDC: "SCI", IMM: "SCI", IND: "SET",
+  INS: "TEC", JUI: "TEC", KOM: "SET", KRE: "SCI", KV: "SET", LC: "SET",
+  LCB: "TEC", LCR: "SET", LD: "TEC", LDE: "SET", LDI: "TEC", LES: "PIO",
+  LFE: "TEC", LFP: "SET", LHP: "TEC", LI: "PIO", LIO: "PIO", LIS: "ENG",
+  LIT: "SET", LSE: "SET", LSL: "TEC", LST: "PIO", LTA: "SET", LU: "SET",
+  MAG: "PIO", MAI: "PIO", MB: "TEC", MCB: "TEC", MCG: "PIO", MCP: "TEC",
+  MEA: "PIO", MED: "SET", MFE: "TEC", MG: "PIO", MGC: "TEC", MGS: "PIO",
+  MHL: "PIO", MLI: "TEC", MPC: "TEC", MTC: "TEC", MTP: "TEC", MUS: "SET",
+  MWF: "TEC", NAB: "SET", NCS: "TEC", NE: "PIO", NF: "TEC", NFI: "TEC",
+  NG: "SET", NN: "ENG", NR: "TEC", NS: "SET", NST: "TEC", NUT: "PIO",
+  NV1: "ENG", NV2: "SCI", O: "PIO", OFF: "PIO", OLF: "SET", OS: "ENG",
+  OVE: "PIO", PBU: "SET", PCB: "TEC", PDA: "ENG", PE: "PIO", PFE: "SET",
+  PFG: "SCI", PG: "SET", PIB: "TEC", PK: "TEC", POW: "TEC", PP1: "PIO",
+  PPA: "PIO", PSH: "TEC", PSL: "SET", PSM: "SET", PSS: "SET", PT: "PIO",
+  PWO: "PIO", QCR: "SCI", RAD: "SET", RAG: "TEC", RAM: "TEC", RAT: "PIO",
+  RBH: "TEC", RCO: "PIO", RCS: "ENG", RCT: "SCI", RDE: "TEC", RE: "PIO",
+  REA: "SET", RED: "ENG", REP: "PIO", RG: "SET", RGO: "SET", RHP: "TEC",
+  RIG: "PIO", ROM: "TEC", RSE: "TEC", RSH: "ENG", RSI: "TEC", RTA: "TEC",
+  S: "PIO", SA: "TEC", SAL: "TEC", SAR: "TEC", SBU: "SET", SC: "SET",
+  SCB: "TEC", SCN: "SET", SCR: "PIO", SDM: "ENG", SDR: "ENG", SEA: "PIO",
+  SEN: "TEC", SEQ: "SET", SF: "SET", SFE: "TEC", SFK: "SET", SI: "PIO",
+  SIL: "SET", SIO: "PIO", SOI: "SET", SOL: "TEC", SP: "TEC", SPT: "SET",
+  SRD: "ENG", SRP: "ENG", SSC: "PIO", SSL: "TEC", ST: "SCI", STL: "PIO",
+  STR: "PIO", SU: "SET", SUD: "ENG", SUN: "PIO", SWF: "TEC", TA: "ENG",
+  TAC: "SCI", TAI: "PIO", TBU: "SET", TC: "TEC", TCB: "TEC", TCL: "TEC",
+  TCO: "PIO", TCS: "TEC", TCU: "SET", THF: "TEC", TI: "PIO", TIO: "PIO",
+  TK: "SET", TOR: "PIO", TPU: "TEC", TRA: "TEC", TRN: "TEC", TRS: "ENG",
+  TRU: "PIO", TS: "PIO", TSH: "ENG", TUB: "SET", VCB: "TEC", VEG: "PIO",
+  VF: "SET", VFT: "TEC", VG: "TEC", VIT: "SET", VOE: "SCI", VOR: "TEC",
+  VSC: "TEC", W: "ENG", WAI: "SCI", WAL: "ENG", WIN: "SET", WM: "TEC",
+  WOR: "SET", WR: "ENG", WRH: "ENG", WS: "ENG", ZIR: "PIO", ZR: "ENG",
 };
-
-const WORKFORCE_CSV_URL =
-  "https://storage.googleapis.com/prun-site-alpha-bucket/static/Workforce%20Tier%20List%20for%20Recipes.csv";
 
 export default function BestRecipesClient() {
   const [loading, setLoading] = useState(false);
@@ -95,38 +143,6 @@ export default function BestRecipesClient() {
   const [selectedWorkforceTiers, setSelectedWorkforceTiers] = useState<Set<WorkforceTier>>(
     new Set(["PIO", "SET", "TEC", "ENG", "SCI"])
   );
-  const [workforceTierMap, setWorkforceTierMap] = useState<Map<string, WorkforceTier>>(new Map());
-
-  useEffect(() => {
-    const loadWorkforceTiers = async () => {
-      try {
-        const response = await fetch(WORKFORCE_CSV_URL);
-        if (!response.ok) return;
-        const text = await response.text();
-        const lines = text.split("\n").filter((line) => line.trim());
-        if (lines.length < 2) return;
-
-        const header = lines[0].split(",");
-        const tickerIndex = header.findIndex((h) => h.trim() === "Ticker");
-        const workforceIndex = header.findIndex((h) => h.trim() === "Workforce");
-        if (tickerIndex === -1 || workforceIndex === -1) return;
-
-        const tierMap = new Map<string, WorkforceTier>();
-        for (let i = 1; i < lines.length; i++) {
-          const cols = lines[i].split(",");
-          const ticker = cols[tickerIndex]?.trim();
-          const workforceName = cols[workforceIndex]?.trim();
-          if (ticker && workforceName && WORKFORCE_NAME_TO_TIER[workforceName]) {
-            tierMap.set(ticker, WORKFORCE_NAME_TO_TIER[workforceName]);
-          }
-        }
-        setWorkforceTierMap(tierMap);
-      } catch (err) {
-        console.error("Failed to load workforce tier data:", err);
-      }
-    };
-    loadWorkforceTiers();
-  }, []);
 
   const loadData = async () => {
     setLoading(true);
@@ -251,7 +267,7 @@ export default function BestRecipesClient() {
 
   // Apply workforce tier filter
   const workforceFilteredData = filteredData.filter((row) => {
-    const tier = workforceTierMap.get(row.ticker);
+    const tier = TICKER_TO_WORKFORCE_TIER[row.ticker];
     if (!tier) return true; // Keep tickers not in the map
     return selectedWorkforceTiers.has(tier);
   });
