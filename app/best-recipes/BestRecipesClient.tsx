@@ -42,6 +42,27 @@ const SELL_AT_OPTIONS = [
   { display: "PP7", value: "pp7" },
 ];
 
+type WorkforceTier = "PIO" | "SET" | "TEC" | "ENG" | "SCI";
+
+const WORKFORCE_TIERS: { id: WorkforceTier; label: string; fullName: string }[] = [
+  { id: "PIO", label: "PIO", fullName: "Pioneer" },
+  { id: "SET", label: "SET", fullName: "Settler" },
+  { id: "TEC", label: "TEC", fullName: "Technician" },
+  { id: "ENG", label: "ENG", fullName: "Engineer" },
+  { id: "SCI", label: "SCI", fullName: "Scientist" },
+];
+
+const WORKFORCE_NAME_TO_TIER: Record<string, WorkforceTier> = {
+  Pioneer: "PIO",
+  Settler: "SET",
+  Technician: "TEC",
+  Engineer: "ENG",
+  Scientist: "SCI",
+};
+
+const WORKFORCE_CSV_URL =
+  "https://storage.googleapis.com/prun-site-alpha-bucket/static/Workforce%20Tier%20List%20for%20Recipes.csv";
+
 export default function BestRecipesClient() {
   const [loading, setLoading] = useState(false);
   const [data, setData] = useState<BestRecipeResult[]>([]);
@@ -71,6 +92,41 @@ export default function BestRecipesClient() {
     false,
     { updateUrl: false }
   );
+  const [selectedWorkforceTiers, setSelectedWorkforceTiers] = useState<Set<WorkforceTier>>(
+    new Set(["PIO", "SET", "TEC", "ENG", "SCI"])
+  );
+  const [workforceTierMap, setWorkforceTierMap] = useState<Map<string, WorkforceTier>>(new Map());
+
+  useEffect(() => {
+    const loadWorkforceTiers = async () => {
+      try {
+        const response = await fetch(WORKFORCE_CSV_URL);
+        if (!response.ok) return;
+        const text = await response.text();
+        const lines = text.split("\n").filter((line) => line.trim());
+        if (lines.length < 2) return;
+
+        const header = lines[0].split(",");
+        const recipeIdIndex = header.findIndex((h) => h.trim() === "RecipeID");
+        const workforceIndex = header.findIndex((h) => h.trim() === "Workforce");
+        if (recipeIdIndex === -1 || workforceIndex === -1) return;
+
+        const tierMap = new Map<string, WorkforceTier>();
+        for (let i = 1; i < lines.length; i++) {
+          const cols = lines[i].split(",");
+          const recipeId = cols[recipeIdIndex]?.trim();
+          const workforceName = cols[workforceIndex]?.trim();
+          if (recipeId && workforceName && WORKFORCE_NAME_TO_TIER[workforceName]) {
+            tierMap.set(recipeId, WORKFORCE_NAME_TO_TIER[workforceName]);
+          }
+        }
+        setWorkforceTierMap(tierMap);
+      } catch (err) {
+        console.error("Failed to load workforce tier data:", err);
+      }
+    };
+    loadWorkforceTiers();
+  }, []);
 
   const loadData = async () => {
     setLoading(true);
@@ -128,6 +184,19 @@ export default function BestRecipesClient() {
     }
   };
 
+  const handleWorkforceTierToggle = (tier: WorkforceTier) => {
+    setSelectedWorkforceTiers((prev) => {
+      const newSet = new Set(prev);
+      if (newSet.has(tier)) {
+        if (newSet.size === 1) return prev; // Don't allow unchecking all
+        newSet.delete(tier);
+      } else {
+        newSet.add(tier);
+      }
+      return newSet;
+    });
+  };
+
   // Extract unique buildings for dropdown
   const uniqueBuildings = useMemo(() => {
     const buildings = new Set<string>();
@@ -180,7 +249,15 @@ export default function BestRecipesClient() {
       : row.ticker.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
-  const sortedData = [...filteredData].sort((a, b) => {
+  // Apply workforce tier filter
+  const workforceFilteredData = filteredData.filter((row) => {
+    if (!row.recipeId) return true;
+    const tier = workforceTierMap.get(row.recipeId);
+    if (!tier) return true; // Keep recipes not in the map
+    return selectedWorkforceTiers.has(tier);
+  });
+
+  const sortedData = [...workforceFilteredData].sort((a, b) => {
     const aVal = a[sortColumn];
     const bVal = b[sortColumn];
 
@@ -397,6 +474,39 @@ export default function BestRecipesClient() {
             ))}
           </div>
         )}
+
+        {/* Workforce Tier Filter */}
+        {data.length > 0 && (
+          <div style={{ display: "flex", gap: "0.75rem", flexWrap: "wrap", alignItems: "center", marginTop: "0.75rem" }}>
+            <span style={{ fontFamily: "var(--font-mono)", fontSize: "0.75rem", color: "var(--color-text-muted)", marginRight: "0.5rem" }}>
+              WORKFORCE:
+            </span>
+            {WORKFORCE_TIERS.map((tier) => (
+              <label
+                key={tier.id}
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "0.35rem",
+                  cursor: "pointer",
+                  fontFamily: "var(--font-mono)",
+                  fontSize: "0.75rem",
+                  color: selectedWorkforceTiers.has(tier.id) ? "var(--color-accent-primary)" : "var(--color-text-muted)",
+                  opacity: selectedWorkforceTiers.has(tier.id) ? 1 : 0.6,
+                }}
+                title={tier.fullName}
+              >
+                <input
+                  type="checkbox"
+                  checked={selectedWorkforceTiers.has(tier.id)}
+                  onChange={() => handleWorkforceTierToggle(tier.id)}
+                  style={{ accentColor: "var(--color-accent-primary)" }}
+                />
+                {tier.label}
+              </label>
+            ))}
+          </div>
+        )}
       </div>
 
       {/* Error Display */}
@@ -415,6 +525,9 @@ export default function BestRecipesClient() {
             <span className="text-accent">SHOWING:</span> {sortedData.length} ticker{sortedData.length !== 1 ? 's' : ''}
             {selectedBuilding !== 'all' && <span> (building: {selectedBuilding})</span>}
             {selectedFilterGroupId !== 'all' && <span> (from {groupFilteredData.length} in {selectedGroup?.label})</span>}
+            {selectedWorkforceTiers.size < 5 && (
+              <span> (workforce: {Array.from(selectedWorkforceTiers).join(", ")})</span>
+            )}
             {data.length > sortedData.length && <span> out of {data.length} total</span>}
           </div>
         </div>
