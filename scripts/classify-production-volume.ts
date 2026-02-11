@@ -93,7 +93,7 @@ function classifyVolume(
   fullBaseOutputPerDay: number
 ): string {
   if (averageTraded30d < outputPerDay) return "extremely low";
-  if (averageTraded30d < fullBaseOutputPerDay) return "low";
+  if (averageTraded30d < 3 * fullBaseOutputPerDay) return "low";
   if (averageTraded30d < 10 * fullBaseOutputPerDay) return "medium";
   return "high";
 }
@@ -189,7 +189,7 @@ async function classifyProductionVolume(dryRun: boolean, regionName: string) {
     let averageTraded30d: string;
 
     if (avgTraded === null || avgTraded === undefined) {
-      volume = "no data";
+      volume = "extremely low";
       averageTraded30d = "";
     } else {
       volume = classifyVolume(avgTraded, outputPerDay, fullBaseOutputPerDay);
@@ -233,7 +233,6 @@ async function classifyProductionVolume(dryRun: boolean, regionName: string) {
     low: 0,
     medium: 0,
     high: 0,
-    "no data": 0,
   };
   for (const row of outputRows) {
     counts[row.volume] = (counts[row.volume] || 0) + 1;
@@ -248,7 +247,6 @@ async function classifyProductionVolume(dryRun: boolean, regionName: string) {
   console.log(`   Low: ${counts.low}`);
   console.log(`   Medium: ${counts.medium}`);
   console.log(`   High: ${counts.high}`);
-  console.log(`   No data: ${counts["no data"]}`);
   console.log();
 }
 
