@@ -42,6 +42,88 @@ const SELL_AT_OPTIONS = [
   { display: "PP7", value: "pp7" },
 ];
 
+type WorkforceTier = "PIO" | "SET" | "TEC" | "ENG" | "SCI";
+
+const WORKFORCE_TIERS: { id: WorkforceTier; label: string; fullName: string }[] = [
+  { id: "PIO", label: "PIO", fullName: "Pioneer" },
+  { id: "SET", label: "SET", fullName: "Settler" },
+  { id: "TEC", label: "TEC", fullName: "Technician" },
+  { id: "ENG", label: "ENG", fullName: "Engineer" },
+  { id: "SCI", label: "SCI", fullName: "Scientist" },
+];
+
+// Static mapping of ticker to workforce tier (from game data)
+const TICKER_TO_WORKFORCE_TIER: Record<string, WorkforceTier> = {
+  // Scientists (SCI)
+  GWS: "SCI", NV2: "SCI", CRU: "SCI", SST: "SCI", TAC: "SCI", CC: "SCI",
+  STS: "SCI", PFG: "SCI", KRE: "SCI", EES: "SCI", ES: "SCI", IMM: "SCI",
+  WAI: "SCI", SNM: "SCI", IDC: "SCI", NOZ: "SCI", HPR: "SCI", RCT: "SCI",
+  QCR: "SCI", AFP: "SCI", BFP: "SCI", VOE: "SCI", ANZ: "SCI", HNZ: "SCI",
+  HYR: "SCI", AEN: "SCI", ENG: "SCI", FSE: "SCI", HTE: "SCI",
+  // Engineers (ENG)
+  BOS: "ENG", BE: "ENG", TA: "ENG", ZR: "ENG", W: "ENG", SDM: "ENG",
+  WR: "ENG", LOG: "ENG", COM: "ENG", RCS: "ENG", ADS: "ENG", WS: "ENG",
+  AIR: "ENG", ACS: "ENG", LIS: "ENG", NV1: "ENG", PDA: "ENG", FFC: "ENG",
+  AST: "ENG", FET: "ENG", WAL: "ENG", CTF: "ENG", FAL: "ENG", WRH: "ENG",
+  ALR: "ENG", CCD: "ENG", DCH: "ENG", SUD: "ENG", RED: "ENG", SRD: "ENG",
+  SDR: "ENG", TSH: "ENG", ASE: "ENG", ATA: "ENG", RSH: "ENG", ADE: "ENG",
+  ABH: "ENG", TRS: "ENG", NN: "ENG", OS: "ENG", DD: "ENG", DA: "ENG",
+  DV: "ENG", EDC: "ENG", AGS: "ENG", APT: "ENG", BRP: "ENG", ARP: "ENG",
+  SRP: "ENG", BPT: "ENG", BGS: "ENG",
+  // Pioneers (PIO)
+  OVE: "PIO", EXO: "PIO", PE: "PIO", PWO: "PIO", REP: "PIO", MG: "PIO",
+  SEA: "PIO", PT: "PIO", SUN: "PIO", OFF: "PIO", I: "PIO", MCG: "PIO",
+  STR: "PIO", DW: "PIO", PPA: "PIO", COF: "PIO", RAT: "PIO", MEA: "PIO",
+  FIM: "PIO", FOD: "PIO", NUT: "PIO", BEA: "PIO", GRN: "PIO", HER: "PIO",
+  C: "PIO", BDE: "PIO", BSE: "PIO", BTA: "PIO", BBH: "PIO", LI: "PIO",
+  AU: "PIO", S: "PIO", STL: "PIO", SI: "PIO", CF: "PIO", TI: "PIO",
+  CU: "PIO", AL: "PIO", FE: "PIO", RE: "PIO", CHA: "PIO", FC: "PIO",
+  GV: "PIO", GC: "PIO", FLP: "PIO", MHL: "PIO", TOR: "PIO", SSC: "PIO",
+  TRU: "PIO", THP: "PIO", DRF: "PIO", AMM: "PIO", AR: "PIO", F: "PIO",
+  H: "PIO", HE: "PIO", HE3: "PIO", N: "PIO", NE: "PIO", O: "PIO",
+  BTS: "PIO", H2O: "PIO", HEX: "PIO", LES: "PIO", BER: "PIO", BOR: "PIO",
+  BRM: "PIO", CLI: "PIO", GAL: "PIO", HAL: "PIO", LST: "PIO", MAG: "PIO",
+  MGS: "PIO", SCR: "PIO", TAI: "PIO", TCO: "PIO", TS: "PIO", ZIR: "PIO",
+  ALO: "PIO", AUO: "PIO", CUO: "PIO", FEO: "PIO", LIO: "PIO", SIO: "PIO",
+  TIO: "PIO",
+  // Settlers (SET)
+  PFE: "SET", SOI: "SET", FLX: "SET", CA: "SET", IND: "SET", NAB: "SET",
+  LCR: "SET", REA: "SET", SC: "SET", NS: "SET", CL: "SET", MED: "SET",
+  OLF: "SET", SPT: "SET", HMS: "SET", LC: "SET", HSS: "SET", SCN: "SET",
+  HOG: "SET", RAD: "SET", MHP: "SET", BID: "SET", VIT: "SET", WIN: "SET",
+  GIN: "SET", ALE: "SET", KOM: "SET", FLO: "SET", BRO: "SET", BGC: "SET",
+  BCO: "SET", SFK: "SET", HCC: "SET", BFR: "SET", MFK: "SET", AFR: "SET",
+  UTS: "SET", SEQ: "SET", RGO: "SET", BGO: "SET", NG: "SET", RG: "SET",
+  TUB: "SET", LIT: "SET", GCH: "SET", GNZ: "SET", GL: "SET", GEN: "SET",
+  RCO: "SET", HCP: "SET", VEG: "SET", ALG: "SET", MUS: "SET", MAI: "SET",
+  CAF: "SET", EBU: "SET", CBU: "SET", PBU: "SET", SBU: "SET", TBU: "SET",
+  DEC: "SET", EPO: "SET", PG: "SET", LSE: "SET", LTA: "SET", LBH: "SET",
+  LDE: "SET", AEF: "SET", PSS: "SET", LFP: "SET", PSM: "SET", DCL: "SET",
+  DCM: "SET", PSL: "SET", DCS: "SET", SF: "SET", FF: "SET", VF: "SET",
+  CPU: "SET", BR1: "SET", BR2: "SET", CQM: "SET", BRS: "SET", DOU: "SET",
+  TCU: "SET", HAM: "SET", FUN: "SET", BSU: "SET", LU: "SET", CQL: "SET",
+  RDS: "SET", WOR: "SET", CQT: "SET", RDL: "SET", SU: "SET", CQS: "SET",
+  HAB: "SET", TK: "SET", COT: "SET", SIL: "SET", NL: "SET", KV: "SET",
+  // Technicians (TEC)
+  NFI: "TEC", TRN: "TEC", TRA: "TEC", NCS: "TEC", LDI: "TEC", SWF: "TEC",
+  CAP: "TEC", SFE: "TEC", MTC: "TEC", MWF: "TEC", MFE: "TEC", CBL: "TEC",
+  POW: "TEC", VOR: "TEC", SOL: "TEC", FIR: "TEC", RAG: "TEC", CBS: "TEC",
+  SP: "TEC", CBM: "TEC", SAR: "TEC", CD: "TEC", AAR: "TEC", AWF: "TEC",
+  BWS: "TEC", HPC: "TEC", BMF: "TEC", LFE: "TEC", LHP: "TEC", BHP: "TEC",
+  HHP: "TEC", RHP: "TEC", ATP: "TEC", BWH: "TEC", AWH: "TEC", AHP: "TEC",
+  RSI: "TEC", MTP: "TEC", VG: "TEC", JUI: "TEC", BLE: "TEC", DDT: "TEC",
+  TCL: "TEC", NST: "TEC", BL: "TEC", BAC: "TEC", CST: "TEC", THF: "TEC",
+  NR: "TEC", FAN: "TEC", DIS: "TEC", HD: "TEC", MB: "TEC", PIB: "TEC",
+  GRA: "TEC", HOP: "TEC", ADR: "TEC", BSC: "TEC", BND: "TEC", PK: "TEC",
+  INS: "TEC", RBH: "TEC", RDE: "TEC", RTA: "TEC", MGC: "TEC", PSH: "TEC",
+  RSE: "TEC", HSE: "TEC", ROM: "TEC", MPC: "TEC", PCB: "TEC", SEN: "TEC",
+  TPU: "TEC", RAM: "TEC", BAI: "TEC", LD: "TEC", MLI: "TEC", NF: "TEC",
+  SA: "TEC", SAL: "TEC", WM: "TEC", WCB: "TEC", MCB: "TEC", MFL: "TEC",
+  LSL: "TEC", LCB: "TEC", VCB: "TEC", TCB: "TEC", SSL: "TEC", LFL: "TEC",
+  VSC: "TEC", SCB: "TEC", MSL: "TEC", VFT: "TEC", SFL: "TEC", HCB: "TEC",
+  ETC: "TEC", TC: "TEC", TCS: "TEC",
+};
+
 export default function BestRecipesClient() {
   const [loading, setLoading] = useState(false);
   const [data, setData] = useState<BestRecipeResult[]>([]);
@@ -70,6 +152,9 @@ export default function BestRecipesClient() {
     "prun:bestRecipes:readmeHidden",
     false,
     { updateUrl: false }
+  );
+  const [selectedWorkforceTiers, setSelectedWorkforceTiers] = useState<Set<WorkforceTier>>(
+    new Set(["PIO", "SET", "TEC", "ENG", "SCI"])
   );
 
   const loadData = async () => {
@@ -128,6 +213,19 @@ export default function BestRecipesClient() {
     }
   };
 
+  const handleWorkforceTierToggle = (tier: WorkforceTier) => {
+    setSelectedWorkforceTiers((prev) => {
+      const newSet = new Set(prev);
+      if (newSet.has(tier)) {
+        if (newSet.size === 1) return prev; // Don't allow unchecking all
+        newSet.delete(tier);
+      } else {
+        newSet.add(tier);
+      }
+      return newSet;
+    });
+  };
+
   // Extract unique buildings for dropdown
   const uniqueBuildings = useMemo(() => {
     const buildings = new Set<string>();
@@ -180,7 +278,14 @@ export default function BestRecipesClient() {
       : row.ticker.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
-  const sortedData = [...filteredData].sort((a, b) => {
+  // Apply workforce tier filter
+  const workforceFilteredData = filteredData.filter((row) => {
+    const tier = TICKER_TO_WORKFORCE_TIER[row.ticker];
+    if (!tier) return true; // Keep tickers not in the map
+    return selectedWorkforceTiers.has(tier);
+  });
+
+  const sortedData = [...workforceFilteredData].sort((a, b) => {
     const aVal = a[sortColumn];
     const bVal = b[sortColumn];
 
@@ -397,6 +502,39 @@ export default function BestRecipesClient() {
             ))}
           </div>
         )}
+
+        {/* Workforce Tier Filter */}
+        {data.length > 0 && (
+          <div style={{ display: "flex", gap: "0.75rem", flexWrap: "wrap", alignItems: "center", marginTop: "0.75rem" }}>
+            <span style={{ fontFamily: "var(--font-mono)", fontSize: "0.75rem", color: "var(--color-text-muted)", marginRight: "0.5rem" }}>
+              WORKFORCE:
+            </span>
+            {WORKFORCE_TIERS.map((tier) => (
+              <label
+                key={tier.id}
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "0.35rem",
+                  cursor: "pointer",
+                  fontFamily: "var(--font-mono)",
+                  fontSize: "0.75rem",
+                  color: selectedWorkforceTiers.has(tier.id) ? "var(--color-accent-primary)" : "var(--color-text-muted)",
+                  opacity: selectedWorkforceTiers.has(tier.id) ? 1 : 0.6,
+                }}
+                title={tier.fullName}
+              >
+                <input
+                  type="checkbox"
+                  checked={selectedWorkforceTiers.has(tier.id)}
+                  onChange={() => handleWorkforceTierToggle(tier.id)}
+                  style={{ accentColor: "var(--color-accent-primary)" }}
+                />
+                {tier.label}
+              </label>
+            ))}
+          </div>
+        )}
       </div>
 
       {/* Error Display */}
@@ -415,6 +553,9 @@ export default function BestRecipesClient() {
             <span className="text-accent">SHOWING:</span> {sortedData.length} ticker{sortedData.length !== 1 ? 's' : ''}
             {selectedBuilding !== 'all' && <span> (building: {selectedBuilding})</span>}
             {selectedFilterGroupId !== 'all' && <span> (from {groupFilteredData.length} in {selectedGroup?.label})</span>}
+            {selectedWorkforceTiers.size < 5 && (
+              <span> (workforce: {Array.from(selectedWorkforceTiers).join(", ")})</span>
+            )}
             {data.length > sortedData.length && <span> out of {data.length} total</span>}
           </div>
         </div>
