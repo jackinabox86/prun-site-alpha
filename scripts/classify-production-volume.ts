@@ -94,7 +94,7 @@ function classifyVolume(
 ): string {
   if (averageTraded30d < outputPerDay) return "extremely low";
   if (averageTraded30d < 3 * fullBaseOutputPerDay) return "low";
-  if (averageTraded30d < 10 * fullBaseOutputPerDay) return "medium";
+  if (averageTraded30d < 8 * fullBaseOutputPerDay) return "medium";
   return "high";
 }
 
