@@ -43,7 +43,8 @@ interface ExchangeLeaderboard {
 /**
  * Ticker Leaderboard: returns top tickers by trading volume per exchange.
  *
- * Trading volume for each data point = Traded * Volume, summed over the period.
+ * Volume already represents total currency value traded (price x quantity)
+ * per day, so trading volume is the sum of Volume over the period.
  *
  * Query params:
  *   - days: number of days to look back (default: 30)
@@ -150,9 +151,10 @@ export async function GET(request: Request) {
             return null;
           }
 
-          // Trading volume = sum of (Traded * Volume) for each data point
+          // Volume already represents total currency value traded (price x quantity),
+          // so trading volume is simply the sum of Volume across the period.
           const tradingVolume = recentData.reduce(
-            (sum, d) => sum + d.Traded * d.Volume,
+            (sum, d) => sum + d.Volume,
             0
           );
 
