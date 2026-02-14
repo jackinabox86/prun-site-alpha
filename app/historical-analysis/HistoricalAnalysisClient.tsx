@@ -30,6 +30,27 @@ interface AnalysisResult {
   hint?: string;
 }
 
+interface LeaderboardEntry {
+  ticker: string;
+  tradingVolume: number;
+}
+
+interface ExchangeLeaderboard {
+  exchange: string;
+  leaderboard: LeaderboardEntry[];
+}
+
+interface LeaderboardResult {
+  days: number;
+  limit: number;
+  cutoffDate: string;
+  exchangeLeaderboards: ExchangeLeaderboard[];
+  filesProcessed: number;
+  lastUpdated: number;
+  error?: string;
+  hint?: string;
+}
+
 // All available tickers
 const TICKERS = [
   "GWS", "NV2", "CRU", "SST", "TAC", "CC", "STS", "PFG", "BOS", "BE", "TA", "ZR", "W", "SDM", "WR",
@@ -65,7 +86,11 @@ export default function HistoricalAnalysisClient() {
   const [filteredTickers, setFilteredTickers] = useState<string[]>([]);
   const [loading, setLoading] = useState(false);
   const [csvLoading, setCsvLoading] = useState(false);
+  const [leaderboardLoading, setLeaderboardLoading] = useState(false);
   const [data, setData] = useState<AnalysisResult | null>(null);
+  const [leaderboardData, setLeaderboardData] = useState<LeaderboardResult | null>(null);
+  const [leaderboardDays, setLeaderboardDays] = useState<string>("30");
+  const [leaderboardLimit, setLeaderboardLimit] = useState<string>("20");
   const [error, setError] = useState<string | null>(null);
   const autocompleteRef = useRef<HTMLDivElement>(null);
 
@@ -131,6 +156,7 @@ export default function HistoricalAnalysisClient() {
       }
 
       setData(json);
+      setLeaderboardData(null);
     } catch (err: any) {
       setError(err.message || "Failed to load analysis data");
       setData(null);
@@ -177,6 +203,54 @@ export default function HistoricalAnalysisClient() {
       setCsvLoading(false);
     }
   };
+
+  const loadLeaderboard = useCallback(async () => {
+    setLeaderboardLoading(true);
+    setError(null);
+    try {
+      const daysNum = parseInt(leaderboardDays, 10);
+      if (isNaN(daysNum) || daysNum <= 0) {
+        setError("Please enter a valid number of days for the leaderboard");
+        setLeaderboardLoading(false);
+        return;
+      }
+
+      const limitNum = parseInt(leaderboardLimit, 10);
+      if (isNaN(limitNum) || limitNum <= 0) {
+        setError("Please enter a valid top N value");
+        setLeaderboardLoading(false);
+        return;
+      }
+
+      const params = new URLSearchParams({
+        days: leaderboardDays,
+        limit: leaderboardLimit,
+      });
+
+      const res = await fetch(`/api/historical-analysis/leaderboard?${params.toString()}`, {
+        cache: "no-store",
+      });
+
+      const json: LeaderboardResult = await res.json();
+
+      if (json.error) {
+        setError(json.error);
+        if (json.hint) {
+          setError(`${json.error}\n\nHint: ${json.hint}`);
+        }
+        setLeaderboardData(null);
+        return;
+      }
+
+      setLeaderboardData(json);
+      setData(null);
+    } catch (err: any) {
+      setError(err.message || "Failed to load leaderboard data");
+      setLeaderboardData(null);
+    } finally {
+      setLeaderboardLoading(false);
+    }
+  }, [leaderboardDays, leaderboardLimit]);
 
   const formatNumber = (value: number): string => {
     return value.toLocaleString(undefined, {
@@ -343,6 +417,87 @@ export default function HistoricalAnalysisClient() {
             </button>
           </div>
         </div>
+      </div>
+
+      {/* Leaderboard Controls */}
+      <div className="terminal-box" style={{ marginBottom: "2rem" }}>
+        <h2 className="terminal-header">TICKER LEADERBOARD</h2>
+
+        <div style={{ display: "flex", gap: "1rem", alignItems: "flex-end", flexWrap: "wrap" }}>
+          {/* Leaderboard Days Input */}
+          <div style={{ flex: "0 0 auto" }}>
+            <label
+              htmlFor="leaderboard-days-input"
+              style={{
+                display: "block",
+                color: "var(--color-text-secondary)",
+                marginBottom: "0.5rem",
+                fontSize: "0.875rem",
+                textTransform: "uppercase",
+                letterSpacing: "0.05em"
+              }}
+            >
+              Days
+            </label>
+            <input
+              id="leaderboard-days-input"
+              type="number"
+              value={leaderboardDays}
+              onChange={(e) => setLeaderboardDays(e.target.value)}
+              min="1"
+              max="365"
+              className="terminal-input"
+              style={{ width: "120px" }}
+            />
+          </div>
+
+          {/* Top N Input */}
+          <div style={{ flex: "0 0 auto" }}>
+            <label
+              htmlFor="leaderboard-limit-input"
+              style={{
+                display: "block",
+                color: "var(--color-text-secondary)",
+                marginBottom: "0.5rem",
+                fontSize: "0.875rem",
+                textTransform: "uppercase",
+                letterSpacing: "0.05em"
+              }}
+            >
+              Top N
+            </label>
+            <input
+              id="leaderboard-limit-input"
+              type="number"
+              value={leaderboardLimit}
+              onChange={(e) => setLeaderboardLimit(e.target.value)}
+              min="1"
+              max="269"
+              className="terminal-input"
+              style={{ width: "120px" }}
+            />
+          </div>
+
+          {/* Leaderboard Button */}
+          <div style={{ flex: "0 0 auto" }}>
+            <button
+              onClick={loadLeaderboard}
+              disabled={leaderboardLoading}
+              className="terminal-button"
+              style={{
+                backgroundColor: "var(--color-warning)",
+                color: "var(--color-bg-primary)",
+                borderColor: "var(--color-warning)",
+              }}
+            >
+              {leaderboardLoading ? "Loading..." : "Generate Leaderboard"}
+            </button>
+          </div>
+        </div>
+
+        <p style={{ color: "var(--color-text-muted)", fontSize: "0.75rem", margin: "0.75rem 0 0 0" }}>
+          Ranks tickers by total trading volume (Traded x Volume) per exchange over the selected period.
+        </p>
       </div>
 
       {/* Error Display */}
@@ -512,6 +667,111 @@ export default function HistoricalAnalysisClient() {
               over the selected period (Total Traded ÷ Days). Average Price is calculated as Total
               Volume divided by Total Traded. Record Count represents the number of daily data points
               available for each exchange (may be less than the period due to missing days).
+            </div>
+          </div>
+        </>
+      )}
+
+      {/* Leaderboard Results */}
+      {leaderboardData && (
+        <>
+          {/* Leaderboard Summary */}
+          <div className="terminal-box" style={{ marginBottom: "2rem" }}>
+            <h2 className="terminal-header">LEADERBOARD SUMMARY</h2>
+            <div style={{
+              display: "grid",
+              gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))",
+              gap: "1.5rem"
+            }}>
+              <div>
+                <div style={{ color: "var(--color-text-muted)", fontSize: "0.75rem", marginBottom: "0.25rem", textTransform: "uppercase", letterSpacing: "0.05em" }}>Period</div>
+                <div style={{ color: "var(--color-text-primary)", fontSize: "1rem", fontWeight: "600", fontFamily: "var(--font-mono)" }}>
+                  Last {leaderboardData.days} days
+                </div>
+                <div style={{ color: "var(--color-text-muted)", fontSize: "0.75rem", marginTop: "0.25rem" }}>
+                  Since {new Date(leaderboardData.cutoffDate).toLocaleDateString()}
+                </div>
+              </div>
+              <div>
+                <div style={{ color: "var(--color-text-muted)", fontSize: "0.75rem", marginBottom: "0.25rem", textTransform: "uppercase", letterSpacing: "0.05em" }}>Showing Top</div>
+                <div style={{ color: "var(--color-text-primary)", fontSize: "1rem", fontWeight: "600", fontFamily: "var(--font-mono)" }}>
+                  {leaderboardData.limit} tickers per exchange
+                </div>
+              </div>
+              <div>
+                <div style={{ color: "var(--color-text-muted)", fontSize: "0.75rem", marginBottom: "0.25rem", textTransform: "uppercase", letterSpacing: "0.05em" }}>Files Processed</div>
+                <div style={{ color: "var(--color-text-primary)", fontSize: "1rem", fontWeight: "600", fontFamily: "var(--font-mono)" }}>
+                  {leaderboardData.filesProcessed}
+                </div>
+              </div>
+              <div>
+                <div style={{ color: "var(--color-text-muted)", fontSize: "0.75rem", marginBottom: "0.25rem", textTransform: "uppercase", letterSpacing: "0.05em" }}>Last Updated</div>
+                <div style={{ color: "var(--color-text-primary)", fontSize: "1rem", fontWeight: "600", fontFamily: "var(--font-mono)" }}>
+                  {new Date(leaderboardData.lastUpdated).toLocaleTimeString()}
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Exchange Leaderboard Tables */}
+          <div style={{
+            display: "grid",
+            gridTemplateColumns: "repeat(auto-fit, minmax(350px, 1fr))",
+            gap: "1.5rem",
+            marginBottom: "2rem",
+          }}>
+            {leaderboardData.exchangeLeaderboards.map((exLb) => (
+              <div className="terminal-box" key={exLb.exchange} style={{ margin: 0 }}>
+                <h2 className="terminal-header">{exLb.exchange} LEADERBOARD</h2>
+                <div style={{ overflowX: "auto" }}>
+                  <table className="terminal-table">
+                    <thead>
+                      <tr>
+                        <th style={{ width: "3rem" }}>#</th>
+                        <th>Ticker</th>
+                        <th style={{ textAlign: "right" }}>Trading Volume</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {exLb.leaderboard.length === 0 ? (
+                        <tr>
+                          <td colSpan={3} style={{ color: "var(--color-text-muted)", textAlign: "center" }}>
+                            No trading data
+                          </td>
+                        </tr>
+                      ) : (
+                        exLb.leaderboard.map((entry, idx) => (
+                          <tr key={entry.ticker}>
+                            <td style={{ color: "var(--color-text-muted)" }}>{idx + 1}</td>
+                            <td style={{ fontWeight: "600", color: "var(--color-accent-primary)" }}>
+                              {entry.ticker}
+                            </td>
+                            <td style={{ textAlign: "right" }}>
+                              {formatInteger(entry.tradingVolume)}
+                            </td>
+                          </tr>
+                        ))
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            ))}
+          </div>
+
+          {/* Leaderboard Info Note */}
+          <div className="terminal-box" style={{
+            backgroundColor: "var(--color-bg-tertiary)",
+            borderColor: "var(--color-warning)",
+          }}>
+            <div style={{
+              color: "var(--color-text-secondary)",
+              fontSize: "0.875rem",
+              lineHeight: "1.6"
+            }}>
+              <strong style={{ color: "var(--color-warning)" }}>Note:</strong> Trading Volume is
+              calculated as the sum of (Traded x Volume) for each daily data point within the
+              selected period. Tickers are ranked by descending trading volume per exchange.
             </div>
           </div>
         </>
