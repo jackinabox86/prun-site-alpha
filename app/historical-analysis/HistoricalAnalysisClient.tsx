@@ -46,6 +46,7 @@ interface LeaderboardResult {
   cutoffDate: string;
   exchangeLeaderboards: ExchangeLeaderboard[];
   filesProcessed: number;
+  totalFiles: number;
   lastUpdated: number;
   error?: string;
   hint?: string;
@@ -699,9 +700,12 @@ export default function HistoricalAnalysisClient() {
                 </div>
               </div>
               <div>
-                <div style={{ color: "var(--color-text-muted)", fontSize: "0.75rem", marginBottom: "0.25rem", textTransform: "uppercase", letterSpacing: "0.05em" }}>Files Processed</div>
+                <div style={{ color: "var(--color-text-muted)", fontSize: "0.75rem", marginBottom: "0.25rem", textTransform: "uppercase", letterSpacing: "0.05em" }}>Activity</div>
                 <div style={{ color: "var(--color-text-primary)", fontSize: "1rem", fontWeight: "600", fontFamily: "var(--font-mono)" }}>
-                  {leaderboardData.filesProcessed}
+                  {leaderboardData.filesProcessed} of {leaderboardData.totalFiles}
+                </div>
+                <div style={{ color: "var(--color-text-muted)", fontSize: "0.75rem", marginTop: "0.25rem" }}>
+                  ticker.exchange files had activity
                 </div>
               </div>
               <div>

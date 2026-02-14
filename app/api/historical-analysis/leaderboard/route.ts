@@ -212,6 +212,7 @@ export async function GET(request: Request) {
       cutoffDate: cutoffDate.toISOString().split("T")[0],
       exchangeLeaderboards,
       filesProcessed,
+      totalFiles: files.length,
       lastUpdated: Date.now(),
     });
   } catch (error) {
