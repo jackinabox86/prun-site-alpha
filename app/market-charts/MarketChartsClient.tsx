@@ -243,46 +243,82 @@ export default function MarketChartsClient() {
   const oneYearAgo = getOneYearAgo();
 
   // Compute global price range across all exchanges for synchronized y-axes
-  // Uses percentiles to exclude outliers and keep the range tight
+  // Uses VWAP values for the main range, with axis breaks for extreme outliers
   const globalPriceRange = (() => {
-    const allPrices: number[] = [];
+    const vwapPrices: number[] = [];
+    const pricesWithVwap: { price: number; vwap: number }[] = [];
 
     exchangeData.forEach((ex) => {
       if (!ex.found || ex.data.length === 0) return;
 
       ex.data.forEach((d) => {
+        // Only use last year of data for y-axis calculation
         if (d.timestamp > cutoffTimestamp || d.timestamp < oneYearAgo) return;
 
-        // Collect all valid prices
-        [d.open, d.close, d.high, d.low, d.vwap7d].forEach((p) => {
-          if (p !== null && p > 0) {
-            allPrices.push(p);
-          }
-        });
+        const vwap = d.vwap7d;
+        if (vwap !== null && vwap > 0) {
+          vwapPrices.push(vwap);
+
+          // Track OHLC prices with their associated VWAP for outlier detection
+          [d.open, d.close, d.high, d.low].forEach((p) => {
+            if (p !== null && p > 0) {
+              pricesWithVwap.push({ price: p, vwap });
+            }
+          });
+        }
       });
     });
 
-    if (allPrices.length === 0) return null;
+    if (vwapPrices.length === 0) return null;
 
-    // Sort prices to calculate percentiles
-    allPrices.sort((a, b) => a - b);
+    // Main range based on VWAP (smoother, tighter)
+    const vwapMin = Math.min(...vwapPrices);
+    const vwapMax = Math.max(...vwapPrices);
+    const vwapPadding = (vwapMax - vwapMin) * 0.05;
 
-    // Use 1st and 99th percentile to exclude outliers
-    const lowerIdx = Math.floor(allPrices.length * 0.01);
-    const upperIdx = Math.ceil(allPrices.length * 0.99) - 1;
+    // Find outliers (>2x or <0.5x their corresponding VWAP)
+    let highOutlierMax = vwapMax;
+    let lowOutlierMin = vwapMin;
 
-    const pMin = allPrices[Math.max(0, lowerIdx)];
-    const pMax = allPrices[Math.min(allPrices.length - 1, upperIdx)];
+    pricesWithVwap.forEach(({ price, vwap }) => {
+      if (price > vwap * 2) {
+        highOutlierMax = Math.max(highOutlierMax, price);
+      }
+      if (price < vwap * 0.5) {
+        lowOutlierMin = Math.min(lowOutlierMin, price);
+      }
+    });
 
-    // Add small padding (3%) for visual breathing room
-    const padding = (pMax - pMin) * 0.03;
+    // Build axis breaks to compress outlier regions
+    const breaks: { from: number; to: number; breakSize: number }[] = [];
+
+    // Break for high outliers (compress the gap between normal max and outlier region)
+    if (highOutlierMax > vwapMax + vwapPadding * 2) {
+      breaks.push({
+        from: vwapMax + vwapPadding,
+        to: highOutlierMax - (highOutlierMax - vwapMax) * 0.1,
+        breakSize: 15,
+      });
+    }
+
+    // Break for low outliers (compress the gap between outlier region and normal min)
+    if (lowOutlierMin < vwapMin - vwapPadding * 2) {
+      breaks.push({
+        from: lowOutlierMin + (vwapMin - lowOutlierMin) * 0.1,
+        to: vwapMin - vwapPadding,
+        breakSize: 15,
+      });
+    }
+
     return {
-      min: Math.max(0, pMin - padding),
-      max: pMax + padding,
+      min: Math.max(0, lowOutlierMin - (vwapMax - vwapMin) * 0.02),
+      max: highOutlierMax + (vwapMax - vwapMin) * 0.02,
+      breaks,
     };
   })();
 
   // Compute global volume max across all exchanges for synchronized volume y-axes
+  // No percentiles - just use the actual max volume from the last year
   const globalVolumeMax = (() => {
     let maxVol = 0;
 
@@ -290,6 +326,7 @@ export default function MarketChartsClient() {
       if (!ex.found || ex.data.length === 0) return;
 
       ex.data.forEach((d) => {
+        // Only use last year of data
         if (d.timestamp > cutoffTimestamp || d.timestamp < oneYearAgo) return;
         if (d.open !== null && d.close !== null && d.open > 0 && d.close > 0) {
           if (d.volume > maxVol) maxVol = d.volume;
@@ -450,7 +487,11 @@ export default function MarketChartsClient() {
             dashStyle: "Dash",
           },
           ...(globalPriceRange
-            ? { min: globalPriceRange.min, max: globalPriceRange.max }
+            ? {
+                min: globalPriceRange.min,
+                max: globalPriceRange.max,
+                breaks: globalPriceRange.breaks,
+              }
             : {}),
         },
         ...(showVolume
