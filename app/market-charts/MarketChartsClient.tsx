@@ -267,9 +267,9 @@ export default function MarketChartsClient() {
     // Sort prices to calculate percentiles
     allPrices.sort((a, b) => a - b);
 
-    // Use 2nd and 98th percentile to exclude outliers
-    const lowerIdx = Math.floor(allPrices.length * 0.02);
-    const upperIdx = Math.ceil(allPrices.length * 0.98) - 1;
+    // Use 1st and 99th percentile to exclude outliers
+    const lowerIdx = Math.floor(allPrices.length * 0.01);
+    const upperIdx = Math.ceil(allPrices.length * 0.99) - 1;
 
     const pMin = allPrices[Math.max(0, lowerIdx)];
     const pMax = allPrices[Math.min(allPrices.length - 1, upperIdx)];
@@ -280,6 +280,24 @@ export default function MarketChartsClient() {
       min: Math.max(0, pMin - padding),
       max: pMax + padding,
     };
+  })();
+
+  // Compute global volume max across all exchanges for synchronized volume y-axes
+  const globalVolumeMax = (() => {
+    let maxVol = 0;
+
+    exchangeData.forEach((ex) => {
+      if (!ex.found || ex.data.length === 0) return;
+
+      ex.data.forEach((d) => {
+        if (d.timestamp > cutoffTimestamp || d.timestamp < oneYearAgo) return;
+        if (d.open !== null && d.close !== null && d.open > 0 && d.close > 0) {
+          if (d.volume > maxVol) maxVol = d.volume;
+        }
+      });
+    });
+
+    return maxVol > 0 ? maxVol : null;
   })();
 
   // Build Highcharts options for each exchange
@@ -445,6 +463,8 @@ export default function MarketChartsClient() {
                 height: "25%",
                 offset: 0,
                 lineWidth: 1,
+                min: 0,
+                ...(globalVolumeMax ? { max: globalVolumeMax } : {}),
               },
             ]
           : []),
