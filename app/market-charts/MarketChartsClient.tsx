@@ -7,11 +7,12 @@ import HighchartsReact from "highcharts-react-official";
 
 // Load the broken-axis module for axis break support
 // eslint-disable-next-line @typescript-eslint/no-require-imports
-const BrokenAxis = require("highcharts/modules/broken-axis");
+const BrokenAxisModule = require("highcharts/modules/broken-axis");
+const BrokenAxis = BrokenAxisModule.default || BrokenAxisModule;
 
 // Initialize Highcharts modules
 if (typeof Highcharts === "object") {
-  BrokenAxis(Highcharts);
+  if (typeof BrokenAxis === "function") BrokenAxis(Highcharts);
 
   // Set global dark theme
   Highcharts.setOptions({
