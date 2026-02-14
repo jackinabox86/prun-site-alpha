@@ -5,8 +5,14 @@ import dynamic from "next/dynamic";
 import Highcharts from "highcharts/highstock";
 import HighchartsReact from "highcharts-react-official";
 
+// Load the broken-axis module for axis break support
+// eslint-disable-next-line @typescript-eslint/no-require-imports
+const BrokenAxis = require("highcharts/modules/broken-axis");
+
 // Initialize Highcharts modules
 if (typeof Highcharts === "object") {
+  BrokenAxis(Highcharts);
+
   // Set global dark theme
   Highcharts.setOptions({
     chart: {
@@ -310,9 +316,10 @@ export default function MarketChartsClient() {
       });
     }
 
+    const rangePadding = (vwapMax - vwapMin) * 0.03;
     return {
-      min: Math.max(0, lowOutlierMin - (vwapMax - vwapMin) * 0.02),
-      max: highOutlierMax + (vwapMax - vwapMin) * 0.02,
+      min: lowOutlierMin - rangePadding,
+      max: highOutlierMax + rangePadding,
       breaks,
     };
   })();
@@ -334,7 +341,8 @@ export default function MarketChartsClient() {
       });
     });
 
-    return maxVol > 0 ? maxVol : null;
+    // Add 5% buffer so the tallest bars aren't clipped at the axis edge
+    return maxVol > 0 ? Math.ceil(maxVol * 1.05) : null;
   })();
 
   // Build Highcharts options for each exchange
