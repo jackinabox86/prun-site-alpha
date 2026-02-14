@@ -243,9 +243,9 @@ export default function MarketChartsClient() {
   const oneYearAgo = getOneYearAgo();
 
   // Compute global price range across all exchanges for synchronized y-axes
+  // Uses percentiles to exclude outliers and keep the range tight
   const globalPriceRange = (() => {
-    let globalMin = Infinity;
-    let globalMax = -Infinity;
+    const allPrices: number[] = [];
 
     exchangeData.forEach((ex) => {
       if (!ex.found || ex.data.length === 0) return;
@@ -253,22 +253,32 @@ export default function MarketChartsClient() {
       ex.data.forEach((d) => {
         if (d.timestamp > cutoffTimestamp || d.timestamp < oneYearAgo) return;
 
-        const prices = [d.open, d.close, d.high, d.low, d.vwap7d].filter(
-          (p): p is number => p !== null && p > 0
-        );
-        prices.forEach((p) => {
-          if (p < globalMin) globalMin = p;
-          if (p > globalMax) globalMax = p;
+        // Collect all valid prices
+        [d.open, d.close, d.high, d.low, d.vwap7d].forEach((p) => {
+          if (p !== null && p > 0) {
+            allPrices.push(p);
+          }
         });
       });
     });
 
-    if (globalMin === Infinity || globalMax === -Infinity) return null;
+    if (allPrices.length === 0) return null;
 
-    const padding = (globalMax - globalMin) * 0.05;
+    // Sort prices to calculate percentiles
+    allPrices.sort((a, b) => a - b);
+
+    // Use 2nd and 98th percentile to exclude outliers
+    const lowerIdx = Math.floor(allPrices.length * 0.02);
+    const upperIdx = Math.ceil(allPrices.length * 0.98) - 1;
+
+    const pMin = allPrices[Math.max(0, lowerIdx)];
+    const pMax = allPrices[Math.min(allPrices.length - 1, upperIdx)];
+
+    // Add small padding (3%) for visual breathing room
+    const padding = (pMax - pMin) * 0.03;
     return {
-      min: Math.max(0, globalMin - padding),
-      max: globalMax + padding,
+      min: Math.max(0, pMin - padding),
+      max: pMax + padding,
     };
   })();
 
