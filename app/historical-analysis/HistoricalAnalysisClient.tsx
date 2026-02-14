@@ -496,7 +496,7 @@ export default function HistoricalAnalysisClient() {
         </div>
 
         <p style={{ color: "var(--color-text-muted)", fontSize: "0.75rem", margin: "0.75rem 0 0 0" }}>
-          Ranks tickers by total trading volume (Traded x Volume) per exchange over the selected period.
+          Ranks tickers by total trading volume (sum of daily Volume) per exchange over the selected period.
         </p>
       </div>
 
@@ -716,37 +716,37 @@ export default function HistoricalAnalysisClient() {
           {/* Exchange Leaderboard Tables */}
           <div style={{
             display: "grid",
-            gridTemplateColumns: "repeat(auto-fit, minmax(350px, 1fr))",
-            gap: "1.5rem",
+            gridTemplateColumns: "repeat(4, 1fr)",
+            gap: "0.75rem",
             marginBottom: "2rem",
           }}>
             {leaderboardData.exchangeLeaderboards.map((exLb) => (
-              <div className="terminal-box" key={exLb.exchange} style={{ margin: 0 }}>
-                <h2 className="terminal-header">{exLb.exchange} LEADERBOARD</h2>
+              <div className="terminal-box" key={exLb.exchange} style={{ margin: 0, padding: "0.75rem" }}>
+                <h2 className="terminal-header" style={{ fontSize: "0.8rem" }}>{exLb.exchange} LEADERBOARD</h2>
                 <div style={{ overflowX: "auto" }}>
-                  <table className="terminal-table">
+                  <table className="terminal-table" style={{ fontSize: "0.8rem" }}>
                     <thead>
                       <tr>
-                        <th style={{ width: "3rem" }}>#</th>
-                        <th>Ticker</th>
-                        <th style={{ textAlign: "right" }}>Trading Volume</th>
+                        <th style={{ width: "1.5rem", padding: "0.25rem 0.25rem" }}>#</th>
+                        <th style={{ padding: "0.25rem 0.25rem" }}>Ticker</th>
+                        <th style={{ textAlign: "right", padding: "0.25rem 0.25rem" }}>Volume</th>
                       </tr>
                     </thead>
                     <tbody>
                       {exLb.leaderboard.length === 0 ? (
                         <tr>
-                          <td colSpan={3} style={{ color: "var(--color-text-muted)", textAlign: "center" }}>
+                          <td colSpan={3} style={{ color: "var(--color-text-muted)", textAlign: "center", padding: "0.25rem" }}>
                             No trading data
                           </td>
                         </tr>
                       ) : (
                         exLb.leaderboard.map((entry, idx) => (
                           <tr key={entry.ticker}>
-                            <td style={{ color: "var(--color-text-muted)" }}>{idx + 1}</td>
-                            <td style={{ fontWeight: "600", color: "var(--color-accent-primary)" }}>
+                            <td style={{ color: "var(--color-text-muted)", padding: "0.25rem 0.25rem" }}>{idx + 1}</td>
+                            <td style={{ fontWeight: "600", color: "var(--color-accent-primary)", padding: "0.25rem 0.25rem" }}>
                               {entry.ticker}
                             </td>
-                            <td style={{ textAlign: "right" }}>
+                            <td style={{ textAlign: "right", padding: "0.25rem 0.25rem" }}>
                               {formatInteger(entry.tradingVolume)}
                             </td>
                           </tr>
@@ -770,7 +770,7 @@ export default function HistoricalAnalysisClient() {
               lineHeight: "1.6"
             }}>
               <strong style={{ color: "var(--color-warning)" }}>Note:</strong> Trading Volume is
-              calculated as the sum of (Traded x Volume) for each daily data point within the
+              the sum of daily Volume (total currency value traded) across all days in the
               selected period. Tickers are ranked by descending trading volume per exchange.
             </div>
           </div>
