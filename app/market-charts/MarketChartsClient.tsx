@@ -242,6 +242,36 @@ export default function MarketChartsClient() {
   const cutoffTimestamp = getCutoffDate();
   const oneYearAgo = getOneYearAgo();
 
+  // Compute global price range across all exchanges for synchronized y-axes
+  const globalPriceRange = (() => {
+    let globalMin = Infinity;
+    let globalMax = -Infinity;
+
+    exchangeData.forEach((ex) => {
+      if (!ex.found || ex.data.length === 0) return;
+
+      ex.data.forEach((d) => {
+        if (d.timestamp > cutoffTimestamp || d.timestamp < oneYearAgo) return;
+
+        const prices = [d.open, d.close, d.high, d.low, d.vwap7d].filter(
+          (p): p is number => p !== null && p > 0
+        );
+        prices.forEach((p) => {
+          if (p < globalMin) globalMin = p;
+          if (p > globalMax) globalMax = p;
+        });
+      });
+    });
+
+    if (globalMin === Infinity || globalMax === -Infinity) return null;
+
+    const padding = (globalMax - globalMin) * 0.05;
+    return {
+      min: Math.max(0, globalMin - padding),
+      max: globalMax + padding,
+    };
+  })();
+
   // Build Highcharts options for each exchange
   const buildChartOptions = (exchangeInfo: ExchangeChartData): Highcharts.Options | null => {
     if (!exchangeInfo.found || exchangeInfo.data.length === 0) {
@@ -391,6 +421,9 @@ export default function MarketChartsClient() {
             color: "rgba(255, 149, 0, 0.3)",
             dashStyle: "Dash",
           },
+          ...(globalPriceRange
+            ? { min: globalPriceRange.min, max: globalPriceRange.max }
+            : {}),
         },
         ...(showVolume
           ? [
