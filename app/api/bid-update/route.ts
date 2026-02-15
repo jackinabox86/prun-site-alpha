@@ -5,22 +5,23 @@ const FIO_AUTH = "ad8aa2f9-a0a9-4a1b-8428-8b152096c0d0";
 const USERNAME = "jackinabox";
 
 interface CxosOrder {
-  OrderId: string;
-  CompanyId: string;
-  CompanyName: string;
-  CompanyCode: string;
+  CXOSTradeOrderId: string;
   ExchangeCode: string;
   ExchangeName: string;
-  MaterialId: string;
+  BrokerId: string;
+  OrderType: string;
   MaterialName: string;
   MaterialTicker: string;
-  ItemCount: number;
-  ItemCost: number;
+  MaterialId: string;
+  Amount: number;
   InitialAmount: number;
-  FilledAmount: number;
+  Limit: number;
+  LimitCurrency: string;
   Status: string;
-  OrderType: string;
   CreatedEpochMs: number;
+  UserNameSubmitted: string;
+  Timestamp: string;
+  Trades: unknown[];
   [key: string]: unknown;
 }
 
@@ -31,9 +32,9 @@ interface ExchangeTicker {
   MMSell: number | null;
   PriceAverage: number | null;
   Ask: number | null;
-  AskCount: number;
+  AskCount: number | null;
   Bid: number | null;
-  BidCount: number;
+  BidCount: number | null;
   Supply: number;
   Demand: number;
   [key: string]: unknown;
@@ -47,9 +48,8 @@ export interface BidComparison {
   difference: number;
   percentBelow: number;
   status: string;
-  itemCount: number;
+  amount: number;
   initialAmount: number;
-  filledAmount: number;
   orderType: string;
 }
 
@@ -104,13 +104,15 @@ export async function GET() {
       }
     }
 
-    // Normalize status values for comparison
-    const activeStatuses = new Set([
-      "PLACED",
-      "PARTIALLY_FILLED",
-      "partially fulfilled",
-      "placed",
-    ]);
+    // Filter for active buy orders: "PLACED" or "PARTIALLY_FILLED"
+    const isActiveStatus = (status: string) => {
+      const s = status.toUpperCase();
+      return s === "PLACED" || s === "PARTIALLY_FILLED";
+    };
+
+    const isBuyOrder = (orderType: string) => {
+      return orderType.toUpperCase() === "BUYING";
+    };
 
     // Filter for active buy orders and compare
     const comparisons: BidComparison[] = [];
@@ -119,32 +121,24 @@ export async function GET() {
       const status = (order.Status || "").toString();
       const orderType = (order.OrderType || "").toString();
 
-      // Only look at active buying orders
-      if (!activeStatuses.has(status) && !activeStatuses.has(status.toLowerCase())) {
-        continue;
-      }
-      if (
-        orderType.toUpperCase() !== "BUYING" &&
-        orderType.toUpperCase() !== "BUY"
-      ) {
+      if (!isActiveStatus(status) || !isBuyOrder(orderType)) {
         continue;
       }
 
       const key = `${order.MaterialTicker}.${order.ExchangeCode}`;
       const marketBid = bidMap.get(key);
 
-      if (marketBid != null && marketBid > order.ItemCost) {
+      if (marketBid != null && marketBid > order.Limit) {
         comparisons.push({
           materialTicker: order.MaterialTicker,
           exchangeCode: order.ExchangeCode,
-          myLimit: order.ItemCost,
+          myLimit: order.Limit,
           marketBid,
-          difference: marketBid - order.ItemCost,
-          percentBelow: ((marketBid - order.ItemCost) / marketBid) * 100,
+          difference: marketBid - order.Limit,
+          percentBelow: ((marketBid - order.Limit) / marketBid) * 100,
           status,
-          itemCount: order.ItemCount ?? 0,
-          initialAmount: order.InitialAmount ?? order.ItemCount ?? 0,
-          filledAmount: order.FilledAmount ?? 0,
+          amount: order.Amount,
+          initialAmount: order.InitialAmount,
           orderType,
         });
       }
@@ -153,25 +147,17 @@ export async function GET() {
     // Sort by percent below (biggest gap first)
     comparisons.sort((a, b) => b.percentBelow - a.percentBelow);
 
-    // Also return debug info: total orders, active buy orders count
-    const activeBuyOrders = orders.filter((o) => {
-      const s = (o.Status || "").toString().toLowerCase();
-      const t = (o.OrderType || "").toString().toUpperCase();
-      return (
-        (s === "placed" || s === "partially_filled" || s === "partially fulfilled") &&
-        (t === "BUYING" || t === "BUY")
-      );
-    });
+    const activeBuyOrders = orders.filter(
+      (o) => isActiveStatus(o.Status || "") && isBuyOrder(o.OrderType || "")
+    );
 
     return NextResponse.json({
       comparisons,
       totalOrders: orders.length,
       activeBuyOrders: activeBuyOrders.length,
       outbidCount: comparisons.length,
-      // Include a sample order for debugging field names (first order only)
       _sampleOrder: orders.length > 0 ? orders[0] : null,
-      _sampleExchange:
-        exchangeData.length > 0 ? exchangeData[0] : null,
+      _sampleExchange: exchangeData.length > 0 ? exchangeData[0] : null,
     });
   } catch (err) {
     const message = err instanceof Error ? err.message : "Unknown error";

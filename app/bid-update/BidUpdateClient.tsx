@@ -10,9 +10,8 @@ interface BidComparison {
   difference: number;
   percentBelow: number;
   status: string;
-  itemCount: number;
+  amount: number;
   initialAmount: number;
-  filledAmount: number;
   orderType: string;
 }
 
