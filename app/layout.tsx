@@ -18,6 +18,7 @@ export default function RootLayout({
           <a href="/best-recipes">Best Recipes</a>
           <a href="/best-recipes-history">Recipe History</a>
           <a href="/xit-converter">XIT Converter</a>
+          <a href="/bid-update">Bid Update</a>
         </nav>
         <main className="terminal-container">
           {children}
