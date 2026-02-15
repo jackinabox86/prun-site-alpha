@@ -188,18 +188,27 @@ async function classifyProductionVolume(dryRun: boolean, regionName: string) {
     let volume: string;
     let averageTraded30d: string;
 
+    let buildingsDaily: string;
+    let basesDaily: string;
+
     if (avgTraded === null || avgTraded === undefined) {
       volume = "extremely low";
       averageTraded30d = "";
+      buildingsDaily = "";
+      basesDaily = "";
     } else {
       volume = classifyVolume(avgTraded, outputPerDay, fullBaseOutputPerDay);
       averageTraded30d = avgTraded.toFixed(4);
+      buildingsDaily = outputPerDay > 0 ? (avgTraded / outputPerDay).toFixed(2) : "";
+      basesDaily = fullBaseOutputPerDay > 0 ? (avgTraded / fullBaseOutputPerDay).toFixed(2) : "";
     }
 
     return {
       ...row,
       volume,
       averageTraded30d,
+      buildingsDaily,
+      basesDaily,
     };
   });
 
