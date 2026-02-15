@@ -45,7 +45,7 @@ interface ExchangeOrdersSummary {
  * Orders Summary: reads the exchange snapshot and sums buying orders
  * per ticker.exchange pair, grouped by exchange.
  *
- * Buying orders from CompanyCode "AIMM" are excluded.
+ * Buying orders from market makers (AIMM, NCMM, ICMM, CIMM) are excluded.
  */
 export async function GET() {
   try {
@@ -77,9 +77,10 @@ export async function GET() {
 
       const exchangeData = exchangeMap.get(exchangeCode)!;
 
-      // Filter out AIMM orders and sum
+      // Filter out market maker orders and sum
+      const MM_CODES = new Set(["AIMM", "NCMM", "ICMM", "CIMM"]);
       const filteredOrders = entry.BuyingOrders.filter(
-        (order) => order.CompanyCode !== "AIMM"
+        (order) => !MM_CODES.has(order.CompanyCode)
       );
 
       if (filteredOrders.length === 0) continue;
