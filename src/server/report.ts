@@ -60,10 +60,10 @@ export async function buildReport(opts: {
     forceBidPrice.split(',').forEach(entry => {
       const parts = entry.trim().split(':');
       if (parts.length === 2) {
-        const ticker = parts[0].trim().toUpperCase();
+        const t = parts[0].trim().toUpperCase();
         const price = parseFloat(parts[1].trim());
-        if (ticker && !isNaN(price) && price >= 0) {
-          forceBidPriceMap.set(ticker, price);
+        if (t && !isNaN(price) && price >= 0) {
+          forceBidPriceMap.set(t, price);
         }
       }
     });
@@ -74,10 +74,10 @@ export async function buildReport(opts: {
     forceAskPrice.split(',').forEach(entry => {
       const parts = entry.trim().split(':');
       if (parts.length === 2) {
-        const ticker = parts[0].trim().toUpperCase();
+        const t = parts[0].trim().toUpperCase();
         const price = parseFloat(parts[1].trim());
-        if (ticker && !isNaN(price) && price >= 0) {
-          forceAskPriceMap.set(ticker, price);
+        if (t && !isNaN(price) && price >= 0) {
+          forceAskPriceMap.set(t, price);
         }
       }
     });
@@ -174,20 +174,20 @@ export async function buildReport(opts: {
       ...forceAskPriceMap.keys()
     ]);
 
-    for (const ticker of tickersToClone) {
-      if (pricesMap[ticker]) {
+    for (const t of tickersToClone) {
+      if (pricesMap[t]) {
         // Deep clone the ticker's price data
-        pricesMap[ticker] = {
-          ...pricesMap[ticker],
-          ANT: { ...pricesMap[ticker].ANT },
-          CIS: { ...pricesMap[ticker].CIS },
-          ICA: { ...pricesMap[ticker].ICA },
-          NCC: { ...pricesMap[ticker].NCC },
-          UNV: { ...pricesMap[ticker].UNV }
+        pricesMap[t] = {
+          ...pricesMap[t],
+          ANT: { ...pricesMap[t].ANT },
+          CIS: { ...pricesMap[t].CIS },
+          ICA: { ...pricesMap[t].ICA },
+          NCC: { ...pricesMap[t].NCC },
+          UNV: { ...pricesMap[t].UNV }
         };
       } else {
         // Initialize price data for ticker if it doesn't exist
-        pricesMap[ticker] = {
+        pricesMap[t] = {
           ANT: { bid: 0, ask: 0, pp7: 0, pp30: 0 },
           CIS: { bid: 0, ask: 0, pp7: 0, pp30: 0 },
           ICA: { bid: 0, ask: 0, pp7: 0, pp30: 0 },
@@ -198,24 +198,24 @@ export async function buildReport(opts: {
     }
 
     // Apply bid price overrides to all exchanges
-    for (const [ticker, price] of forceBidPriceMap.entries()) {
-      if (pricesMap[ticker]) {
-        pricesMap[ticker].ANT.bid = price;
-        pricesMap[ticker].CIS.bid = price;
-        pricesMap[ticker].ICA.bid = price;
-        pricesMap[ticker].NCC.bid = price;
-        pricesMap[ticker].UNV.bid = price;
+    for (const [t, price] of forceBidPriceMap.entries()) {
+      if (pricesMap[t]) {
+        pricesMap[t].ANT.bid = price;
+        pricesMap[t].CIS.bid = price;
+        pricesMap[t].ICA.bid = price;
+        pricesMap[t].NCC.bid = price;
+        pricesMap[t].UNV.bid = price;
       }
     }
 
     // Apply ask price overrides to all exchanges
-    for (const [ticker, price] of forceAskPriceMap.entries()) {
-      if (pricesMap[ticker]) {
-        pricesMap[ticker].ANT.ask = price;
-        pricesMap[ticker].CIS.ask = price;
-        pricesMap[ticker].ICA.ask = price;
-        pricesMap[ticker].NCC.ask = price;
-        pricesMap[ticker].UNV.ask = price;
+    for (const [t, price] of forceAskPriceMap.entries()) {
+      if (pricesMap[t]) {
+        pricesMap[t].ANT.ask = price;
+        pricesMap[t].CIS.ask = price;
+        pricesMap[t].ICA.ask = price;
+        pricesMap[t].NCC.ask = price;
+        pricesMap[t].UNV.ask = price;
       }
     }
   }

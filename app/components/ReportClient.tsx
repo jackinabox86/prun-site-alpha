@@ -115,6 +115,16 @@ export default function ReportClient() {
       setExcludeRecipe(excludeRecipeParam);
     }
 
+    const forceBidPriceParam = params.get("forceBidPrice");
+    if (forceBidPriceParam) {
+      setForceBidPrice(forceBidPriceParam);
+    }
+
+    const forceAskPriceParam = params.get("forceAskPrice");
+    if (forceAskPriceParam) {
+      setForceAskPrice(forceAskPriceParam);
+    }
+
     setUrlParamsChecked(true);
   }, []);
 
@@ -258,6 +268,12 @@ TIO     KI-401b     24.28`,
     }
     if (excludeRecipe.trim()) {
       params.set("excludeRecipe", excludeRecipe.trim());
+    }
+    if (forceBidPrice.trim()) {
+      params.set("forceBidPrice", forceBidPrice.trim());
+    }
+    if (forceAskPrice.trim()) {
+      params.set("forceAskPrice", forceAskPrice.trim());
     }
 
     // Construct the full URL
