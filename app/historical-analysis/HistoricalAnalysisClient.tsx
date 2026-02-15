@@ -593,7 +593,7 @@ export default function HistoricalAnalysisClient() {
 
         <p style={{ color: "var(--color-text-muted)", fontSize: "0.75rem", margin: "0.75rem 0 0 0" }}>
           Sums all buying orders (ItemCount x ItemCost) per ticker.exchange pair from the latest exchange snapshot.
-          Orders from AIMM are excluded. Click an exchange to expand ticker-level detail.
+          Orders from market makers (AIMM, NCMM, ICMM, CIMM) are excluded. Click an exchange to expand ticker-level detail.
         </p>
       </div>
 
@@ -1033,7 +1033,7 @@ export default function HistoricalAnalysisClient() {
             }}>
               <strong style={{ color: "var(--color-error)" }}>Note:</strong> Total Value is the sum of
               (ItemCount x ItemCost) for all buying orders on each ticker.exchange pair.
-              Orders from AIMM (market maker) are excluded. Tickers are ranked by descending total value
+              Orders from market makers (AIMM, NCMM, ICMM, CIMM) are excluded. Tickers are ranked by descending total value
               within each exchange.
             </div>
           </div>
