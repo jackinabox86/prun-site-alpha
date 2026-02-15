@@ -5,16 +5,11 @@ import dynamic from "next/dynamic";
 import Highcharts from "highcharts/highstock";
 import HighchartsReact from "highcharts-react-official";
 
-// Load the broken-axis module for axis break support
-// eslint-disable-next-line @typescript-eslint/no-require-imports
-const BrokenAxisModule = require("highcharts/modules/broken-axis");
-const BrokenAxis = BrokenAxisModule.default || BrokenAxisModule;
-
-// Initialize Highcharts modules
-if (typeof Highcharts === "object") {
-  if (typeof BrokenAxis === "function") BrokenAxis(Highcharts);
-
-  // Set global dark theme
+// Apply global dark theme once
+let themeApplied = false;
+function applyTheme() {
+  if (themeApplied) return;
+  themeApplied = true;
   Highcharts.setOptions({
     chart: {
       backgroundColor: "#0a0e14",
@@ -22,70 +17,38 @@ if (typeof Highcharts === "object") {
         fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif",
       },
     },
-    title: {
-      style: {
-        color: "#e6e8eb",
-      },
-    },
+    title: { style: { color: "#e6e8eb" } },
     xAxis: {
       gridLineColor: "#1a2332",
       lineColor: "#2a3f5f",
       tickColor: "#2a3f5f",
-      labels: {
-        style: {
-          color: "#a0a8b5",
-        },
-      },
+      labels: { style: { color: "#a0a8b5" } },
     },
     yAxis: {
       gridLineColor: "#1a2332",
       lineColor: "#2a3f5f",
       tickColor: "#2a3f5f",
-      labels: {
-        style: {
-          color: "#a0a8b5",
-        },
-      },
-      title: {
-        style: {
-          color: "#a0a8b5",
-        },
-      },
+      labels: { style: { color: "#a0a8b5" } },
+      title: { style: { color: "#a0a8b5" } },
     },
     legend: {
-      itemStyle: {
-        color: "#a0a8b5",
-      },
-      itemHoverStyle: {
-        color: "#e6e8eb",
-      },
+      itemStyle: { color: "#a0a8b5" },
+      itemHoverStyle: { color: "#e6e8eb" },
     },
     tooltip: {
       backgroundColor: "#1a1f26",
       borderColor: "#2a3f5f",
-      style: {
-        color: "#e6e8eb",
-      },
+      style: { color: "#e6e8eb" },
     },
     navigator: {
       maskFill: "rgba(255, 149, 0, 0.1)",
       outlineColor: "#2a3f5f",
-      handles: {
-        backgroundColor: "#ff9500",
-        borderColor: "#ff7a00",
-      },
+      handles: { backgroundColor: "#ff9500", borderColor: "#ff7a00" },
       xAxis: {
         gridLineColor: "#1a2332",
-        labels: {
-          style: {
-            color: "#6b7280",
-          },
-        },
+        labels: { style: { color: "#6b7280" } },
       },
-      series: {
-        color: "#ff9500",
-        lineColor: "#ff9500",
-      },
+      series: { color: "#ff9500", lineColor: "#ff9500" },
     },
     scrollbar: {
       barBackgroundColor: "#2a3f5f",
@@ -100,33 +63,14 @@ if (typeof Highcharts === "object") {
       buttonTheme: {
         fill: "#1a1f26",
         stroke: "#2a3f5f",
-        style: {
-          color: "#a0a8b5",
-        },
+        style: { color: "#a0a8b5" },
         states: {
-          hover: {
-            fill: "#2a3f5f",
-            stroke: "#ff9500",
-            style: {
-              color: "#ff9500",
-            },
-          },
-          select: {
-            fill: "#ff9500",
-            stroke: "#ff7a00",
-            style: {
-              color: "#0a0e14",
-            },
-          },
+          hover: { fill: "#2a3f5f", stroke: "#ff9500", style: { color: "#ff9500" } },
+          select: { fill: "#ff9500", stroke: "#ff7a00", style: { color: "#0a0e14" } },
         },
       },
-      inputStyle: {
-        backgroundColor: "#101419",
-        color: "#e6e8eb",
-      },
-      labelStyle: {
-        color: "#a0a8b5",
-      },
+      inputStyle: { backgroundColor: "#101419", color: "#e6e8eb" },
+      labelStyle: { color: "#a0a8b5" },
     },
   });
 }
@@ -196,6 +140,27 @@ export default function MarketChartsClient() {
   const [exchangeData, setExchangeData] = useState<ExchangeChartData[]>([]);
   const [showVolume, setShowVolume] = useState(true);
   const [showVwap, setShowVwap] = useState(true);
+  const [chartsReady, setChartsReady] = useState(false);
+
+  // Load broken-axis module via dynamic import, then apply theme
+  useEffect(() => {
+    let cancelled = false;
+    import("highcharts/modules/broken-axis").then((mod: any) => {
+      if (cancelled) return;
+      const init = typeof mod.default === "function" ? mod.default : mod;
+      if (typeof init === "function") {
+        init(Highcharts);
+      }
+      applyTheme();
+      setChartsReady(true);
+    }).catch(() => {
+      if (cancelled) return;
+      // Continue without broken-axis if it fails
+      applyTheme();
+      setChartsReady(true);
+    });
+    return () => { cancelled = true; };
+  }, []);
 
   const fetchData = useCallback(async (tickerSymbol: string) => {
     if (!tickerSymbol) return;
@@ -250,9 +215,10 @@ export default function MarketChartsClient() {
   const oneYearAgo = getOneYearAgo();
 
   // Compute global price range across all exchanges for synchronized y-axes
-  // Uses VWAP values for the main range, with axis breaks for extreme outliers
+  // Uses VWAP values for the "normal" range, with axis breaks for extreme outliers
   const globalPriceRange = (() => {
     const vwapPrices: number[] = [];
+    const allPrices: number[] = [];
     const pricesWithVwap: { price: number; vwap: number }[] = [];
 
     exchangeData.forEach((ex) => {
@@ -265,62 +231,79 @@ export default function MarketChartsClient() {
         const vwap = d.vwap7d;
         if (vwap !== null && vwap > 0) {
           vwapPrices.push(vwap);
+        }
 
-          // Track OHLC prices with their associated VWAP for outlier detection
-          [d.open, d.close, d.high, d.low].forEach((p) => {
-            if (p !== null && p > 0) {
+        // Track all OHLC prices
+        [d.open, d.close, d.high, d.low].forEach((p) => {
+          if (p !== null && p > 0) {
+            allPrices.push(p);
+            if (vwap !== null && vwap > 0) {
               pricesWithVwap.push({ price: p, vwap });
             }
-          });
-        }
+          }
+        });
       });
     });
 
-    if (vwapPrices.length === 0) return null;
+    if (vwapPrices.length === 0 && allPrices.length === 0) return null;
 
-    // Main range based on VWAP (smoother, tighter)
-    const vwapMin = Math.min(...vwapPrices);
-    const vwapMax = Math.max(...vwapPrices);
-    const vwapPadding = (vwapMax - vwapMin) * 0.05;
+    // Use VWAP for the "normal" band
+    const vwapMin = vwapPrices.length > 0 ? Math.min(...vwapPrices) : Math.min(...allPrices);
+    const vwapMax = vwapPrices.length > 0 ? Math.max(...vwapPrices) : Math.max(...allPrices);
+    const vwapRange = vwapMax - vwapMin;
 
-    // Find outliers (>2x or <0.5x their corresponding VWAP)
-    let highOutlierMax = vwapMax;
-    let lowOutlierMin = vwapMin;
+    // Absolute extent of all data (including outliers)
+    const dataMin = Math.min(...allPrices);
+    const dataMax = Math.max(...allPrices);
+
+    // Detect outliers: prices >2x or <0.5x their corresponding VWAP
+    let hasHighOutlier = false;
+    let hasLowOutlier = false;
+    let highOutlierMin = Infinity; // lowest value in the outlier zone (top of break)
+    let lowOutlierMax = 0;        // highest value in the outlier zone (bottom of break)
 
     pricesWithVwap.forEach(({ price, vwap }) => {
       if (price > vwap * 2) {
-        highOutlierMax = Math.max(highOutlierMax, price);
+        hasHighOutlier = true;
+        highOutlierMin = Math.min(highOutlierMin, price);
       }
       if (price < vwap * 0.5) {
-        lowOutlierMin = Math.min(lowOutlierMin, price);
+        hasLowOutlier = true;
+        lowOutlierMax = Math.max(lowOutlierMax, price);
       }
     });
 
-    // Build axis breaks to compress outlier regions
+    // Build axis breaks to compress the gap between normal range and outlier regions
     const breaks: { from: number; to: number; breakSize: number }[] = [];
 
-    // Break for high outliers (compress the gap between normal max and outlier region)
-    if (highOutlierMax > vwapMax + vwapPadding * 2) {
+    // The "normal" top is the VWAP max plus a small margin
+    const normalTop = vwapMax + vwapRange * 0.05;
+    // The "normal" bottom is the VWAP min minus a small margin
+    const normalBottom = vwapMin - vwapRange * 0.05;
+
+    // Break for high outliers: compress the gap between normal top and the lowest outlier
+    if (hasHighOutlier && highOutlierMin > normalTop) {
       breaks.push({
-        from: vwapMax + vwapPadding,
-        to: highOutlierMax - (highOutlierMax - vwapMax) * 0.1,
-        breakSize: 15,
+        from: normalTop,
+        to: highOutlierMin * 0.95, // leave a bit of space around the outlier point
+        breakSize: 20,
       });
     }
 
-    // Break for low outliers (compress the gap between outlier region and normal min)
-    if (lowOutlierMin < vwapMin - vwapPadding * 2) {
+    // Break for low outliers: compress the gap between highest low-outlier and normal bottom
+    if (hasLowOutlier && lowOutlierMax < normalBottom) {
       breaks.push({
-        from: lowOutlierMin + (vwapMin - lowOutlierMin) * 0.1,
-        to: vwapMin - vwapPadding,
-        breakSize: 15,
+        from: lowOutlierMax * 1.05, // leave a bit of space around the outlier point
+        to: normalBottom,
+        breakSize: 20,
       });
     }
 
-    const rangePadding = (vwapMax - vwapMin) * 0.03;
+    // Tight padding: just 1% of the VWAP range
+    const pad = vwapRange * 0.01;
     return {
-      min: lowOutlierMin - rangePadding,
-      max: highOutlierMax + rangePadding,
+      min: dataMin - pad,
+      max: dataMax + pad,
       breaks,
     };
   })();
@@ -488,6 +471,8 @@ export default function MarketChartsClient() {
           },
           height: showVolume ? "70%" : "100%",
           lineWidth: 1,
+          startOnTick: false,
+          endOnTick: false,
           resize: {
             enabled: true,
           },
@@ -773,7 +758,7 @@ export default function MarketChartsClient() {
       )}
 
       {/* Charts */}
-      {exchangeData.length > 0 && (
+      {chartsReady && exchangeData.length > 0 && (
         <div
           style={{
             display: "grid",
