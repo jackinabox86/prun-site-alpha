@@ -1,16 +1,11 @@
 "use client";
 
-import { useState, useEffect, useCallback, useRef } from "react";
-import dynamic from "next/dynamic";
+import { useState, useEffect, useCallback } from "react";
 import Highcharts from "highcharts/highstock";
 import HighchartsReact from "highcharts-react-official";
 
-// Apply global dark theme once
-let themeApplied = false;
-function applyTheme() {
-  if (themeApplied) return;
-  themeApplied = true;
-  Highcharts.setOptions({
+// Apply global dark theme once at module level
+Highcharts.setOptions({
     chart: {
       backgroundColor: "#0a0e14",
       style: {
@@ -72,8 +67,7 @@ function applyTheme() {
       inputStyle: { backgroundColor: "#101419", color: "#e6e8eb" },
       labelStyle: { color: "#a0a8b5" },
     },
-  });
-}
+});
 
 interface ChartDataPoint {
   date: string;
@@ -140,27 +134,6 @@ export default function MarketChartsClient() {
   const [exchangeData, setExchangeData] = useState<ExchangeChartData[]>([]);
   const [showVolume, setShowVolume] = useState(true);
   const [showVwap, setShowVwap] = useState(true);
-  const [chartsReady, setChartsReady] = useState(false);
-
-  // Load broken-axis module via dynamic import, then apply theme
-  useEffect(() => {
-    let cancelled = false;
-    import("highcharts/modules/broken-axis").then((mod: any) => {
-      if (cancelled) return;
-      const init = typeof mod.default === "function" ? mod.default : mod;
-      if (typeof init === "function") {
-        init(Highcharts);
-      }
-      applyTheme();
-      setChartsReady(true);
-    }).catch(() => {
-      if (cancelled) return;
-      // Continue without broken-axis if it fails
-      applyTheme();
-      setChartsReady(true);
-    });
-    return () => { cancelled = true; };
-  }, []);
 
   const fetchData = useCallback(async (tickerSymbol: string) => {
     if (!tickerSymbol) return;
@@ -215,97 +188,36 @@ export default function MarketChartsClient() {
   const oneYearAgo = getOneYearAgo();
 
   // Compute global price range across all exchanges for synchronized y-axes
-  // Uses VWAP values for the "normal" range, with axis breaks for extreme outliers
+  // Simple approach: find the absolute min and max across all OHLC + VWAP data in the last year
   const globalPriceRange = (() => {
-    const vwapPrices: number[] = [];
-    const allPrices: number[] = [];
-    const pricesWithVwap: { price: number; vwap: number }[] = [];
+    let min = Infinity;
+    let max = -Infinity;
 
     exchangeData.forEach((ex) => {
       if (!ex.found || ex.data.length === 0) return;
 
       ex.data.forEach((d) => {
-        // Only use last year of data for y-axis calculation
         if (d.timestamp > cutoffTimestamp || d.timestamp < oneYearAgo) return;
+        // Only consider days with actual trading
+        if (d.open === null || d.close === null || d.open <= 0 || d.close <= 0) return;
 
-        const vwap = d.vwap7d;
-        if (vwap !== null && vwap > 0) {
-          vwapPrices.push(vwap);
-        }
-
-        // Track all OHLC prices
         [d.open, d.close, d.high, d.low].forEach((p) => {
           if (p !== null && p > 0) {
-            allPrices.push(p);
-            if (vwap !== null && vwap > 0) {
-              pricesWithVwap.push({ price: p, vwap });
-            }
+            if (p < min) min = p;
+            if (p > max) max = p;
           }
         });
+
+        if (d.vwap7d !== null && d.vwap7d > 0) {
+          if (d.vwap7d < min) min = d.vwap7d;
+          if (d.vwap7d > max) max = d.vwap7d;
+        }
       });
     });
 
-    if (vwapPrices.length === 0 && allPrices.length === 0) return null;
+    if (min === Infinity || max === -Infinity) return null;
 
-    // Use VWAP for the "normal" band
-    const vwapMin = vwapPrices.length > 0 ? Math.min(...vwapPrices) : Math.min(...allPrices);
-    const vwapMax = vwapPrices.length > 0 ? Math.max(...vwapPrices) : Math.max(...allPrices);
-    const vwapRange = vwapMax - vwapMin;
-
-    // Absolute extent of all data (including outliers)
-    const dataMin = Math.min(...allPrices);
-    const dataMax = Math.max(...allPrices);
-
-    // Detect outliers: prices >2x or <0.5x their corresponding VWAP
-    let hasHighOutlier = false;
-    let hasLowOutlier = false;
-    let highOutlierMin = Infinity; // lowest value in the outlier zone (top of break)
-    let lowOutlierMax = 0;        // highest value in the outlier zone (bottom of break)
-
-    pricesWithVwap.forEach(({ price, vwap }) => {
-      if (price > vwap * 2) {
-        hasHighOutlier = true;
-        highOutlierMin = Math.min(highOutlierMin, price);
-      }
-      if (price < vwap * 0.5) {
-        hasLowOutlier = true;
-        lowOutlierMax = Math.max(lowOutlierMax, price);
-      }
-    });
-
-    // Build axis breaks to compress the gap between normal range and outlier regions
-    const breaks: { from: number; to: number; breakSize: number }[] = [];
-
-    // The "normal" top is the VWAP max plus a small margin
-    const normalTop = vwapMax + vwapRange * 0.05;
-    // The "normal" bottom is the VWAP min minus a small margin
-    const normalBottom = vwapMin - vwapRange * 0.05;
-
-    // Break for high outliers: compress the gap between normal top and the lowest outlier
-    if (hasHighOutlier && highOutlierMin > normalTop) {
-      breaks.push({
-        from: normalTop,
-        to: highOutlierMin * 0.95, // leave a bit of space around the outlier point
-        breakSize: 20,
-      });
-    }
-
-    // Break for low outliers: compress the gap between highest low-outlier and normal bottom
-    if (hasLowOutlier && lowOutlierMax < normalBottom) {
-      breaks.push({
-        from: lowOutlierMax * 1.05, // leave a bit of space around the outlier point
-        to: normalBottom,
-        breakSize: 20,
-      });
-    }
-
-    // Tight padding: just 1% of the VWAP range
-    const pad = vwapRange * 0.01;
-    return {
-      min: dataMin - pad,
-      max: dataMax + pad,
-      breaks,
-    };
+    return { min, max };
   })();
 
   // Compute global volume max across all exchanges for synchronized volume y-axes
@@ -471,8 +383,6 @@ export default function MarketChartsClient() {
           },
           height: showVolume ? "70%" : "100%",
           lineWidth: 1,
-          startOnTick: false,
-          endOnTick: false,
           resize: {
             enabled: true,
           },
@@ -484,7 +394,6 @@ export default function MarketChartsClient() {
             ? {
                 min: globalPriceRange.min,
                 max: globalPriceRange.max,
-                breaks: globalPriceRange.breaks,
               }
             : {}),
         },
@@ -758,7 +667,7 @@ export default function MarketChartsClient() {
       )}
 
       {/* Charts */}
-      {chartsReady && exchangeData.length > 0 && (
+      {exchangeData.length > 0 && (
         <div
           style={{
             display: "grid",
