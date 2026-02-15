@@ -52,6 +52,33 @@ interface LeaderboardResult {
   hint?: string;
 }
 
+interface TickerOrderSummary {
+  ticker: string;
+  totalValue: number;
+  totalItems: number;
+  orderCount: number;
+}
+
+interface ExchangeOrdersSummary {
+  exchange: string;
+  exchangeName: string;
+  currency: string;
+  tickers: TickerOrderSummary[];
+  exchangeTotal: number;
+  exchangeTotalItems: number;
+  exchangeOrderCount: number;
+}
+
+interface OrdersSummaryResult {
+  exchanges: ExchangeOrdersSummary[];
+  grandTotal: number;
+  grandTotalItems: number;
+  grandOrderCount: number;
+  entriesProcessed: number;
+  lastUpdated: number;
+  error?: string;
+}
+
 // All available tickers
 const TICKERS = [
   "GWS", "NV2", "CRU", "SST", "TAC", "CC", "STS", "PFG", "BOS", "BE", "TA", "ZR", "W", "SDM", "WR",
@@ -92,6 +119,9 @@ export default function HistoricalAnalysisClient() {
   const [leaderboardData, setLeaderboardData] = useState<LeaderboardResult | null>(null);
   const [leaderboardDays, setLeaderboardDays] = useState<string>("30");
   const [leaderboardLimit, setLeaderboardLimit] = useState<string>("20");
+  const [ordersSummaryLoading, setOrdersSummaryLoading] = useState(false);
+  const [ordersSummaryData, setOrdersSummaryData] = useState<OrdersSummaryResult | null>(null);
+  const [expandedExchanges, setExpandedExchanges] = useState<Set<string>>(new Set());
   const [error, setError] = useState<string | null>(null);
   const autocompleteRef = useRef<HTMLDivElement>(null);
 
@@ -252,6 +282,45 @@ export default function HistoricalAnalysisClient() {
       setLeaderboardLoading(false);
     }
   }, [leaderboardDays, leaderboardLimit]);
+
+  const loadOrdersSummary = useCallback(async () => {
+    setOrdersSummaryLoading(true);
+    setError(null);
+    try {
+      const res = await fetch("/api/historical-analysis/orders-summary", {
+        cache: "no-store",
+      });
+
+      const json: OrdersSummaryResult = await res.json();
+
+      if (json.error) {
+        setError(json.error);
+        setOrdersSummaryData(null);
+        return;
+      }
+
+      setOrdersSummaryData(json);
+      setData(null);
+      setLeaderboardData(null);
+    } catch (err: any) {
+      setError(err.message || "Failed to load orders summary");
+      setOrdersSummaryData(null);
+    } finally {
+      setOrdersSummaryLoading(false);
+    }
+  }, []);
+
+  const toggleExchange = (exchange: string) => {
+    setExpandedExchanges((prev) => {
+      const next = new Set(prev);
+      if (next.has(exchange)) {
+        next.delete(exchange);
+      } else {
+        next.add(exchange);
+      }
+      return next;
+    });
+  };
 
   const formatNumber = (value: number): string => {
     return value.toLocaleString(undefined, {
@@ -498,6 +567,33 @@ export default function HistoricalAnalysisClient() {
 
         <p style={{ color: "var(--color-text-muted)", fontSize: "0.75rem", margin: "0.75rem 0 0 0" }}>
           Ranks tickers by total trading volume (sum of daily Volume) per exchange over the selected period.
+        </p>
+      </div>
+
+      {/* Orders Summary Controls */}
+      <div className="terminal-box" style={{ marginBottom: "2rem" }}>
+        <h2 className="terminal-header">BUYING ORDERS SUMMARY</h2>
+
+        <div style={{ display: "flex", gap: "1rem", alignItems: "flex-end", flexWrap: "wrap" }}>
+          <div style={{ flex: "0 0 auto" }}>
+            <button
+              onClick={loadOrdersSummary}
+              disabled={ordersSummaryLoading}
+              className="terminal-button"
+              style={{
+                backgroundColor: "var(--color-error)",
+                color: "var(--color-bg-primary)",
+                borderColor: "var(--color-error)",
+              }}
+            >
+              {ordersSummaryLoading ? "Loading..." : "Generate Orders Summary"}
+            </button>
+          </div>
+        </div>
+
+        <p style={{ color: "var(--color-text-muted)", fontSize: "0.75rem", margin: "0.75rem 0 0 0" }}>
+          Sums all buying orders (ItemCount x ItemCost) per ticker.exchange pair from the latest exchange snapshot.
+          Orders from AIMM are excluded. Click an exchange to expand ticker-level detail.
         </p>
       </div>
 
@@ -776,6 +872,169 @@ export default function HistoricalAnalysisClient() {
               <strong style={{ color: "var(--color-warning)" }}>Note:</strong> Trading Volume is
               the sum of daily Volume (total currency value traded) across all days in the
               selected period. Tickers are ranked by descending trading volume per exchange.
+            </div>
+          </div>
+        </>
+      )}
+      {/* Orders Summary Results */}
+      {ordersSummaryData && (
+        <>
+          {/* Summary Info */}
+          <div className="terminal-box" style={{ marginBottom: "2rem" }}>
+            <h2 className="terminal-header">ORDERS SUMMARY</h2>
+            <div style={{
+              display: "grid",
+              gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))",
+              gap: "1.5rem"
+            }}>
+              <div>
+                <div style={{ color: "var(--color-text-muted)", fontSize: "0.75rem", marginBottom: "0.25rem", textTransform: "uppercase", letterSpacing: "0.05em" }}>Grand Total Value</div>
+                <div style={{ color: "var(--color-accent-primary)", fontSize: "1rem", fontWeight: "600", fontFamily: "var(--font-mono)" }}>
+                  {formatInteger(ordersSummaryData.grandTotal)}
+                </div>
+              </div>
+              <div>
+                <div style={{ color: "var(--color-text-muted)", fontSize: "0.75rem", marginBottom: "0.25rem", textTransform: "uppercase", letterSpacing: "0.05em" }}>Total Items</div>
+                <div style={{ color: "var(--color-text-primary)", fontSize: "1rem", fontWeight: "600", fontFamily: "var(--font-mono)" }}>
+                  {formatInteger(ordersSummaryData.grandTotalItems)}
+                </div>
+              </div>
+              <div>
+                <div style={{ color: "var(--color-text-muted)", fontSize: "0.75rem", marginBottom: "0.25rem", textTransform: "uppercase", letterSpacing: "0.05em" }}>Total Orders</div>
+                <div style={{ color: "var(--color-text-primary)", fontSize: "1rem", fontWeight: "600", fontFamily: "var(--font-mono)" }}>
+                  {formatInteger(ordersSummaryData.grandOrderCount)}
+                </div>
+              </div>
+              <div>
+                <div style={{ color: "var(--color-text-muted)", fontSize: "0.75rem", marginBottom: "0.25rem", textTransform: "uppercase", letterSpacing: "0.05em" }}>Entries Processed</div>
+                <div style={{ color: "var(--color-text-primary)", fontSize: "1rem", fontWeight: "600", fontFamily: "var(--font-mono)" }}>
+                  {formatInteger(ordersSummaryData.entriesProcessed)}
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Exchange Totals Table */}
+          <div className="terminal-box" style={{ marginBottom: "2rem" }}>
+            <h2 className="terminal-header">EXCHANGE TOTALS</h2>
+            <div style={{ overflowX: "auto" }}>
+              <table className="terminal-table">
+                <thead>
+                  <tr>
+                    <th>Exchange</th>
+                    <th style={{ textAlign: "right" }}>Total Value</th>
+                    <th style={{ textAlign: "right" }}>Total Items</th>
+                    <th style={{ textAlign: "right" }}>Orders</th>
+                    <th style={{ textAlign: "right" }}>Tickers</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {ordersSummaryData.exchanges.map((ex) => (
+                    <tr
+                      key={ex.exchange}
+                      onClick={() => toggleExchange(ex.exchange)}
+                      style={{ cursor: "pointer" }}
+                    >
+                      <td style={{ fontWeight: "600", color: "var(--color-accent-primary)" }}>
+                        {expandedExchanges.has(ex.exchange) ? "▼" : "▶"} {ex.exchange}
+                        <span style={{ color: "var(--color-text-muted)", fontWeight: "400", marginLeft: "0.5rem", fontSize: "0.75rem" }}>
+                          {ex.exchangeName}
+                        </span>
+                      </td>
+                      <td style={{ textAlign: "right" }}>{formatInteger(ex.exchangeTotal)}</td>
+                      <td style={{ textAlign: "right" }}>{formatInteger(ex.exchangeTotalItems)}</td>
+                      <td style={{ textAlign: "right" }}>{formatInteger(ex.exchangeOrderCount)}</td>
+                      <td style={{ textAlign: "right" }}>{ex.tickers.length}</td>
+                    </tr>
+                  ))}
+                  <tr style={{ borderTop: "2px solid var(--color-border-primary)" }}>
+                    <td style={{ fontWeight: "600", color: "var(--color-success)" }}>TOTAL</td>
+                    <td style={{ textAlign: "right", fontWeight: "600", color: "var(--color-success)" }}>
+                      {formatInteger(ordersSummaryData.grandTotal)}
+                    </td>
+                    <td style={{ textAlign: "right", fontWeight: "600", color: "var(--color-success)" }}>
+                      {formatInteger(ordersSummaryData.grandTotalItems)}
+                    </td>
+                    <td style={{ textAlign: "right", fontWeight: "600", color: "var(--color-success)" }}>
+                      {formatInteger(ordersSummaryData.grandOrderCount)}
+                    </td>
+                    <td style={{ textAlign: "right" }}></td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+            <p style={{ color: "var(--color-text-muted)", fontSize: "0.75rem", margin: "0.75rem 0 0 0" }}>
+              Click an exchange row to expand/collapse ticker-level detail.
+            </p>
+          </div>
+
+          {/* Expanded Exchange Ticker Details */}
+          {ordersSummaryData.exchanges
+            .filter((ex) => expandedExchanges.has(ex.exchange))
+            .map((ex) => (
+              <div className="terminal-box" key={ex.exchange} style={{ marginBottom: "2rem" }}>
+                <h2 className="terminal-header">
+                  {ex.exchange} TICKER BREAKDOWN
+                  <span style={{ color: "var(--color-text-muted)", fontWeight: "400", marginLeft: "0.5rem", fontSize: "0.75rem" }}>
+                    {ex.exchangeName} ({ex.currency})
+                  </span>
+                </h2>
+                <div style={{ overflowX: "auto", maxHeight: "500px", overflowY: "auto" }}>
+                  <table className="terminal-table">
+                    <thead>
+                      <tr>
+                        <th style={{ padding: "0.25rem 0.5rem" }}>#</th>
+                        <th style={{ padding: "0.25rem 0.5rem" }}>Ticker</th>
+                        <th style={{ textAlign: "right", padding: "0.25rem 0.5rem" }}>Total Value</th>
+                        <th style={{ textAlign: "right", padding: "0.25rem 0.5rem" }}>Total Items</th>
+                        <th style={{ textAlign: "right", padding: "0.25rem 0.5rem" }}>Orders</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {ex.tickers.map((t, idx) => (
+                        <tr key={t.ticker}>
+                          <td style={{ color: "var(--color-text-muted)", padding: "0.25rem 0.5rem" }}>{idx + 1}</td>
+                          <td style={{ fontWeight: "600", color: "var(--color-accent-primary)", padding: "0.25rem 0.5rem" }}>
+                            {t.ticker}
+                          </td>
+                          <td style={{ textAlign: "right", padding: "0.25rem 0.5rem" }}>{formatInteger(t.totalValue)}</td>
+                          <td style={{ textAlign: "right", padding: "0.25rem 0.5rem" }}>{formatInteger(t.totalItems)}</td>
+                          <td style={{ textAlign: "right", padding: "0.25rem 0.5rem" }}>{t.orderCount}</td>
+                        </tr>
+                      ))}
+                      <tr style={{ borderTop: "2px solid var(--color-border-primary)" }}>
+                        <td style={{ padding: "0.25rem 0.5rem" }}></td>
+                        <td style={{ fontWeight: "600", color: "var(--color-success)", padding: "0.25rem 0.5rem" }}>TOTAL</td>
+                        <td style={{ textAlign: "right", fontWeight: "600", color: "var(--color-success)", padding: "0.25rem 0.5rem" }}>
+                          {formatInteger(ex.exchangeTotal)}
+                        </td>
+                        <td style={{ textAlign: "right", fontWeight: "600", color: "var(--color-success)", padding: "0.25rem 0.5rem" }}>
+                          {formatInteger(ex.exchangeTotalItems)}
+                        </td>
+                        <td style={{ textAlign: "right", fontWeight: "600", color: "var(--color-success)", padding: "0.25rem 0.5rem" }}>
+                          {ex.exchangeOrderCount}
+                        </td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            ))}
+
+          {/* Orders Summary Info Note */}
+          <div className="terminal-box" style={{
+            backgroundColor: "var(--color-bg-tertiary)",
+            borderColor: "var(--color-error)",
+          }}>
+            <div style={{
+              color: "var(--color-text-secondary)",
+              fontSize: "0.875rem",
+              lineHeight: "1.6"
+            }}>
+              <strong style={{ color: "var(--color-error)" }}>Note:</strong> Total Value is the sum of
+              (ItemCount x ItemCost) for all buying orders on each ticker.exchange pair.
+              Orders from AIMM (market maker) are excluded. Tickers are ranked by descending total value
+              within each exchange.
             </div>
           </div>
         </>
