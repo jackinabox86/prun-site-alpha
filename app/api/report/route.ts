@@ -20,13 +20,15 @@ export async function GET(req: Request) {
     // Extract force make/buy constraints
     const forceMake = url.searchParams.get("forceMake") || undefined;
     const forceBuy = url.searchParams.get("forceBuy") || undefined;
+    const forceBidPrice = url.searchParams.get("forceBidPrice") || undefined;
+    const forceAskPrice = url.searchParams.get("forceAskPrice") || undefined;
     const forceRecipe = url.searchParams.get("forceRecipe") || undefined;
     const excludeRecipe = url.searchParams.get("excludeRecipe") || undefined;
 
     // Extract extraction mode flag (ANT only)
     const extractionMode = url.searchParams.get("extractionMode") === "true";
 
-    const report = await buildReport({ ticker, exchange, priceType, priceSource, forceMake, forceBuy, forceRecipe, excludeRecipe, extractionMode });
+    const report = await buildReport({ ticker, exchange, priceType, priceSource, forceMake, forceBuy, forceBidPrice, forceAskPrice, forceRecipe, excludeRecipe, extractionMode });
     const status = (report as any)?.ok === false ? 500 : 200;
 
     // Add explicit cache-busting headers to prevent any response caching

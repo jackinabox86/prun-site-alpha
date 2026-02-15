@@ -41,6 +41,8 @@ export default function ReportClient() {
   const [urlParamsChecked, setUrlParamsChecked] = useState(false);
   const [forceMake, setForceMake] = useState<string>("");
   const [forceBuy, setForceBuy] = useState<string>("");
+  const [forceBidPrice, setForceBidPrice] = useState<string>("");
+  const [forceAskPrice, setForceAskPrice] = useState<string>("");
   const [forceRecipe, setForceRecipe] = useState<string>("");
   const [excludeRecipe, setExcludeRecipe] = useState<string>("");
   const [showRecipeList, setShowRecipeList] = useState(false);
@@ -113,6 +115,16 @@ export default function ReportClient() {
       setExcludeRecipe(excludeRecipeParam);
     }
 
+    const forceBidPriceParam = params.get("forceBidPrice");
+    if (forceBidPriceParam) {
+      setForceBidPrice(forceBidPriceParam);
+    }
+
+    const forceAskPriceParam = params.get("forceAskPrice");
+    if (forceAskPriceParam) {
+      setForceAskPrice(forceAskPriceParam);
+    }
+
     setUrlParamsChecked(true);
   }, []);
 
@@ -145,6 +157,12 @@ export default function ReportClient() {
       }
       if (forceBuy.trim()) {
         params.forceBuy = forceBuy.trim();
+      }
+      if (forceBidPrice.trim()) {
+        params.forceBidPrice = forceBidPrice.trim();
+      }
+      if (forceAskPrice.trim()) {
+        params.forceAskPrice = forceAskPrice.trim();
       }
       if (forceRecipe.trim()) {
         params.forceRecipe = forceRecipe.trim();
@@ -250,6 +268,12 @@ TIO     KI-401b     24.28`,
     }
     if (excludeRecipe.trim()) {
       params.set("excludeRecipe", excludeRecipe.trim());
+    }
+    if (forceBidPrice.trim()) {
+      params.set("forceBidPrice", forceBidPrice.trim());
+    }
+    if (forceAskPrice.trim()) {
+      params.set("forceAskPrice", forceAskPrice.trim());
     }
 
     // Construct the full URL
@@ -525,6 +549,42 @@ TIO     KI-401b     24.28`,
               value={forceBuy}
               onChange={(e) => setForceBuy(e.target.value)}
               placeholder="e.g., H, O, FE"
+              className="terminal-input"
+              style={{ width: "100%" }}
+            />
+          </div>
+        </div>
+
+        {/* Force Bid/Ask Price Controls */}
+        <div style={{
+          display: "grid",
+          gap: "1rem",
+          gridTemplateColumns: "1fr 1fr",
+          marginBottom: "1rem"
+        }}>
+          <div>
+            <label style={{ display: "block", fontSize: "0.75rem", marginBottom: "0.5rem", color: "var(--color-accent-primary)", textTransform: "uppercase" }}>
+              Force Bid Price (ticker:price)
+            </label>
+            <input
+              type="text"
+              value={forceBidPrice}
+              onChange={(e) => setForceBidPrice(e.target.value)}
+              placeholder="e.g., C:1000, PE:10"
+              className="terminal-input"
+              style={{ width: "100%" }}
+            />
+          </div>
+
+          <div>
+            <label style={{ display: "block", fontSize: "0.75rem", marginBottom: "0.5rem", color: "var(--color-accent-primary)", textTransform: "uppercase" }}>
+              Force Ask Price (ticker:price)
+            </label>
+            <input
+              type="text"
+              value={forceAskPrice}
+              onChange={(e) => setForceAskPrice(e.target.value)}
+              placeholder="e.g., C:1000, PE:10"
               className="terminal-input"
               style={{ width: "100%" }}
             />

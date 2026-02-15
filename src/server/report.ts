@@ -28,11 +28,13 @@ export async function buildReport(opts: {
   priceSource?: "local" | "gcs";
   forceMake?: string;
   forceBuy?: string;
+  forceBidPrice?: string;
+  forceAskPrice?: string;
   forceRecipe?: string;
   excludeRecipe?: string;
   extractionMode?: boolean;
 }) {
-  const { ticker, exchange, priceType, priceSource = "local", forceMake, forceBuy, forceRecipe, excludeRecipe, extractionMode = false } = opts;
+  const { ticker, exchange, priceType, priceSource = "local", forceMake, forceBuy, forceBidPrice, forceAskPrice, forceRecipe, excludeRecipe, extractionMode = false } = opts;
 
   // Clear scenario cache at the start of each request to prevent extraction mode contamination
   // The engine caches results by ticker/exchange/priceType but doesn't include extractionMode in the key
@@ -51,6 +53,35 @@ export async function buildReport(opts: {
   const excludeRecipeSet = excludeRecipe
     ? new Set(excludeRecipe.split(',').map(r => r.trim().toUpperCase()).filter(r => r.length > 0))
     : undefined;
+
+  // Parse price overrides into maps (ticker -> price)
+  const forceBidPriceMap = new Map<string, number>();
+  if (forceBidPrice) {
+    forceBidPrice.split(',').forEach(entry => {
+      const parts = entry.trim().split(':');
+      if (parts.length === 2) {
+        const t = parts[0].trim().toUpperCase();
+        const price = parseFloat(parts[1].trim());
+        if (t && !isNaN(price) && price >= 0) {
+          forceBidPriceMap.set(t, price);
+        }
+      }
+    });
+  }
+
+  const forceAskPriceMap = new Map<string, number>();
+  if (forceAskPrice) {
+    forceAskPrice.split(',').forEach(entry => {
+      const parts = entry.trim().split(':');
+      if (parts.length === 2) {
+        const t = parts[0].trim().toUpperCase();
+        const price = parseFloat(parts[1].trim());
+        if (t && !isNaN(price) && price >= 0) {
+          forceAskPriceMap.set(t, price);
+        }
+      }
+    });
+  }
 
   // Get cached best recipes matching the price source and extraction mode
   // Use exchange-specific best recipes, except UNV always uses ANT
@@ -131,6 +162,61 @@ export async function buildReport(opts: {
       }
     } catch (error: any) {
       throw new Error(`Failed to load ANT expanded recipes: ${error.message || error}`);
+    }
+  }
+
+  // Apply price overrides if specified
+  // We need to clone pricesMap before modifying to avoid mutating cached data
+  // Deep clone the relevant tickers to ensure no cache corruption
+  if (forceBidPriceMap.size > 0 || forceAskPriceMap.size > 0) {
+    const tickersToClone = new Set([
+      ...forceBidPriceMap.keys(),
+      ...forceAskPriceMap.keys()
+    ]);
+
+    for (const t of tickersToClone) {
+      if (pricesMap[t]) {
+        // Deep clone the ticker's price data
+        pricesMap[t] = {
+          ...pricesMap[t],
+          ANT: { ...pricesMap[t].ANT },
+          CIS: { ...pricesMap[t].CIS },
+          ICA: { ...pricesMap[t].ICA },
+          NCC: { ...pricesMap[t].NCC },
+          UNV: { ...pricesMap[t].UNV }
+        };
+      } else {
+        // Initialize price data for ticker if it doesn't exist
+        pricesMap[t] = {
+          ANT: { bid: 0, ask: 0, pp7: 0, pp30: 0 },
+          CIS: { bid: 0, ask: 0, pp7: 0, pp30: 0 },
+          ICA: { bid: 0, ask: 0, pp7: 0, pp30: 0 },
+          NCC: { bid: 0, ask: 0, pp7: 0, pp30: 0 },
+          UNV: { bid: 0, ask: 0, pp7: 0, pp30: 0 }
+        };
+      }
+    }
+
+    // Apply bid price overrides to all exchanges
+    for (const [t, price] of forceBidPriceMap.entries()) {
+      if (pricesMap[t]) {
+        pricesMap[t].ANT.bid = price;
+        pricesMap[t].CIS.bid = price;
+        pricesMap[t].ICA.bid = price;
+        pricesMap[t].NCC.bid = price;
+        pricesMap[t].UNV.bid = price;
+      }
+    }
+
+    // Apply ask price overrides to all exchanges
+    for (const [t, price] of forceAskPriceMap.entries()) {
+      if (pricesMap[t]) {
+        pricesMap[t].ANT.ask = price;
+        pricesMap[t].CIS.ask = price;
+        pricesMap[t].ICA.ask = price;
+        pricesMap[t].NCC.ask = price;
+        pricesMap[t].UNV.ask = price;
+      }
     }
   }
 
