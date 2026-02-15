@@ -193,12 +193,11 @@ const BestScenarioSankey = memo(function BestScenarioSankey({
     const visited = new Set<string>();
     const MAX_DEPTH = 8;
 
+    // Track accumulated demand for shared nodes (e.g. grandchild used by two children)
+    const nodeDemand = new Map<number, { totalRunsPerDay: number; totalDemandPerDay: number; child: ApiMakeOption; scenario: string | undefined }>();
+
     function traverse(stage: ApiMakeOption, stageIdx: number, stageRunsPerDay: number, depth: number) {
       if (!stage || depth > MAX_DEPTH) return;
-
-      const stageKey = `VIS::${stage.recipeId || stage.ticker}::${depth}`;
-      if (visited.has(stageKey)) return;
-      visited.add(stageKey);
 
       const inputs = stage.madeInputDetails ?? [];
       for (const inp of inputs) {
@@ -237,6 +236,7 @@ const BestScenarioSankey = memo(function BestScenarioSankey({
 
         const childId = `STAGE::${child.recipeId || child.ticker}::${depth + 1}`;
         const childProfitPA = child.totalProfitPA ?? 0;
+        // Initial hover — will be rebuilt after traversal for shared nodes
         const childLabel = `<b>&nbsp;Make ${child.recipeId || child.ticker}</b><br>[${getCurrencySymbol(exchange ?? "ANT")}${fmtPA(childProfitPA)} P/A]`;
         const childHover = [
           `<b>Make ${child.recipeId || child.ticker}</b>`,
@@ -262,6 +262,20 @@ const BestScenarioSankey = memo(function BestScenarioSankey({
           depth + 1
         );
 
+        // Accumulate demand totals for this node
+        const existing = nodeDemand.get(childIdx);
+        if (existing) {
+          existing.totalRunsPerDay += childRunsPerDayNeeded;
+          existing.totalDemandPerDay += childDemandUnitsPerDay;
+        } else {
+          nodeDemand.set(childIdx, {
+            totalRunsPerDay: childRunsPerDayNeeded,
+            totalDemandPerDay: childDemandUnitsPerDay,
+            child,
+            scenario: inp.childScenario,
+          });
+        }
+
         const linkHover = [
           `<b>${stage.ticker} ← Make ${child.recipeId || child.ticker}</b>`,
           `COGM/d: ${money(costPerDay)}`,
@@ -269,11 +283,36 @@ const BestScenarioSankey = memo(function BestScenarioSankey({
 
         addLink(stageIdx, childIdx, `Make ${child.recipeId || child.ticker}`, costPerDay, palette.linkMake, linkHover);
 
-        traverse(child, childIdx, childRunsPerDayNeeded, depth + 1);
+        // Only recurse into children once per unique node to prevent infinite loops
+        const stageKey = `VIS::${child.recipeId || child.ticker}::${depth + 1}`;
+        if (!visited.has(stageKey)) {
+          visited.add(stageKey);
+          traverse(child, childIdx, childRunsPerDayNeeded, depth + 1);
+        }
       }
     }
 
     traverse(best, rootIdx, best.runsPerDay || 0, 0);
+
+    // Rebuild hover text for shared nodes with accumulated demand totals
+    for (const [idx, demand] of nodeDemand) {
+      const { child, scenario, totalRunsPerDay, totalDemandPerDay } = demand;
+      nodeHover[idx] = [
+        `<b>Make ${child.recipeId || child.ticker}</b>`,
+        child.building ? `BUI: ${child.building}` : null,
+        scenario ? `Scen: ${scenarioDisplayName(scenario)}` : null,
+        `COGM: ${money(Number(child.cogmPerOutput ?? 0))}`,
+        `Base profit/day: ${money(child.baseProfitPerDay)}`,
+        `Area/day: ${fmtROI(child.totalAreaPerDay ?? child.fullSelfAreaPerDay)}`,
+        child.roiNarrowDays != null ? `ROI (narrow): ${fmtROI(child.roiNarrowDays)} days` : null,
+        child.inputBuffer7 != null ? `Input buffer 7d (narrow): ${money(child.inputBuffer7)}` : null,
+        child.inputPaybackDays7Narrow != null ? `Input payback (narrow): ${fmtROI(child.inputPaybackDays7Narrow)} days` : null,
+        child.totalInputBuffer7 != null ? `Input buffer 7d (broad): ${money(child.totalInputBuffer7)}` : null,
+        child.inputPaybackDays7Broad != null ? `Input payback (broad): ${fmtROI(child.inputPaybackDays7Broad)} days` : null,
+        `Runs/day required: ${fmtROI(totalRunsPerDay)} (of ${fmtROI(child.runsPerDay)})`,
+        `Demand units/day: ${fmtROI(totalDemandPerDay)}`,
+      ].filter(Boolean).join("<br>");
+    }
 
     const N = nodeLabels.length;
 
