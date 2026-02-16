@@ -47,7 +47,7 @@ async function fetchVolumeClassification(url: string): Promise<{
   const [headers, ...data] = rows;
   const recipeIdIdx = headers.indexOf("RecipeID");
   const tickerIdx = headers.indexOf("Ticker");
-  const classIdx = headers.indexOf("Volume Classification");
+  const classIdx = headers.indexOf("volume");
 
   const byRecipeId = new Map<string, string>();
   const byTicker = new Map<string, string>();
