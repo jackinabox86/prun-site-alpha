@@ -14,6 +14,7 @@ export interface BestRecipeResult {
   buyAllProfitPA: number | null; // Profit P/A if all inputs are bought instead of made, null if inputs missing
   building?: string | null; // Building type that produces this ticker
   top3DisplayScenarios?: Array<{ displayScenario: string; scenario: string; profitPA: number }>; // Top 3 simple scenarios for higher-stage analysis
+  volume?: string; // Volume classification from weekly analysis: "extremely low", "low", "medium", "high"
 }
 
 /**

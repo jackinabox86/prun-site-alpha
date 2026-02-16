@@ -11,10 +11,76 @@
 
 import { writeFileSync, mkdirSync } from 'fs';
 import { join } from 'path';
+import { parse } from 'csv-parse/sync';
 import { refreshBestRecipeIDs } from '../src/server/bestRecipes';
+import type { BestRecipeResult } from '../src/server/bestRecipes';
 import { loadAllFromCsv } from '../src/lib/loadFromCsv';
 import { GCS_STATIC_BASE } from '../src/lib/config';
 import type { Exchange, PriceType } from '../src/types';
+
+// Volume classification URLs per exchange
+// Currently all exchanges use ANT data. When exchange-specific files are available,
+// update the URL for each exchange (e.g., CIS, ICA, NCC)
+const VOLUME_CLASSIFICATION_URLS: Record<string, string> = {
+  ANT: "https://storage.googleapis.com/prun-site-alpha-bucket/dynamic/production%20volume%20classification%20-%20ANT%20dynamic.csv",
+  CIS: "https://storage.googleapis.com/prun-site-alpha-bucket/dynamic/production%20volume%20classification%20-%20ANT%20dynamic.csv", // TODO: Replace with CIS-specific file
+  ICA: "https://storage.googleapis.com/prun-site-alpha-bucket/dynamic/production%20volume%20classification%20-%20ANT%20dynamic.csv", // TODO: Replace with ICA-specific file
+  NCC: "https://storage.googleapis.com/prun-site-alpha-bucket/dynamic/production%20volume%20classification%20-%20ANT%20dynamic.csv", // TODO: Replace with NCC-specific file
+  UNV: "https://storage.googleapis.com/prun-site-alpha-bucket/dynamic/production%20volume%20classification%20-%20ANT%20dynamic.csv", // TODO: Replace with UNV-specific file
+};
+
+/**
+ * Fetch and parse a volume classification CSV, returning lookup maps by RecipeID and Ticker
+ */
+async function fetchVolumeClassification(url: string): Promise<{
+  byRecipeId: Map<string, string>;
+  byTicker: Map<string, string>;
+}> {
+  const res = await fetch(url, { cache: "no-store" });
+  if (!res.ok) {
+    throw new Error(`Volume classification fetch failed: ${res.status} ${res.statusText} for URL: ${url}`);
+  }
+  const text = await res.text();
+  const rows: string[][] = parse(text, { skip_empty_lines: true });
+  if (!rows.length) return { byRecipeId: new Map(), byTicker: new Map() };
+
+  const [headers, ...data] = rows;
+  const recipeIdIdx = headers.indexOf("RecipeID");
+  const tickerIdx = headers.indexOf("Ticker");
+  const classIdx = headers.indexOf("Volume Classification");
+
+  const byRecipeId = new Map<string, string>();
+  const byTicker = new Map<string, string>();
+
+  for (const row of data) {
+    const classification = classIdx !== -1 ? row[classIdx] : undefined;
+    if (!classification) continue;
+    if (recipeIdIdx !== -1 && row[recipeIdIdx]) {
+      byRecipeId.set(row[recipeIdIdx], classification);
+    }
+    if (tickerIdx !== -1 && row[tickerIdx]) {
+      byTicker.set(row[tickerIdx], classification);
+    }
+  }
+
+  return { byRecipeId, byTicker };
+}
+
+/**
+ * Append volume classification to best recipe results
+ */
+function appendVolumeData(
+  data: BestRecipeResult[],
+  volumeMap: { byRecipeId: Map<string, string>; byTicker: Map<string, string> }
+): BestRecipeResult[] {
+  return data.map((item) => {
+    // Try matching by recipeId first, then fall back to ticker
+    const volume =
+      (item.recipeId ? volumeMap.byRecipeId.get(item.recipeId) : undefined) ??
+      volumeMap.byTicker.get(item.ticker);
+    return volume ? { ...item, volume } : item;
+  });
+}
 
 // Exchange configurations
 type ExchangeConfig = {
@@ -51,6 +117,24 @@ async function generateBestRecipes() {
     // Ensure output directory exists
     const outputDir = join(process.cwd(), 'public', 'data');
     mkdirSync(outputDir, { recursive: true });
+
+    // Fetch volume classification data per unique exchange (cached across configs)
+    const uniqueExchanges = [...new Set(EXCHANGE_CONFIGS.map(c => c.exchange))];
+    const volumeDataMap = new Map<string, { byRecipeId: Map<string, string>; byTicker: Map<string, string> }>();
+    await Promise.all(
+      uniqueExchanges.map(async (ex) => {
+        const url = VOLUME_CLASSIFICATION_URLS[ex];
+        if (!url) return;
+        try {
+          console.log(`Fetching volume classification for ${ex}...`);
+          const volumeData = await fetchVolumeClassification(url);
+          volumeDataMap.set(ex, volumeData);
+          console.log(`✓ Volume classification for ${ex}: ${volumeData.byRecipeId.size} recipes, ${volumeData.byTicker.size} tickers`);
+        } catch (err) {
+          console.warn(`⚠ Could not fetch volume classification for ${ex}: ${err}`);
+        }
+      })
+    );
 
     // Generate best recipes for all exchanges in parallel
     // For each config, generate both standard and extraction variants
@@ -124,10 +208,14 @@ async function generateBestRecipes() {
             data = await refreshBestRecipeIDs("gcs", config.exchange, config.buyPriceType, config.sellPriceType);
           }
 
-          const duration = ((Date.now() - startTime) / 1000).toFixed(2);
-          console.log(`[${config.outputName}${modeLabel}] ✓ Generated ${data.length} tickers in ${duration}s`);
+          // Append volume classification data
+          const volumeMap = volumeDataMap.get(config.exchange);
+          const enrichedData = volumeMap ? appendVolumeData(data, volumeMap) : data;
 
-          return { outputName: config.outputName, exchange: config.exchange, mode, data, duration };
+          const duration = ((Date.now() - startTime) / 1000).toFixed(2);
+          console.log(`[${config.outputName}${modeLabel}] ✓ Generated ${enrichedData.length} tickers in ${duration}s`);
+
+          return { outputName: config.outputName, exchange: config.exchange, mode, data: enrichedData, duration };
         });
       })
     );

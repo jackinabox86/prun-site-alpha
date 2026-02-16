@@ -15,6 +15,7 @@ interface BestRecipeResult {
   profitPA: number;
   buyAllProfitPA: number | null;
   building?: string | null;
+  volume?: string;
 }
 
 interface ApiResponse {
@@ -41,6 +42,15 @@ const SELL_AT_OPTIONS = [
   { display: "Ask", value: "ask" },
   { display: "PP7", value: "pp7" },
 ];
+
+type VolumeLevel = "extremely low" | "low" | "medium" | "high";
+const VOLUME_LEVELS: { id: VolumeLevel; label: string }[] = [
+  { id: "extremely low", label: "Extremely Low" },
+  { id: "low", label: "Low" },
+  { id: "medium", label: "Medium" },
+  { id: "high", label: "High" },
+];
+const DEFAULT_VOLUME_LEVELS = new Set<VolumeLevel>(["low", "medium", "high"]);
 
 type WorkforceTier = "PIO" | "SET" | "TEC" | "ENG" | "SCI";
 
@@ -156,6 +166,14 @@ export default function BestRecipesClient() {
   const [selectedWorkforceTiers, setSelectedWorkforceTiers] = useState<Set<WorkforceTier>>(
     new Set(["PIO", "SET", "TEC", "ENG", "SCI"])
   );
+  const [selectedVolumeLevels, setSelectedVolumeLevels] = useState<Set<VolumeLevel>>(() => {
+    if (typeof window === "undefined") return DEFAULT_VOLUME_LEVELS;
+    try {
+      const stored = window.localStorage.getItem("prun:bestRecipes:volumeFilter");
+      if (stored) return new Set(JSON.parse(stored) as VolumeLevel[]);
+    } catch { /* ignore */ }
+    return DEFAULT_VOLUME_LEVELS;
+  });
 
   const loadData = async () => {
     setLoading(true);
@@ -226,6 +244,22 @@ export default function BestRecipesClient() {
     });
   };
 
+  const handleVolumeLevelToggle = (level: VolumeLevel) => {
+    setSelectedVolumeLevels((prev) => {
+      const newSet = new Set(prev);
+      if (newSet.has(level)) {
+        if (newSet.size === 1) return prev; // Don't allow unchecking all
+        newSet.delete(level);
+      } else {
+        newSet.add(level);
+      }
+      try {
+        window.localStorage.setItem("prun:bestRecipes:volumeFilter", JSON.stringify(Array.from(newSet)));
+      } catch { /* ignore */ }
+      return newSet;
+    });
+  };
+
   // Extract unique buildings for dropdown
   const uniqueBuildings = useMemo(() => {
     const buildings = new Set<string>();
@@ -285,7 +319,13 @@ export default function BestRecipesClient() {
     return selectedWorkforceTiers.has(tier);
   });
 
-  const sortedData = [...workforceFilteredData].sort((a, b) => {
+  // Apply volume filter
+  const volumeFilteredData = workforceFilteredData.filter((row) => {
+    if (!row.volume) return true; // Keep items without volume data
+    return selectedVolumeLevels.has(row.volume as VolumeLevel);
+  });
+
+  const sortedData = [...volumeFilteredData].sort((a, b) => {
     const aVal = a[sortColumn];
     const bVal = b[sortColumn];
 
@@ -535,6 +575,38 @@ export default function BestRecipesClient() {
             ))}
           </div>
         )}
+
+        {/* Volume Filter */}
+        {data.length > 0 && (
+          <div style={{ display: "flex", gap: "0.75rem", flexWrap: "wrap", alignItems: "center", marginTop: "0.75rem" }}>
+            <span style={{ fontFamily: "var(--font-mono)", fontSize: "0.75rem", color: "var(--color-text-muted)", marginRight: "0.5rem" }}>
+              VOLUME:
+            </span>
+            {VOLUME_LEVELS.map((level) => (
+              <label
+                key={level.id}
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "0.35rem",
+                  cursor: "pointer",
+                  fontFamily: "var(--font-mono)",
+                  fontSize: "0.75rem",
+                  color: selectedVolumeLevels.has(level.id) ? "var(--color-accent-primary)" : "var(--color-text-muted)",
+                  opacity: selectedVolumeLevels.has(level.id) ? 1 : 0.6,
+                }}
+              >
+                <input
+                  type="checkbox"
+                  checked={selectedVolumeLevels.has(level.id)}
+                  onChange={() => handleVolumeLevelToggle(level.id)}
+                  style={{ accentColor: "var(--color-accent-primary)" }}
+                />
+                {level.label}
+              </label>
+            ))}
+          </div>
+        )}
       </div>
 
       {/* Error Display */}
@@ -555,6 +627,9 @@ export default function BestRecipesClient() {
             {selectedFilterGroupId !== 'all' && <span> (from {groupFilteredData.length} in {selectedGroup?.label})</span>}
             {selectedWorkforceTiers.size < 5 && (
               <span> (workforce: {Array.from(selectedWorkforceTiers).join(", ")})</span>
+            )}
+            {selectedVolumeLevels.size < VOLUME_LEVELS.length && (
+              <span> (volume: {Array.from(selectedVolumeLevels).join(", ")})</span>
             )}
             {data.length > sortedData.length && <span> out of {data.length} total</span>}
           </div>
