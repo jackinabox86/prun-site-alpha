@@ -1,8 +1,6 @@
 import { NextResponse } from "next/server";
 
 const FIO_BASE = "https://rest.fnar.net";
-const FIO_AUTH = "ad8aa2f9-a0a9-4a1b-8428-8b152096c0d0";
-const USERNAME = "jackinabox";
 
 interface CxosOrder {
   CXOSTradeOrderId: string;
@@ -57,13 +55,23 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
 
-export async function GET() {
+export async function GET(request: Request) {
+  const username = request.headers.get("x-fio-username");
+  const apiKey = request.headers.get("x-fio-api-key");
+
+  if (!username || !apiKey) {
+    return NextResponse.json(
+      { error: "FIO username and API key are required. Enter them in the credentials section above." },
+      { status: 400 }
+    );
+  }
+
   try {
     const [ordersRes, exchangeRes] = await Promise.all([
-      fetch(`${FIO_BASE}/cxos/${USERNAME}`, {
+      fetch(`${FIO_BASE}/cxos/${encodeURIComponent(username)}`, {
         headers: {
           accept: "application/json",
-          Authorization: FIO_AUTH,
+          Authorization: apiKey,
         },
       }),
       fetch(`${FIO_BASE}/exchange/all`, {

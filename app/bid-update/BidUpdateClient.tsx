@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
+import { usePersistedSettings } from "@/hooks/usePersistedSettings";
 
 interface BidComparison {
   materialTicker: string;
@@ -59,12 +60,30 @@ export default function BidUpdateClient() {
   const [sortAsc, setSortAsc] = useState(false);
   const [showDebug, setShowDebug] = useState(false);
   const [lastRefresh, setLastRefresh] = useState<Date | null>(null);
+  const [fioUsername, setFioUsername] = usePersistedSettings<string>(
+    "prun:fio:username",
+    "",
+    { updateUrl: false }
+  );
+  const [fioApiKey, setFioApiKey] = usePersistedSettings<string>(
+    "prun:fio:apiKey",
+    "",
+    { updateUrl: false }
+  );
+
+  const hasCredentials = fioUsername.trim() !== "" && fioApiKey.trim() !== "";
 
   const fetchData = useCallback(async () => {
+    if (!fioUsername.trim() || !fioApiKey.trim()) return;
     setLoading(true);
     setError(null);
     try {
-      const res = await fetch("/api/bid-update");
+      const res = await fetch("/api/bid-update", {
+        headers: {
+          "x-fio-username": fioUsername.trim(),
+          "x-fio-api-key": fioApiKey.trim(),
+        },
+      });
       const json = await res.json();
       if (json.error) {
         setError(json.error);
@@ -77,11 +96,11 @@ export default function BidUpdateClient() {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [fioUsername, fioApiKey]);
 
   useEffect(() => {
-    fetchData();
-  }, [fetchData]);
+    if (hasCredentials) fetchData();
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   const handleSort = (field: SortField) => {
     if (sortField === field) {
@@ -168,16 +187,44 @@ export default function BidUpdateClient() {
               color: "var(--color-text-muted)",
             }}
           >
-            Source: rest.fnar.net/cxos/jackinabox + rest.fnar.net/exchange/all
+            Source: rest.fnar.net/cxos/{fioUsername || "..."} + rest.fnar.net/exchange/all
           </span>
         </p>
+      </div>
+
+      {/* FIO Credentials */}
+      <div className="terminal-box" style={{ marginBottom: "2rem" }}>
+        <div className="terminal-header" style={{ marginBottom: "1rem" }}>FIO Credentials</div>
+        <div style={{ display: "flex", gap: "1rem", flexWrap: "wrap", alignItems: "center" }}>
+          <input
+            type="text"
+            placeholder="FIO username"
+            value={fioUsername}
+            onChange={(e) => setFioUsername(e.target.value)}
+            className="terminal-input"
+            style={{ flex: 1, minWidth: "150px", maxWidth: "250px" }}
+          />
+          <input
+            type="password"
+            placeholder="FIO API key"
+            value={fioApiKey}
+            onChange={(e) => setFioApiKey(e.target.value)}
+            className="terminal-input"
+            style={{ flex: 2, minWidth: "250px", maxWidth: "450px" }}
+          />
+          {!hasCredentials && (
+            <span style={{ fontFamily: "var(--font-mono)", fontSize: "0.75rem", color: "var(--color-text-muted)" }}>
+              Enter your FIO username and API key to scan orders
+            </span>
+          )}
+        </div>
       </div>
 
       {/* Controls */}
       <div style={{ marginBottom: "2rem", display: "flex", gap: "1rem", alignItems: "center", flexWrap: "wrap" }}>
         <button
           onClick={fetchData}
-          disabled={loading}
+          disabled={loading || !hasCredentials}
           className="terminal-button"
           style={{ padding: "0.5rem 1.5rem" }}
         >
