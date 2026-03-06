@@ -1,6 +1,4 @@
 import { NextResponse } from "next/server";
-import { readFileSync } from "fs";
-import { join } from "path";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -49,9 +47,18 @@ interface ExchangeOrdersSummary {
  */
 export async function GET() {
   try {
-    const filePath = join(process.cwd(), "public/data/exchange.full.2.14.26.json");
-    const raw = readFileSync(filePath, "utf8");
-    const entries: ExchangeEntry[] = JSON.parse(raw);
+    const res = await fetch("https://rest.fnar.net/exchange/full", {
+      headers: { Accept: "application/json" },
+    });
+
+    if (!res.ok) {
+      return NextResponse.json(
+        { error: `FIO API returned ${res.status}` },
+        { status: 502 }
+      );
+    }
+
+    const entries: ExchangeEntry[] = await res.json();
 
     // Group by exchange
     const exchangeMap = new Map<
