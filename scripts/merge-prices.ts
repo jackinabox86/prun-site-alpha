@@ -5,7 +5,7 @@ import { stringify } from "csv-stringify/sync";
 // API endpoints
 const FNAR_API = "https://rest.fnar.net/csv/prices";
 const PRUNPLANNER_API =
-  "https://api.prunplanner.org/csv/exchange?api_key=8LCSHkbQ-SLt9HLEiFwkHqjEPcehB2gz";
+  "https://api.prunplanner.org/data/exchanges/csv/";
 
 interface FnarRow {
   Ticker: string;
@@ -13,29 +13,20 @@ interface FnarRow {
 }
 
 interface PrunPlannerRow {
-  "TICKER.EXCHANGECODE": string;
-  TICKER: string;
-  EXCHANGECODE: string;
-  ASK: string;
-  BID: string;
-  AVG: string;
-  SUPPLY: string;
-  DEMAND: string;
-  TRADED: string;
+  ticker: string;
+  exchange_code: string;
+  vwap_7d: string;
+  vwap_30d: string;
+  [key: string]: string;
 }
 
-// Map PrunPlanner exchange codes to CSV column names
-const EXCHANGE_CODE_MAP: Record<string, string> = {
-  PP7D_AI1: "A1-PP7",
-  PP30D_AI1: "A1-PP30",
-  PP7D_CI1: "CI1-PP7",
-  PP30D_CI1: "CI1-PP30",
-  PP7D_IC1: "IC1-PP7",
-  PP30D_IC1: "IC1-PP30",
-  PP7D_NC1: "NC1-PP7",
-  PP30D_NC1: "NC1-PP30",
-  PP7D_UNIVERSE: "UNV-PP7",
-  PP30D_UNIVERSE: "UNV-PP30",
+// Map PrunPlanner exchange codes to output column prefixes
+const EXCHANGE_PREFIX_MAP: Record<string, string> = {
+  AI1: "A1",
+  CI1: "CI1",
+  IC1: "IC1",
+  NC1: "NC1",
+  UNIVERSE: "UNV",
 };
 
 async function fetchCsvText(url: string): Promise<string> {
@@ -75,18 +66,12 @@ async function main() {
   const pp7pp30Map: Record<string, Record<string, number>> = {};
 
   for (const row of prunplannerRows) {
-    const ticker = row.TICKER;
-    const exchangeCode = row.EXCHANGECODE;
-    const columnName = EXCHANGE_CODE_MAP[exchangeCode];
+    const ticker = row.ticker;
+    const exchangeCode = row.exchange_code;
+    const prefix = EXCHANGE_PREFIX_MAP[exchangeCode];
 
-    if (!columnName) {
+    if (!prefix) {
       // Skip exchange codes we don't care about
-      continue;
-    }
-
-    // Use AVG column from PrunPlanner for PP7/PP30 values
-    const value = parseFloat(row.AVG);
-    if (isNaN(value) || value <= 0) {
       continue;
     }
 
@@ -94,7 +79,15 @@ async function main() {
       pp7pp30Map[ticker] = {};
     }
 
-    pp7pp30Map[ticker][columnName] = value;
+    const vwap7 = parseFloat(row.vwap_7d);
+    if (!isNaN(vwap7) && vwap7 > 0) {
+      pp7pp30Map[ticker][`${prefix}-PP7`] = vwap7;
+    }
+
+    const vwap30 = parseFloat(row.vwap_30d);
+    if (!isNaN(vwap30) && vwap30 > 0) {
+      pp7pp30Map[ticker][`${prefix}-PP30`] = vwap30;
+    }
   }
 
   console.log(`Built PP7/PP30 data for ${Object.keys(pp7pp30Map).length} tickers\n`);
@@ -117,7 +110,10 @@ async function main() {
   }
 
   // Ensure PP7/PP30 columns exist in header even if no data
-  Object.values(EXCHANGE_CODE_MAP).forEach((col) => allColumns.add(col));
+  for (const prefix of Object.values(EXCHANGE_PREFIX_MAP)) {
+    allColumns.add(`${prefix}-PP7`);
+    allColumns.add(`${prefix}-PP30`);
+  }
 
   // Convert to CSV
   const outputCsv = stringify(mergedRows, {
@@ -137,11 +133,14 @@ async function main() {
   const sampleTicker = mergedRows.find((row) => pp7pp30Map[row.Ticker]);
   if (sampleTicker) {
     console.log(`Sample merged row (${sampleTicker.Ticker}):`);
-    Object.values(EXCHANGE_CODE_MAP).forEach((col) => {
-      if (sampleTicker[col]) {
-        console.log(`  ${col}: ${sampleTicker[col]}`);
+    for (const prefix of Object.values(EXCHANGE_PREFIX_MAP)) {
+      for (const suffix of ["PP7", "PP30"]) {
+        const col = `${prefix}-${suffix}`;
+        if (sampleTicker[col]) {
+          console.log(`  ${col}: ${sampleTicker[col]}`);
+        }
       }
-    });
+    }
   }
 
   console.log("\n✓ Merge complete!");

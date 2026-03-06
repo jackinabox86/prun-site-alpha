@@ -169,7 +169,7 @@ jobs:
           echo "- Mode: **$MODE**" >> $GITHUB_STEP_SUMMARY
           echo "- Branch: \`${{ github.ref }}\`" >> $GITHUB_STEP_SUMMARY
           echo "- Price Source 1: FNAR (rest.fnar.net/csv/prices)" >> $GITHUB_STEP_SUMMARY
-          echo "- Price Source 2: PrunPlanner (api.prunplanner.org/csv/exchange)" >> $GITHUB_STEP_SUMMARY
+          echo "- Price Source 2: PrunPlanner (api.prunplanner.org/data/exchanges/csv/)" >> $GITHUB_STEP_SUMMARY
           echo "- Recipes: Dynamic costs calculated from workforce/build requirements + current prices" >> $GITHUB_STEP_SUMMARY
           echo "- Cache duration: 30 minutes" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
