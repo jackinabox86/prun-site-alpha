@@ -140,7 +140,7 @@ export default function BestRecipesHistoryClient() {
     setHistoryLoading(true);
     setHistoryError(null);
     try {
-      const qs = new URLSearchParams({ ticker, exchange, sellAt, limit: "100" });
+      const qs = new URLSearchParams({ ticker, exchange, sellAt, limit: "1000" });
       const res = await fetch(`/api/best-recipes/history?${qs.toString()}`, {
         cache: "no-store",
       });
