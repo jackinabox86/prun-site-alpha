@@ -56,6 +56,16 @@ jobs:
           TIMESTAMP=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
           echo "Snapshot timestamp: ${TIMESTAMP}"
 
+          # Only save historical snapshots every 8 hours (at 00:xx, 08:xx, 16:xx UTC)
+          CURRENT_HOUR=$(date -u +%H | sed 's/^0//')
+          if [ $((CURRENT_HOUR % 8)) -eq 0 ]; then
+            SAVE_SNAPSHOT=true
+            echo "Snapshot hour — historical snapshots will be saved"
+          else
+            SAVE_SNAPSHOT=false
+            echo "Non-snapshot hour — skipping historical snapshots"
+          fi
+
           # Upload standard and extraction exchange-specific data files (exchange-sellAt-mode combinations)
           for exchange in ANT CIS ICA NCC; do
             for sellAt in bid ask pp7; do
@@ -73,12 +83,14 @@ jobs:
                      cp public/data/${filename}-meta.json \
                      gs://prun-site-alpha-bucket/${filename}-meta.json
 
-              # Save historical snapshot for standard
-              echo "Saving historical snapshot for ${filename}..."
-              gsutil -h "Cache-Control:public, max-age=31536000" \
-                     -h "Content-Type:application/json" \
-                     cp public/data/${filename}.json \
-                     gs://prun-site-alpha-bucket/historical/${filename}/${TIMESTAMP}.json
+              # Save historical snapshot for standard (every 8 hours only)
+              if [ "$SAVE_SNAPSHOT" = "true" ]; then
+                echo "Saving historical snapshot for ${filename}..."
+                gsutil -h "Cache-Control:public, max-age=31536000" \
+                       -h "Content-Type:application/json" \
+                       cp public/data/${filename}.json \
+                       gs://prun-site-alpha-bucket/historical/${filename}/${TIMESTAMP}.json
+              fi
 
               # Upload extraction mode
               filename_extraction="best-recipes-${exchange}-${sellAt}-Extraction"
@@ -94,12 +106,14 @@ jobs:
                      cp public/data/${filename_extraction}-meta.json \
                      gs://prun-site-alpha-bucket/${filename_extraction}-meta.json
 
-              # Save historical snapshot for extraction
-              echo "Saving historical snapshot for ${filename_extraction}..."
-              gsutil -h "Cache-Control:public, max-age=31536000" \
-                     -h "Content-Type:application/json" \
-                     cp public/data/${filename_extraction}.json \
-                     gs://prun-site-alpha-bucket/historical/${filename_extraction}/${TIMESTAMP}.json
+              # Save historical snapshot for extraction (every 8 hours only)
+              if [ "$SAVE_SNAPSHOT" = "true" ]; then
+                echo "Saving historical snapshot for ${filename_extraction}..."
+                gsutil -h "Cache-Control:public, max-age=31536000" \
+                       -h "Content-Type:application/json" \
+                       cp public/data/${filename_extraction}.json \
+                       gs://prun-site-alpha-bucket/historical/${filename_extraction}/${TIMESTAMP}.json
+              fi
             done
           done
 
@@ -119,12 +133,14 @@ jobs:
                    cp public/data/${filename}-meta.json \
                    gs://prun-site-alpha-bucket/${filename}-meta.json
 
-            # Save historical snapshot for standard
-            echo "Saving historical snapshot for ${filename}..."
-            gsutil -h "Cache-Control:public, max-age=31536000" \
-                   -h "Content-Type:application/json" \
-                   cp public/data/${filename}.json \
-                   gs://prun-site-alpha-bucket/historical/${filename}/${TIMESTAMP}.json
+            # Save historical snapshot for standard (every 8 hours only)
+            if [ "$SAVE_SNAPSHOT" = "true" ]; then
+              echo "Saving historical snapshot for ${filename}..."
+              gsutil -h "Cache-Control:public, max-age=31536000" \
+                     -h "Content-Type:application/json" \
+                     cp public/data/${filename}.json \
+                     gs://prun-site-alpha-bucket/historical/${filename}/${TIMESTAMP}.json
+            fi
 
             # Upload extraction mode
             filename_extraction="best-recipes-${unv}-Extraction"
@@ -140,12 +156,14 @@ jobs:
                    cp public/data/${filename_extraction}-meta.json \
                    gs://prun-site-alpha-bucket/${filename_extraction}-meta.json
 
-            # Save historical snapshot for extraction
-            echo "Saving historical snapshot for ${filename_extraction}..."
-            gsutil -h "Cache-Control:public, max-age=31536000" \
-                   -h "Content-Type:application/json" \
-                   cp public/data/${filename_extraction}.json \
-                   gs://prun-site-alpha-bucket/historical/${filename_extraction}/${TIMESTAMP}.json
+            # Save historical snapshot for extraction (every 8 hours only)
+            if [ "$SAVE_SNAPSHOT" = "true" ]; then
+              echo "Saving historical snapshot for ${filename_extraction}..."
+              gsutil -h "Cache-Control:public, max-age=31536000" \
+                     -h "Content-Type:application/json" \
+                     cp public/data/${filename_extraction}.json \
+                     gs://prun-site-alpha-bucket/historical/${filename_extraction}/${TIMESTAMP}.json
+            fi
           done
 
           # Upload default file (ANT-bid) for backwards compatibility
@@ -163,8 +181,12 @@ jobs:
           echo "✅ All files uploaded to GCS"
 
           # ============================================================
-          # UPDATE HISTORICAL INDICES (using same TIMESTAMP from above)
+          # UPDATE HISTORICAL INDICES (every 8 hours only)
           # ============================================================
+
+          if [ "$SAVE_SNAPSHOT" != "true" ]; then
+            echo "⏭️  Skipping index updates (non-snapshot run)"
+          else
 
           # Function to update index for a given configuration
           update_index() {
@@ -228,6 +250,8 @@ jobs:
           update_index "best-recipes-UNV30-Extraction" "UNV" "pp30"
 
           echo "✅ All historical indices updated"
+
+          fi # end SAVE_SNAPSHOT check
 
       - name: Get public URLs
         run: |
