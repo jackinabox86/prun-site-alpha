@@ -5,6 +5,27 @@ import { join } from "path";
 // In-memory cache for serverless functions (persists across invocations in same container)
 const csvCache = new Map<string, Array<Record<string, any>>>();
 
+async function fetchWithRetry(url: string, maxAttempts = 4): Promise<string> {
+  let lastError: unknown;
+  for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+    try {
+      const res = await fetch(url, { cache: "no-store" });
+      if (!res.ok) {
+        throw new Error(`CSV fetch failed: ${res.status} ${res.statusText} for URL: ${url}`);
+      }
+      return await res.text();
+    } catch (err) {
+      lastError = err;
+      if (attempt < maxAttempts) {
+        const delayMs = 1000 * Math.pow(2, attempt - 1); // 1s, 2s, 4s
+        console.warn(`[csvFetch] Attempt ${attempt} failed for ${url}: ${(err as Error).message}. Retrying in ${delayMs}ms...`);
+        await new Promise(resolve => setTimeout(resolve, delayMs));
+      }
+    }
+  }
+  throw lastError;
+}
+
 export async function fetchCsv(url: string): Promise<Array<Record<string, any>>> {
   if (!url) {
     throw new Error("CSV URL is empty. Please set GCS_*_URL environment variables.");
@@ -25,12 +46,8 @@ export async function fetchCsv(url: string): Promise<Array<Record<string, any>>>
     }
     text = readFileSync(filePath, 'utf-8');
   } else {
-    // Fetch from remote URL (GCS or other)
-    const res = await fetch(url, { cache: "no-store" });
-    if (!res.ok) {
-      throw new Error(`CSV fetch failed: ${res.status} ${res.statusText} for URL: ${url}`);
-    }
-    text = await res.text();
+    // Fetch from remote URL (GCS or other) with retry on transient socket errors
+    text = await fetchWithRetry(url);
   }
   const rows: string[][] = parse(text, { skip_empty_lines: true });
   if (!rows.length) return [];
