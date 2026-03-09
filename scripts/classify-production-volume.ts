@@ -2,6 +2,7 @@ import { writeFileSync, mkdirSync } from "fs";
 import { execSync } from "child_process";
 import { parse } from "csv-parse/sync";
 import { stringify } from "csv-stringify/sync";
+import { fetchWithRetry } from "../src/lib/csvFetch";
 
 /**
  * Production Volume Classification Script
@@ -120,11 +121,7 @@ async function classifyProductionVolume(dryRun: boolean, regionName: string) {
 
   // Step 1: Fetch input CSV
   console.log("📥 Fetching static production volume CSV...");
-  const csvResponse = await fetch(regionConfig.staticCsvUrl);
-  if (!csvResponse.ok) {
-    throw new Error(`Failed to fetch static CSV: ${csvResponse.status} ${csvResponse.statusText}`);
-  }
-  const csvText = await csvResponse.text();
+  const csvText = await fetchWithRetry(regionConfig.staticCsvUrl);
 
   const rows: InputRow[] = parse(csvText, {
     columns: true,
