@@ -2,6 +2,7 @@ import { config } from "dotenv";
 import { parse } from "csv-parse/sync";
 import { stringify } from "csv-stringify/sync";
 import { writeFileSync } from "fs";
+import { fetchWithRetry } from "../src/lib/csvFetch";
 
 // Load environment variables from .env.local
 config({ path: ".env.local" });
@@ -155,12 +156,7 @@ interface PriceRow {
 async function fetchCsvText(url: string): Promise<string | null> {
   console.log(`Fetching ${url}...`);
   try {
-    const response = await fetch(url);
-    if (!response.ok) {
-      console.warn(`  Warning: Failed to fetch ${url}: ${response.statusText}`);
-      return null;
-    }
-    return await response.text();
+    return await fetchWithRetry(url);
   } catch (error) {
     console.warn(`  Warning: Error fetching ${url}:`, error);
     return null;

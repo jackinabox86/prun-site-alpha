@@ -1,6 +1,7 @@
 import { writeFileSync } from "fs";
 import { parse } from "csv-parse/sync";
 import { stringify } from "csv-stringify/sync";
+import { fetchWithRetry } from "../src/lib/csvFetch";
 
 // API endpoints
 const FNAR_API = "https://rest.fnar.net/csv/prices";
@@ -31,11 +32,7 @@ const EXCHANGE_PREFIX_MAP: Record<string, string> = {
 
 async function fetchCsvText(url: string): Promise<string> {
   console.log(`Fetching ${url}...`);
-  const response = await fetch(url);
-  if (!response.ok) {
-    throw new Error(`Failed to fetch ${url}: ${response.statusText}`);
-  }
-  return await response.text();
+  return fetchWithRetry(url);
 }
 
 async function main() {

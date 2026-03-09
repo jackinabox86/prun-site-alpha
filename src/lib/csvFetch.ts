@@ -5,16 +5,26 @@ import { join } from "path";
 // In-memory cache for serverless functions (persists across invocations in same container)
 const csvCache = new Map<string, Array<Record<string, any>>>();
 
-async function fetchWithRetry(url: string, maxAttempts = 4): Promise<string> {
+class HttpError extends Error {
+  constructor(public status: number, message: string) {
+    super(message);
+    this.name = "HttpError";
+  }
+}
+
+export async function fetchWithRetry(url: string, maxAttempts = 4): Promise<string> {
   let lastError: unknown;
   for (let attempt = 1; attempt <= maxAttempts; attempt++) {
     try {
       const res = await fetch(url, { cache: "no-store" });
+      // HTTP errors are not transient — throw immediately without retrying
       if (!res.ok) {
-        throw new Error(`CSV fetch failed: ${res.status} ${res.statusText} for URL: ${url}`);
+        throw new HttpError(res.status, `CSV fetch failed: ${res.status} ${res.statusText} for URL: ${url}`);
       }
       return await res.text();
     } catch (err) {
+      if (err instanceof HttpError) throw err;
+      // Network/socket errors and body-read failures are retried
       lastError = err;
       if (attempt < maxAttempts) {
         const delayMs = 1000 * Math.pow(2, attempt - 1); // 1s, 2s, 4s
