@@ -5,7 +5,7 @@ import { join } from "path";
 // In-memory cache for serverless functions (persists across invocations in same container)
 const csvCache = new Map<string, Array<Record<string, any>>>();
 
-async function fetchWithRetry(url: string, maxAttempts = 4): Promise<string> {
+export async function fetchWithRetry(url: string, maxAttempts = 4): Promise<string> {
   let lastError: unknown;
   for (let attempt = 1; attempt <= maxAttempts; attempt++) {
     try {
