@@ -8,20 +8,24 @@ const csvCache = new Map<string, Array<Record<string, any>>>();
 export async function fetchWithRetry(url: string, maxAttempts = 4): Promise<string> {
   let lastError: unknown;
   for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+    let res: Response;
     try {
-      const res = await fetch(url, { cache: "no-store" });
-      if (!res.ok) {
-        throw new Error(`CSV fetch failed: ${res.status} ${res.statusText} for URL: ${url}`);
-      }
-      return await res.text();
+      res = await fetch(url, { cache: "no-store" });
     } catch (err) {
+      // Only network/socket errors (TypeError) reach here — retry these
       lastError = err;
       if (attempt < maxAttempts) {
         const delayMs = 1000 * Math.pow(2, attempt - 1); // 1s, 2s, 4s
         console.warn(`[csvFetch] Attempt ${attempt} failed for ${url}: ${(err as Error).message}. Retrying in ${delayMs}ms...`);
         await new Promise(resolve => setTimeout(resolve, delayMs));
       }
+      continue;
     }
+    // HTTP errors are not transient — throw immediately without retrying
+    if (!res.ok) {
+      throw new Error(`CSV fetch failed: ${res.status} ${res.statusText} for URL: ${url}`);
+    }
+    return await res.text();
   }
   throw lastError;
 }
