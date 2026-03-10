@@ -12,7 +12,7 @@ class HttpError extends Error {
   }
 }
 
-export async function fetchWithRetry(url: string, maxAttempts = 4): Promise<string> {
+export async function fetchWithRetry(url: string, maxAttempts = 5): Promise<string> {
   let lastError: unknown;
   for (let attempt = 1; attempt <= maxAttempts; attempt++) {
     try {
@@ -27,7 +27,9 @@ export async function fetchWithRetry(url: string, maxAttempts = 4): Promise<stri
       // Network/socket errors and body-read failures are retried
       lastError = err;
       if (attempt < maxAttempts) {
-        const delayMs = 1000 * Math.pow(2, attempt - 1); // 1s, 2s, 4s
+        const baseDelay = 1000 * Math.pow(2, attempt - 1); // 1s, 2s, 4s, 8s
+        const jitter = Math.random() * baseDelay; // up to 100% jitter to spread parallel retries
+        const delayMs = Math.round(baseDelay + jitter);
         console.warn(`[csvFetch] Attempt ${attempt} failed for ${url}: ${(err as Error).message}. Retrying in ${delayMs}ms...`);
         await new Promise(resolve => setTimeout(resolve, delayMs));
       }
