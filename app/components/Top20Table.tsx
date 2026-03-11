@@ -29,14 +29,18 @@ export default function Top20Table({ options, exchange, priceType }: { options: 
 
   if (!options || options.length === 0) return null;
 
-  const toggleRow = (index: number) => {
+  const expandRow = (index: number) => {
     setExpandedRows((prev) => {
       const next = new Set(prev);
-      if (next.has(index)) {
-        next.delete(index);
-      } else {
-        next.add(index);
-      }
+      next.add(index);
+      return next;
+    });
+  };
+
+  const collapseRow = (index: number) => {
+    setExpandedRows((prev) => {
+      const next = new Set(prev);
+      next.delete(index);
       return next;
     });
   };
@@ -76,16 +80,29 @@ export default function Top20Table({ options, exchange, priceType }: { options: 
                   <td style={{ textAlign: "center" }}>
                     {index === 0 ? (
                       <span style={{ color: "var(--color-text-muted)", fontSize: "0.75rem" }}>See Top</span>
-                    ) : (
+                    ) : expandedRows.has(index) ? (
                       <button
-                        onClick={() => toggleRow(index)}
+                        type="button"
+                        onClick={() => collapseRow(index)}
                         className="terminal-button"
                         style={{
                           padding: "0.5rem 1.5rem",
                           fontSize: "0.875rem"
                         }}
                       >
-                        {expandedRows.has(index) ? "−" : "+"}
+                        −
+                      </button>
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={() => expandRow(index)}
+                        className="terminal-button"
+                        style={{
+                          padding: "0.5rem 1.5rem",
+                          fontSize: "0.875rem"
+                        }}
+                      >
+                        +
                       </button>
                     )}
                   </td>

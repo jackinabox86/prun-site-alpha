@@ -475,6 +475,7 @@ const BestScenarioSankey = memo(function BestScenarioSankey({
   const normalView = (
     <div style={{ position: "relative" }}>
       <button
+        type="button"
         onClick={() => setIsExpanded(true)}
         className="terminal-button"
         style={{
@@ -521,6 +522,7 @@ const BestScenarioSankey = memo(function BestScenarioSankey({
           Production Chain: {best.ticker}
         </span>
         <button
+          type="button"
           onClick={() => setIsExpanded(false)}
           className="terminal-button"
           style={{ padding: "0.5rem 1rem", fontSize: "0.75rem" }}
