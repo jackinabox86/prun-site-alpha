@@ -1,7 +1,7 @@
 // app/components/BestScenarioSankey.tsx
 "use client";
 
-import { useMemo, memo, useState, useEffect } from "react";
+import { useMemo, memo, useState, useEffect, Suspense } from "react";
 import PlotlySankey from "./PlotlySankey";
 import type { Exchange, PriceType } from "@/types";
 import { scenarioDisplayName } from "@/core/scenario";
@@ -475,6 +475,7 @@ const BestScenarioSankey = memo(function BestScenarioSankey({
   const normalView = (
     <div style={{ position: "relative" }}>
       <button
+        type="button"
         onClick={() => setIsExpanded(true)}
         className="terminal-button"
         style={{
@@ -488,7 +489,9 @@ const BestScenarioSankey = memo(function BestScenarioSankey({
       >
         Expand
       </button>
-      <PlotlySankey data={result.data} layout={result.layout} />
+      <Suspense fallback={<div style={{ width: "100%", height: `${result.dynamicHeight}px`, background: "var(--color-bg-primary)" }} />}>
+        <PlotlySankey data={result.data} layout={result.layout} height={result.dynamicHeight} />
+      </Suspense>
     </div>
   );
 
@@ -521,6 +524,7 @@ const BestScenarioSankey = memo(function BestScenarioSankey({
           Production Chain: {best.ticker}
         </span>
         <button
+          type="button"
           onClick={() => setIsExpanded(false)}
           className="terminal-button"
           style={{ padding: "0.5rem 1rem", fontSize: "0.75rem" }}
@@ -529,13 +533,16 @@ const BestScenarioSankey = memo(function BestScenarioSankey({
         </button>
       </div>
       <div style={{ flex: 1, overflow: "auto", padding: "0.5rem" }}>
-        <PlotlySankey
-          data={result.data}
-          layout={{
-            ...result.layout,
-            height: expandedHeight,
-          }}
-        />
+        <Suspense fallback={<div style={{ width: "100%", height: `${expandedHeight}px`, background: "var(--color-bg-primary)" }} />}>
+          <PlotlySankey
+            data={result.data}
+            layout={{
+              ...result.layout,
+              height: expandedHeight,
+            }}
+            height={expandedHeight}
+          />
+        </Suspense>
       </div>
     </div>
   );
