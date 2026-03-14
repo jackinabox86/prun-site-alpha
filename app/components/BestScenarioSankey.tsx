@@ -1,7 +1,7 @@
 // app/components/BestScenarioSankey.tsx
 "use client";
 
-import { useMemo, memo, useState, useEffect } from "react";
+import { useMemo, memo, useState, useEffect, Suspense } from "react";
 import PlotlySankey from "./PlotlySankey";
 import type { Exchange, PriceType } from "@/types";
 import { scenarioDisplayName } from "@/core/scenario";
@@ -489,7 +489,9 @@ const BestScenarioSankey = memo(function BestScenarioSankey({
       >
         Expand
       </button>
-      <PlotlySankey data={result.data} layout={result.layout} />
+      <Suspense fallback={<div style={{ width: "100%", height: `${result.dynamicHeight}px`, background: "var(--color-bg-primary)" }} />}>
+        <PlotlySankey data={result.data} layout={result.layout} height={result.dynamicHeight} />
+      </Suspense>
     </div>
   );
 
@@ -531,13 +533,16 @@ const BestScenarioSankey = memo(function BestScenarioSankey({
         </button>
       </div>
       <div style={{ flex: 1, overflow: "auto", padding: "0.5rem" }}>
-        <PlotlySankey
-          data={result.data}
-          layout={{
-            ...result.layout,
-            height: expandedHeight,
-          }}
-        />
+        <Suspense fallback={<div style={{ width: "100%", height: `${expandedHeight}px`, background: "var(--color-bg-primary)" }} />}>
+          <PlotlySankey
+            data={result.data}
+            layout={{
+              ...result.layout,
+              height: expandedHeight,
+            }}
+            height={expandedHeight}
+          />
+        </Suspense>
       </div>
     </div>
   );

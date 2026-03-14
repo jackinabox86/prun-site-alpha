@@ -83,7 +83,7 @@ export default function CondensedOptionsTable({ options, exchange, priceType }: 
                     ) : expandedRows.has(index) ? (
                       <button
                         type="button"
-                        onClick={() => collapseRow(index)}
+                        onClick={(e) => { e.stopPropagation(); collapseRow(index); }}
                         className="terminal-button"
                         style={{
                           padding: "0.5rem 1.5rem",
@@ -95,7 +95,7 @@ export default function CondensedOptionsTable({ options, exchange, priceType }: 
                     ) : (
                       <button
                         type="button"
-                        onClick={() => expandRow(index)}
+                        onClick={(e) => { e.stopPropagation(); expandRow(index); }}
                         className="terminal-button"
                         style={{
                           padding: "0.5rem 1.5rem",

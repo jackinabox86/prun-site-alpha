@@ -4,7 +4,10 @@
 import dynamic from "next/dynamic";
 import { useMemo } from "react";
 
-const Plot = dynamic(() => import("react-plotly.js"), { ssr: false });
+const Plot = dynamic(() => import("react-plotly.js"), {
+  ssr: false,
+  loading: () => <div style={{ width: "100%", height: "400px", background: "var(--color-bg-primary)" }} />,
+});
 
 export type PlotlySankeyProps = {
   data: any[];
