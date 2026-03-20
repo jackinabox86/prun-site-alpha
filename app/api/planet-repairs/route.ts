@@ -21,7 +21,7 @@ interface BuildingEntry {
 }
 
 interface PlanetEntry {
-  NaturalId: string;
+  PlanetNaturalId: string;
   PlanetName: string;
 }
 
@@ -75,7 +75,7 @@ export async function GET(request: Request) {
     if (planetsRes.ok) {
       const allPlanets: PlanetEntry[] = await planetsRes.json();
       for (const p of allPlanets) {
-        planetNameMap.set(p.NaturalId, p.PlanetName);
+        planetNameMap.set(p.PlanetNaturalId, p.PlanetName);
       }
     }
 
