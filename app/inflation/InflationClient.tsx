@@ -55,7 +55,7 @@ export default function InflationClient() {
   const [tickers, setTickers] = useState<string>(PRESET_BASKETS.frequentlyTraded.join(", "));
   const [selectedExchanges, setSelectedExchanges] = useState<string[]>(["ANT"]);
   const [indexDate, setIndexDate] = useState<string>(getDefaultIndexDate());
-  const [weightType, setWeightType] = useState<"equal" | "volume">("equal");
+  const [weightType, setWeightType] = useState<"equal" | "volume">("volume");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [exchangeResults, setExchangeResults] = useState<ApiResponse[]>([]);
@@ -152,7 +152,7 @@ export default function InflationClient() {
       lines.push(`# ${result.exchange} Ticker Weights:`);
       for (const w of result.weights) {
         if (result.weightType === "volume") {
-          lines.push(`# ${w.ticker}: ${(w.weight * 100).toFixed(4)}% (Volume ±7d: ${w.indexDateVolume})`);
+          lines.push(`# ${w.ticker}: ${(w.weight * 100).toFixed(4)}% (Volume: ${w.indexDateVolume})`);
         } else {
           lines.push(`# ${w.ticker}: ${(w.weight * 100).toFixed(4)}%`);
         }
@@ -391,21 +391,25 @@ export default function InflationClient() {
                   <input
                     type="radio"
                     name="weightType"
-                    value="equal"
-                    checked={weightType === "equal"}
+                    value="volume"
+                    checked={weightType === "volume"}
                     onChange={(e) => setWeightType(e.target.value as "equal" | "volume")}
                   />
-                  <span className="text-mono" style={{ fontSize: "0.875rem" }}>Equal</span>
+                  <span className="text-mono" style={{ fontSize: "0.875rem" }}>Volume</span>
+                  <span
+                    title="Each ticker is weighted by its total traded credit volume from 7 days before the index date through today. Tickers with higher trading volume have a larger influence on the index."
+                    style={{ cursor: "help", color: "var(--color-text-muted)", fontSize: "0.75rem", userSelect: "none" }}
+                  >(?)</span>
                 </label>
                 <label style={{ display: "flex", alignItems: "center", gap: "0.5rem", cursor: "pointer" }}>
                   <input
                     type="radio"
                     name="weightType"
-                    value="volume"
-                    checked={weightType === "volume"}
+                    value="equal"
+                    checked={weightType === "equal"}
                     onChange={(e) => setWeightType(e.target.value as "equal" | "volume")}
                   />
-                  <span className="text-mono" style={{ fontSize: "0.875rem" }}>Volume (±7 days)</span>
+                  <span className="text-mono" style={{ fontSize: "0.875rem" }}>Equal</span>
                 </label>
               </div>
             </div>
@@ -492,7 +496,7 @@ export default function InflationClient() {
                     <tr>
                       <th>Ticker</th>
                       <th>Weight (%)</th>
-                      {result.weightType === "volume" && <th>Volume (±7d)</th>}
+                      {result.weightType === "volume" && <th>Volume</th>}
                     </tr>
                   </thead>
                   <tbody>
