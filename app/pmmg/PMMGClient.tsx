@@ -48,6 +48,17 @@ export default function PMMGClient() {
     { urlParamName: "month", updateUrl: true }
   );
 
+  const [minBases, setMinBases] = usePersistedSettings<string>(
+    "prun:pmmg:minBases",
+    "1",
+    { updateUrl: false }
+  );
+  const [volumeLimit, setVolumeLimit] = usePersistedSettings<string>(
+    "prun:pmmg:volumeLimit",
+    "500",
+    { updateUrl: false }
+  );
+
   const [rows, setRows] = useState<PMMGRow[]>([]);
   const [availableMonths, setAvailableMonths] = useState<string[]>([]);
   const [loading, setLoading] = useState(false);
@@ -99,7 +110,19 @@ export default function PMMGClient() {
   };
 
   const sortedRows = useMemo(() => {
-    return [...rows].sort((a, b) => {
+    const limit = Math.max(1, parseInt(volumeLimit, 10) || 500);
+    const minB = Math.max(0, parseInt(minBases, 10) || 0);
+
+    // 1. Take top N by volume
+    const byVolume = [...rows]
+      .sort((a, b) => b.volume - a.volume)
+      .slice(0, limit);
+
+    // 2. Apply min bases filter
+    const filtered = minB > 0 ? byVolume.filter((r) => r.bases >= minB) : byVolume;
+
+    // 3. Apply user sort
+    return filtered.sort((a, b) => {
       let cmp = 0;
       if (sortField === "username") {
         cmp = a.username.localeCompare(b.username);
@@ -110,7 +133,7 @@ export default function PMMGClient() {
       }
       return sortAsc ? cmp : -cmp;
     });
-  }, [rows, sortField, sortAsc]);
+  }, [rows, sortField, sortAsc, volumeLimit, minBases]);
 
   const sortIndicator = (field: SortField) =>
     sortField === field ? (sortAsc ? " ▲" : " ▼") : "";
@@ -160,6 +183,43 @@ export default function PMMGClient() {
               </option>
             ))}
           </select>
+          <span
+            style={{
+              fontSize: "0.875rem",
+              color: "var(--color-text-muted)",
+              fontFamily: "var(--font-mono)",
+              marginLeft: "0.5rem",
+            }}
+          >
+            Top N by volume
+          </span>
+          <input
+            type="number"
+            className="terminal-input"
+            value={volumeLimit}
+            min={1}
+            max={500}
+            onChange={(e) => setVolumeLimit(e.target.value)}
+            style={{ width: "5rem" }}
+          />
+          <span
+            style={{
+              fontSize: "0.875rem",
+              color: "var(--color-text-muted)",
+              fontFamily: "var(--font-mono)",
+              marginLeft: "0.5rem",
+            }}
+          >
+            Min bases
+          </span>
+          <input
+            type="number"
+            className="terminal-input"
+            value={minBases}
+            min={0}
+            onChange={(e) => setMinBases(e.target.value)}
+            style={{ width: "5rem" }}
+          />
           <button
             className="terminal-button"
             onClick={() => fetchData(selectedMonth || undefined)}
