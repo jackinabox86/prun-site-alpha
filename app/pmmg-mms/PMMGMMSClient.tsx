@@ -118,7 +118,7 @@ export default function PMMGMMSClient() {
                 xanchor: "right",
                 y: 1,
                 yanchor: "top",
-                bgcolor: "rgba(10,14,20,0.8)",
+                bgcolor: "#0a0e14",
                 bordercolor: "#2a3f5f",
                 borderwidth: 1,
               },
