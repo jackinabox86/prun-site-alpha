@@ -56,6 +56,9 @@ export interface MMSPoint {
   newMMPct: number;
   oldMMPct: number;
   otherPct: number;
+  newMMVol: number;
+  oldMMVol: number;
+  otherVol: number;
 }
 
 export interface MMSApiResponse {
@@ -103,7 +106,7 @@ export async function GET() {
         const code = monthCodes[i];
         const label = formatMonthLabel(code);
         if (!res.ok) {
-          return { monthCode: code, monthLabel: label, newMMPct: 0, oldMMPct: 0, otherPct: 100 };
+          return { monthCode: code, monthLabel: label, newMMPct: 0, oldMMPct: 0, otherPct: 100, newMMVol: 0, oldMMVol: 0, otherVol: 0 };
         }
 
         const prodData: ProdDataFile = await res.json();
@@ -120,7 +123,7 @@ export async function GET() {
 
         const total = newMMVol + oldMMVol + otherVol;
         if (total === 0) {
-          return { monthCode: code, monthLabel: label, newMMPct: 0, oldMMPct: 0, otherPct: 0 };
+          return { monthCode: code, monthLabel: label, newMMPct: 0, oldMMPct: 0, otherPct: 0, newMMVol: 0, oldMMVol: 0, otherVol: 0 };
         }
 
         return {
@@ -129,6 +132,9 @@ export async function GET() {
           newMMPct: (newMMVol / total) * 100,
           oldMMPct: (oldMMVol / total) * 100,
           otherPct: (otherVol / total) * 100,
+          newMMVol,
+          oldMMVol,
+          otherVol,
         };
       })
     );
