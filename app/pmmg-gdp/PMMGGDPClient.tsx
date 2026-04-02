@@ -125,20 +125,7 @@ export default function PMMGGDPClient() {
                   tickvals,
                   ticktext,
                 },
-                annotations: [
-                  {
-                    text: "Total Production Volume",
-                    xref: "paper",
-                    yref: "paper",
-                    x: 0,
-                    y: 1.06,
-                    xanchor: "left",
-                    yanchor: "bottom",
-                    showarrow: false,
-                    font: { color: "#a0a8b5", size: 12, family: "monospace" },
-                  },
-                ],
-                margin: { t: 50, b: 120, l: 70, r: 20 },
+                margin: { t: 20, b: 120, l: 70, r: 20 },
                 bargap: 0.3,
               }}
               config={{ responsive: true, displayModeBar: false }}
