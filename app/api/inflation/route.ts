@@ -100,13 +100,12 @@ function calculateIndex(
       weights.push({ ticker, weight: equalWeight, indexDateVolume: 0 });
     }
   } else {
-    // Volume-weighted: based on rawVolume over a date range (±7 days from index date)
+    // Volume-weighted: based on rawVolume from 7 days before the index date to now
     const DAYS_BEFORE = 7;
-    const DAYS_AFTER = 7;
     const MS_PER_DAY = 24 * 60 * 60 * 1000;
 
     const rangeStart = indexTimestamp - (DAYS_BEFORE * MS_PER_DAY);
-    const rangeEnd = indexTimestamp + (DAYS_AFTER * MS_PER_DAY);
+    const rangeEnd = Date.now();
 
     const volumes: Record<string, number> = {};
     let totalVolume = 0;
