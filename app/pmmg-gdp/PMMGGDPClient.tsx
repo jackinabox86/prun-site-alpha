@@ -76,17 +76,19 @@ export default function PMMGGDPClient() {
 
       {!loading && !error && data.length > 0 && (() => {
         const ONE_B = 1_000_000_000;
-        const maxVol = Math.max(...data.map((d) => d.totalVolume));
+        const yStart = 25 * ONE_B;
+        const monthlyVolumes = data.map((d) => d.totalVolume * 30);
+        const maxVol = Math.max(...monthlyVolumes);
         const yMax = maxVol * 1.08;
 
-        // Generate tick values from 1b up, choosing a sensible interval
-        const range = yMax - ONE_B;
+        // Generate tick values from 25b up, choosing a sensible interval
+        const range = yMax - yStart;
         const rawInterval = range / 5;
         const magnitude = Math.pow(10, Math.floor(Math.log10(rawInterval)));
         const tickInterval = Math.ceil(rawInterval / magnitude) * magnitude;
 
         const tickvals: number[] = [];
-        for (let v = ONE_B; v <= yMax; v += tickInterval) {
+        for (let v = yStart; v <= yMax; v += tickInterval) {
           tickvals.push(Math.round(v));
         }
 
@@ -104,7 +106,7 @@ export default function PMMGGDPClient() {
                 {
                   type: "bar",
                   x: data.map((d) => d.monthLabel),
-                  y: data.map((d) => d.totalVolume),
+                  y: monthlyVolumes,
                   marker: { color: "#ff9500" },
                   hovertemplate: "%{x}<br>ȼ%{y:,.0f}<extra></extra>",
                 },
@@ -121,7 +123,7 @@ export default function PMMGGDPClient() {
                 yaxis: {
                   gridcolor: "#1a2332",
                   linecolor: "#2a3f5f",
-                  range: [ONE_B, yMax],
+                  range: [yStart, yMax],
                   tickvals,
                   ticktext,
                 },
