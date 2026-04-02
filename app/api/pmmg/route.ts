@@ -139,7 +139,7 @@ export async function GET(request: NextRequest) {
 
     const rows: PMMGRow[] = [];
     for (const [hash, compData] of Object.entries(companyDataFile.totals)) {
-      if (compData.volumeRank > 100) continue;
+      if (compData.volumeRank > 500) continue;
       const companyInfo = knownCompanies[hash];
       const baseInfo = baseDataFile[hash];
       if (!companyInfo || !baseInfo || baseInfo.bases === 0) continue;
