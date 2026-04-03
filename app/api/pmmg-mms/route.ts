@@ -115,7 +115,7 @@ export async function GET() {
         let otherVol = 0;
 
         for (const [ticker, entry] of Object.entries(prodData)) {
-          const vol = (entry.volume ?? 0) - (entry.consumed ?? 0);
+          const vol = entry.profit ?? 0;
           if (NEW_MMS.has(ticker)) newMMVol += vol;
           else if (OLD_MMS.has(ticker)) oldMMVol += vol;
           else otherVol += vol;
