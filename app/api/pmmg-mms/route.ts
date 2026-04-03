@@ -115,10 +115,14 @@ export async function GET() {
         let otherVol = 0;
 
         for (const [ticker, entry] of Object.entries(prodData)) {
-          const vol = entry.profit ?? 0;
-          if (NEW_MMS.has(ticker)) newMMVol += vol;
-          else if (OLD_MMS.has(ticker)) oldMMVol += vol;
-          else otherVol += vol;
+          const { volume = 0, amount = 0, consumed = 0, profit = 0 } = entry;
+          if (NEW_MMS.has(ticker) || OLD_MMS.has(ticker)) {
+            const val = volume - (amount !== 0 ? (volume / amount) * consumed : 0);
+            if (NEW_MMS.has(ticker)) newMMVol += val;
+            else oldMMVol += val;
+          } else {
+            otherVol += profit;
+          }
         }
 
         const total = newMMVol + oldMMVol + otherVol;
