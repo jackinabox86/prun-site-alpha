@@ -9,7 +9,7 @@ const Plot = dynamic(() => import("react-plotly.js"), { ssr: false });
 // Preset baskets
 const PRESET_BASKETS = {
   consumables: ["DW", "PWO", "COF", "KOM", "PT", "REP", "EXO", "HMS", "MED", "SCN", "ALE", "SC", "FIM", "HSS", "GIN", "VG", "PDA", "MEA"],
-  frequentlyTraded: ["ABH", "ADE", "AIR", "AL", "ALE", "ALG", "ALO", "AMM", "AR", "ASE", "ATA", "AU", "AUO", "BEA", "BCO", "BGO", "BHP", "C", "CAF", "CCD", "CL", "COF", "COT", "CU", "CUO", "DDT", "DW", "EPO", "EXO", "FE", "FEO", "FIM", "FLP", "FLX", "GAL", "GIN", "GL", "GRN", "H", "H2O", "HAL", "HCP", "HE", "HE3", "HER", "HMS", "HSE", "HSS", "IDC", "INS", "KOM", "LBH", "LDE", "LHP", "LI", "LSE", "LST", "LTA", "MAI", "MEA", "MED", "MFK", "MG", "MUS", "N", "NCS", "NL", "NS", "NUT", "O", "OFF", "OVE", "PCB", "PDA", "PE", "PG", "POW", "PSL", "PT", "PWO", "RBH", "RCO", "RDE", "REP", "RSE", "RTA", "S", "SC", "SCN", "SEA", "SEN", "SFK", "SI", "SIO", "SSC", "STL", "SWF", "THF", "TI", "TIO", "TRN", "TRU", "UTS", "VEG", "VG"],
+  frequentlyTraded: ["ABH", "ADE", "AL", "ALE", "ALG", "ALO", "AMM", "AR", "ASE", "ATA", "AU", "AUO", "BEA", "BCO", "BGO", "BHP", "C", "CAF", "CL", "COF", "COT", "CU", "CUO", "DDT", "DW", "EPO", "EXO", "FE", "FEO", "FIM", "FLP", "FLX", "GAL", "GIN", "GL", "GRN", "H", "H2O", "HAL", "HCP", "HE", "HE3", "HER", "HMS", "HSE", "HSS", "INS", "KOM", "LBH", "LDE", "LHP", "LI", "LSE", "LST", "LTA", "MAI", "MEA", "MED", "MFK", "MG", "MUS", "N", "NCS", "NL", "NS", "NUT", "O", "OFF", "OVE", "PCB", "PDA", "PE", "PG", "POW", "PSL", "PT", "PWO", "RBH", "RCO", "RDE", "REP", "RSE", "RTA", "S", "SC", "SCN", "SEA", "SEN", "SFK", "SI", "SIO", "SSC", "STL", "SWF", "THF", "TI", "TIO", "TRN", "TRU", "UTS", "VEG", "VG"],
   lAndRFabs: ["LBH", "LDE", "LSE", "LTA", "RBH", "RDE", "RSE", "RTA"],
 };
 
