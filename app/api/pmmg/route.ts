@@ -1,6 +1,4 @@
 import { NextRequest, NextResponse } from "next/server";
-import { readFileSync } from "fs";
-import { join } from "path";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -127,10 +125,11 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    const [companiesRes, companyDataRes, baseDataRes] = await Promise.all([
+    const [companiesRes, companyDataRes, baseDataRes, parentCorpsRes] = await Promise.all([
       fetch(`${GITHUB_RAW}/knownCompanies.json`, { cache: "no-store" }),
       fetch(`${GITHUB_RAW}/company-data-${monthCode}.json`, { cache: "no-store" }),
       fetch(`${GITHUB_RAW}/base-data-${monthCode}.json`, { cache: "no-store" }),
+      fetch(`${GITHUB_RAW}/parentCorps.json`, { cache: "no-store" }),
     ]);
 
     if (!companiesRes.ok || !companyDataRes.ok || !baseDataRes.ok) {
@@ -150,14 +149,13 @@ export async function GET(request: NextRequest) {
       baseDataRes.json(),
     ]);
 
-    // Load parent corps mapping from local file
+    // Fetch parent corps from GitHub; fall back to empty mapping if unavailable.
+    // Always ensure SSM rolls up under OOG.
     let parentCorps: Record<string, string> = {};
-    try {
-      const raw = readFileSync(join(process.cwd(), "public/data/parentCorps.json"), "utf-8");
-      parentCorps = JSON.parse(raw);
-    } catch {
-      // non-fatal; proceed without parent corp mapping
+    if (parentCorpsRes.ok) {
+      try { parentCorps = await parentCorpsRes.json(); } catch { /* ignore */ }
     }
+    parentCorps["SSM"] = "OOG";
 
     // Build player rows (top 500 by volume rank, must have bases)
     const rows: PMMGRow[] = [];
