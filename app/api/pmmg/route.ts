@@ -1,4 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
+import { readFileSync } from "fs";
+import { join } from "path";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -62,8 +64,19 @@ export interface PMMGRow {
   volumePerBase: number;
 }
 
+export interface PMMGCorpRow {
+  corporation: string;
+  members: number;
+  bases: number;
+  profit: number;
+  volume: number;
+  profitPerBase: number;
+  volumePerBase: number;
+}
+
 export interface PMMGApiResponse {
   rows: PMMGRow[];
+  corpRows: PMMGCorpRow[];
   month: string;
   availableMonths: string[];
   error?: string;
@@ -137,6 +150,15 @@ export async function GET(request: NextRequest) {
       baseDataRes.json(),
     ]);
 
+    // Load parent corps mapping from local file
+    let parentCorps: Record<string, string> = {};
+    try {
+      const raw = readFileSync(join(process.cwd(), "public/data/parentCorps.json"), "utf-8");
+      parentCorps = JSON.parse(raw);
+    } catch {
+      // non-fatal; proceed without parent corp mapping
+    }
+
     const rows: PMMGRow[] = [];
     for (const [hash, compData] of Object.entries(companyDataFile.totals)) {
       if (compData.volumeRank > 500) continue;
@@ -157,8 +179,42 @@ export async function GET(request: NextRequest) {
 
     rows.sort((a, b) => b.profitPerBase - a.profitPerBase);
 
+    // Build corporation aggregation (only players with a corp)
+    const corpMap = new Map<string, { members: number; bases: number; profit: number; volume: number }>();
+    for (const row of rows) {
+      if (!row.corporation) continue;
+      const effectiveCorp = parentCorps[row.corporation] ?? row.corporation;
+      const existing = corpMap.get(effectiveCorp);
+      if (existing) {
+        existing.members += 1;
+        existing.bases += row.bases;
+        existing.profit += row.profit;
+        existing.volume += row.volume;
+      } else {
+        corpMap.set(effectiveCorp, {
+          members: 1,
+          bases: row.bases,
+          profit: row.profit,
+          volume: row.volume,
+        });
+      }
+    }
+
+    const corpRows: PMMGCorpRow[] = Array.from(corpMap.entries()).map(([corp, agg]) => ({
+      corporation: corp,
+      members: agg.members,
+      bases: agg.bases,
+      profit: agg.profit,
+      volume: agg.volume,
+      profitPerBase: agg.bases > 0 ? agg.profit / agg.bases : 0,
+      volumePerBase: agg.bases > 0 ? agg.volume / agg.bases : 0,
+    }));
+
+    corpRows.sort((a, b) => b.profitPerBase - a.profitPerBase);
+
     return NextResponse.json({
       rows,
+      corpRows,
       month: monthCode,
       availableMonths,
     } satisfies PMMGApiResponse);
