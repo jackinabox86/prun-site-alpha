@@ -48,7 +48,7 @@ interface MultiExchangeResponse {
 export default function InflationClient() {
   // Default index date
   const getDefaultIndexDate = () => {
-    return "2025-02-01";
+    return "2025-04-01";
   };
 
   // State
