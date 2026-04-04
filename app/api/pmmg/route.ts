@@ -62,8 +62,19 @@ export interface PMMGRow {
   volumePerBase: number;
 }
 
+export interface PMMGCorpRow {
+  corporation: string;
+  members: number;
+  bases: number;
+  profit: number;
+  volume: number;
+  profitPerBase: number;
+  volumePerBase: number;
+}
+
 export interface PMMGApiResponse {
   rows: PMMGRow[];
+  corpRows: PMMGCorpRow[];
   month: string;
   availableMonths: string[];
   error?: string;
@@ -114,10 +125,11 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    const [companiesRes, companyDataRes, baseDataRes] = await Promise.all([
+    const [companiesRes, companyDataRes, baseDataRes, parentCorpsRes] = await Promise.all([
       fetch(`${GITHUB_RAW}/knownCompanies.json`, { cache: "no-store" }),
       fetch(`${GITHUB_RAW}/company-data-${monthCode}.json`, { cache: "no-store" }),
       fetch(`${GITHUB_RAW}/base-data-${monthCode}.json`, { cache: "no-store" }),
+      fetch(`${GITHUB_RAW}/parentCorps.json`, { cache: "no-store" }),
     ]);
 
     if (!companiesRes.ok || !companyDataRes.ok || !baseDataRes.ok) {
@@ -137,28 +149,75 @@ export async function GET(request: NextRequest) {
       baseDataRes.json(),
     ]);
 
+    // Fetch parent corps from GitHub; fall back to empty mapping if unavailable.
+    // Always ensure SSM rolls up under OOG.
+    let parentCorps: Record<string, string> = {};
+    if (parentCorpsRes.ok) {
+      try { parentCorps = await parentCorpsRes.json(); } catch { /* ignore */ }
+    }
+    parentCorps["SSM"] = "OOG";
+
+    // Build player rows (top 500 by volume rank, must have bases)
     const rows: PMMGRow[] = [];
+    // Build corp aggregation over ALL players — no volumeRank gate so every
+    // member of a corp is counted regardless of their individual rank.
+    const corpMap = new Map<string, { members: number; bases: number; profit: number; volume: number }>();
+
     for (const [hash, compData] of Object.entries(companyDataFile.totals)) {
-      if (compData.volumeRank > 500) continue;
       const companyInfo = knownCompanies[hash];
       const baseInfo = baseDataFile[hash];
       if (!companyInfo || !baseInfo || baseInfo.bases === 0) continue;
 
-      rows.push({
-        username: companyInfo.Username,
-        corporation: companyInfo.Corporation ?? null,
-        bases: baseInfo.bases,
-        profit: compData.profit,
-        volume: compData.volume,
-        profitPerBase: compData.profit / baseInfo.bases,
-        volumePerBase: compData.volume / baseInfo.bases,
-      });
+      // Player leaderboard: top 500 only
+      if (compData.volumeRank <= 500) {
+        rows.push({
+          username: companyInfo.Username,
+          corporation: companyInfo.Corporation ?? null,
+          bases: baseInfo.bases,
+          profit: compData.profit,
+          volume: compData.volume,
+          profitPerBase: compData.profit / baseInfo.bases,
+          volumePerBase: compData.volume / baseInfo.bases,
+        });
+      }
+
+      // Corp aggregation: all players who belong to a corp
+      if (companyInfo.Corporation) {
+        const effectiveCorp = parentCorps[companyInfo.Corporation] ?? companyInfo.Corporation;
+        const existing = corpMap.get(effectiveCorp);
+        if (existing) {
+          existing.members += 1;
+          existing.bases += baseInfo.bases;
+          existing.profit += compData.profit;
+          existing.volume += compData.volume;
+        } else {
+          corpMap.set(effectiveCorp, {
+            members: 1,
+            bases: baseInfo.bases,
+            profit: compData.profit,
+            volume: compData.volume,
+          });
+        }
+      }
     }
 
     rows.sort((a, b) => b.profitPerBase - a.profitPerBase);
 
+    const corpRows: PMMGCorpRow[] = Array.from(corpMap.entries()).map(([corp, agg]) => ({
+      corporation: corp,
+      members: agg.members,
+      bases: agg.bases,
+      profit: agg.profit,
+      volume: agg.volume,
+      profitPerBase: agg.bases > 0 ? agg.profit / agg.bases : 0,
+      volumePerBase: agg.bases > 0 ? agg.volume / agg.bases : 0,
+    }));
+
+    corpRows.sort((a, b) => b.profitPerBase - a.profitPerBase);
+
     return NextResponse.json({
       rows,
+      corpRows,
       month: monthCode,
       availableMonths,
     } satisfies PMMGApiResponse);
