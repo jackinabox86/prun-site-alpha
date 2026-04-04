@@ -83,6 +83,11 @@ export default function PMMGClient() {
     "500",
     { updateUrl: false }
   );
+  const [minCorpMembers, setMinCorpMembers] = usePersistedSettings<string>(
+    "prun:pmmg:minCorpMembers",
+    "5",
+    { updateUrl: false }
+  );
 
   const [viewMode, setViewMode] = useState<ViewMode>("player");
   const [rows, setRows] = useState<PMMGRow[]>([]);
@@ -173,16 +178,19 @@ export default function PMMGClient() {
   }, [rows, playerSortField, playerSortAsc, volumeLimit, minBases]);
 
   const sortedCorpRows = useMemo(() => {
-    return [...corpRows].sort((a, b) => {
-      let cmp = 0;
-      if (corpSortField === "corporation") {
-        cmp = a.corporation.localeCompare(b.corporation);
-      } else {
-        cmp = (a[corpSortField] as number) - (b[corpSortField] as number);
-      }
-      return corpSortAsc ? cmp : -cmp;
-    });
-  }, [corpRows, corpSortField, corpSortAsc]);
+    const minM = Math.max(1, parseInt(minCorpMembers, 10) || 1);
+    return [...corpRows]
+      .filter((r) => r.members >= minM)
+      .sort((a, b) => {
+        let cmp = 0;
+        if (corpSortField === "corporation") {
+          cmp = a.corporation.localeCompare(b.corporation);
+        } else {
+          cmp = (a[corpSortField] as number) - (b[corpSortField] as number);
+        }
+        return corpSortAsc ? cmp : -cmp;
+      });
+  }, [corpRows, corpSortField, corpSortAsc, minCorpMembers]);
 
   const playerSortIndicator = (field: PlayerSortField) =>
     playerSortField === field ? (playerSortAsc ? " ▲" : " ▼") : "";
@@ -286,6 +294,28 @@ export default function PMMGClient() {
                 value={minBases}
                 min={0}
                 onChange={(e) => setMinBases(e.target.value)}
+                style={{ width: "5rem" }}
+              />
+            </>
+          )}
+          {viewMode === "corp" && (
+            <>
+              <span
+                style={{
+                  fontSize: "0.875rem",
+                  color: "var(--color-text-muted)",
+                  fontFamily: "var(--font-mono)",
+                  marginLeft: "0.5rem",
+                }}
+              >
+                Min players
+              </span>
+              <input
+                type="number"
+                className="terminal-input"
+                value={minCorpMembers}
+                min={1}
+                onChange={(e) => setMinCorpMembers(e.target.value)}
                 style={{ width: "5rem" }}
               />
             </>

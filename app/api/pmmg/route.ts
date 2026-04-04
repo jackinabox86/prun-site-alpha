@@ -159,46 +159,51 @@ export async function GET(request: NextRequest) {
       // non-fatal; proceed without parent corp mapping
     }
 
+    // Build player rows (top 500 by volume rank, must have bases)
     const rows: PMMGRow[] = [];
+    // Build corp aggregation over ALL players — no volumeRank gate so every
+    // member of a corp is counted regardless of their individual rank.
+    const corpMap = new Map<string, { members: number; bases: number; profit: number; volume: number }>();
+
     for (const [hash, compData] of Object.entries(companyDataFile.totals)) {
-      if (compData.volumeRank > 500) continue;
       const companyInfo = knownCompanies[hash];
       const baseInfo = baseDataFile[hash];
       if (!companyInfo || !baseInfo || baseInfo.bases === 0) continue;
 
-      rows.push({
-        username: companyInfo.Username,
-        corporation: companyInfo.Corporation ?? null,
-        bases: baseInfo.bases,
-        profit: compData.profit,
-        volume: compData.volume,
-        profitPerBase: compData.profit / baseInfo.bases,
-        volumePerBase: compData.volume / baseInfo.bases,
-      });
+      // Player leaderboard: top 500 only
+      if (compData.volumeRank <= 500) {
+        rows.push({
+          username: companyInfo.Username,
+          corporation: companyInfo.Corporation ?? null,
+          bases: baseInfo.bases,
+          profit: compData.profit,
+          volume: compData.volume,
+          profitPerBase: compData.profit / baseInfo.bases,
+          volumePerBase: compData.volume / baseInfo.bases,
+        });
+      }
+
+      // Corp aggregation: all players who belong to a corp
+      if (companyInfo.Corporation) {
+        const effectiveCorp = parentCorps[companyInfo.Corporation] ?? companyInfo.Corporation;
+        const existing = corpMap.get(effectiveCorp);
+        if (existing) {
+          existing.members += 1;
+          existing.bases += baseInfo.bases;
+          existing.profit += compData.profit;
+          existing.volume += compData.volume;
+        } else {
+          corpMap.set(effectiveCorp, {
+            members: 1,
+            bases: baseInfo.bases,
+            profit: compData.profit,
+            volume: compData.volume,
+          });
+        }
+      }
     }
 
     rows.sort((a, b) => b.profitPerBase - a.profitPerBase);
-
-    // Build corporation aggregation (only players with a corp)
-    const corpMap = new Map<string, { members: number; bases: number; profit: number; volume: number }>();
-    for (const row of rows) {
-      if (!row.corporation) continue;
-      const effectiveCorp = parentCorps[row.corporation] ?? row.corporation;
-      const existing = corpMap.get(effectiveCorp);
-      if (existing) {
-        existing.members += 1;
-        existing.bases += row.bases;
-        existing.profit += row.profit;
-        existing.volume += row.volume;
-      } else {
-        corpMap.set(effectiveCorp, {
-          members: 1,
-          bases: row.bases,
-          profit: row.profit,
-          volume: row.volume,
-        });
-      }
-    }
 
     const corpRows: PMMGCorpRow[] = Array.from(corpMap.entries()).map(([corp, agg]) => ({
       corporation: corp,
