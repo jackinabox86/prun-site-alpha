@@ -38,8 +38,16 @@ interface WarehouseEntry {
 interface RawData {
   warehouses: WarehouseEntry[];
   storage: StorageEntry[];
-  exchangeData: unknown[];
+  exchangeData: ExchangeTicker[];
   orders: unknown[];
+}
+
+interface ExchangeTicker {
+  MaterialTicker: string;
+  ExchangeCode: string;
+  Ask: number | null;
+  Bid: number | null;
+  [key: string]: unknown;
 }
 
 interface DeficitRow {
@@ -49,12 +57,59 @@ interface DeficitRow {
   deficit: number;
 }
 
+interface ExchangeBid {
+  exchange: string;
+  marketBid: number | null;
+  effectiveBid: number | null;
+  perUnitSavings: number | null;
+  netSavings: number | null;
+  returnPct: number | null;
+}
+
+interface ResupplyRow {
+  ticker: string;
+  deficit: number;
+  askAtSelected: number | null;
+  bids: Record<string, ExchangeBid>;
+  savingsAtSelected: number | null;
+  returnAtSelected: number | null;
+  bestSavings: number | null;
+  bestReturnPct: number | null;
+  bestExchange: string | null;
+}
+
 function formatNumber(value: number): string {
   return value.toLocaleString(undefined, {
     minimumFractionDigits: 0,
     maximumFractionDigits: 2,
   });
 }
+
+function formatCurrency(value: number): string {
+  return value.toLocaleString(undefined, {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  });
+}
+
+/** Increment at 3rd significant figure: 10.1→10.2, 1020→1030, 99→100, 0.5→0.501 */
+function incrementBid(n: number): number {
+  if (n <= 0) return 0.01;
+  const magnitude = Math.floor(Math.log10(n));
+  const increment = Math.pow(10, magnitude - 2);
+  const result = n + increment;
+  // Round to avoid floating point artifacts
+  const decimals = Math.max(0, 2 - magnitude);
+  return parseFloat(result.toFixed(decimals));
+}
+
+const EXCHANGE_CODES = ["AI1", "NC1", "CI1", "IC1"];
+const EXCHANGE_SHORT: Record<string, string> = {
+  AI1: "ANT",
+  NC1: "MOR",
+  CI1: "BEN",
+  IC1: "HRT",
+};
 
 export default function ResupplyClient() {
   const [rawData, setRawData] = useState<RawData | null>(null);
@@ -84,9 +139,27 @@ export default function ResupplyClient() {
     { updateUrl: false }
   );
   const [burnText, setBurnText] = useState("");
+  const [weeklyRate, setWeeklyRate] = usePersistedSettings<string>(
+    "prun:resupply:weeklyRate",
+    "3",
+    { updateUrl: false }
+  );
+  const [ignoreTickers, setIgnoreTickers] = usePersistedSettings<string>(
+    "prun:resupply:ignoreTickers",
+    "",
+    { updateUrl: false }
+  );
+  const [minSavings, setMinSavings] = usePersistedSettings<string>(
+    "prun:resupply:minSavings",
+    "0",
+    { updateUrl: false }
+  );
 
   const hasCredentials = fioUsername.trim() !== "" && fioApiKey.trim() !== "";
   const targetDaysNum = Math.max(1, parseInt(targetDays, 10) || 14);
+  const weeklyRateNum = Math.max(0, parseFloat(weeklyRate) || 3);
+  const minSavingsNum = Math.max(0, parseFloat(minSavings) || 0);
+  const ignoreTickersNormalized = ignoreTickers.split(/[,\s]+/).map(t => t.trim().toUpperCase()).filter(Boolean).sort().join(",");
 
   const fetchData = useCallback(async () => {
     if (!fioUsername.trim() || !fioApiKey.trim()) return;
@@ -190,6 +263,98 @@ export default function ResupplyClient() {
       warehouseWarning,
     };
   }, [burnText, rawData, selectedExchange, targetDaysNum]);
+
+  // --- Phase 3: Price comparison + savings calculation ---
+  const resupplyRows = useMemo(() => {
+    if (!rawData || deficitRows.length === 0) return [];
+
+    const ignoreSet = new Set(ignoreTickersNormalized ? ignoreTickersNormalized.split(",") : []);
+
+    // Step 4: Build exchange price lookups
+    const askMap = new Map<string, number>();
+    const bidMap = new Map<string, number>();
+    for (const entry of rawData.exchangeData) {
+      const key = `${entry.MaterialTicker}.${entry.ExchangeCode}`;
+      if (entry.Ask != null && entry.Ask > 0) askMap.set(key, entry.Ask);
+      if (entry.Bid != null && entry.Bid > 0) bidMap.set(key, entry.Bid);
+    }
+
+    // Step 5: Compute resupply rows
+    const returnThreshold = Math.pow(1 + weeklyRateNum / 100, targetDaysNum / 7) - 1;
+
+    const rows: ResupplyRow[] = [];
+    for (const dr of deficitRows) {
+      if (dr.deficit <= 0) continue;
+      if (ignoreSet.has(dr.ticker)) continue;
+
+      const askKey = `${dr.ticker}.${selectedExchange}`;
+      const askAtSelected = askMap.get(askKey) ?? null;
+
+      const bids: Record<string, ExchangeBid> = {};
+      let bestSavings: number | null = null;
+      let bestReturnPct: number | null = null;
+      let bestExchange: string | null = null;
+
+      for (const ex of EXCHANGE_CODES) {
+        const marketBid = bidMap.get(`${dr.ticker}.${ex}`) ?? null;
+        let effectiveBid: number | null = null;
+        let perUnitSavings: number | null = null;
+        let netSavings: number | null = null;
+        let returnPct: number | null = null;
+
+        if (marketBid != null) {
+          effectiveBid = incrementBid(marketBid);
+          if (askAtSelected != null) {
+            perUnitSavings = askAtSelected - effectiveBid;
+            returnPct = effectiveBid > 0 ? perUnitSavings / effectiveBid : null;
+            netSavings = perUnitSavings * dr.deficit;
+
+            if (netSavings != null && (bestSavings === null || netSavings > bestSavings)) {
+              bestSavings = netSavings;
+              bestReturnPct = returnPct;
+              bestExchange = ex;
+            }
+          }
+        }
+
+        bids[ex] = { exchange: ex, marketBid, effectiveBid, perUnitSavings, netSavings, returnPct };
+      }
+
+      const selectedBid = bids[selectedExchange];
+      const returnAtSelected = selectedBid?.returnPct ?? null;
+      const savingsAtSelected = selectedBid?.netSavings ?? null;
+
+      // Filter: include if return at selected OR best exchange >= threshold
+      const meetsThreshold =
+        (returnAtSelected !== null && returnAtSelected >= returnThreshold) ||
+        (bestReturnPct !== null && bestReturnPct >= returnThreshold);
+
+      if (!meetsThreshold) continue;
+
+      rows.push({
+        ticker: dr.ticker,
+        deficit: dr.deficit,
+        askAtSelected,
+        bids,
+        savingsAtSelected,
+        returnAtSelected,
+        bestSavings,
+        bestReturnPct,
+        bestExchange,
+      });
+    }
+
+    // Sort by net savings at selected exchange descending
+    rows.sort((a, b) => (b.savingsAtSelected ?? -Infinity) - (a.savingsAtSelected ?? -Infinity));
+
+    return rows;
+  }, [rawData, deficitRows, selectedExchange, targetDaysNum, weeklyRateNum, ignoreTickersNormalized]);
+
+  // Apply min savings filter
+  const filteredRows = useMemo(() => {
+    if (minSavingsNum <= 0) return resupplyRows;
+    return resupplyRows.filter(r => (r.savingsAtSelected ?? 0) >= minSavingsNum);
+  }, [resupplyRows, minSavingsNum]);
 
   return (
     <>
@@ -332,26 +497,71 @@ export default function ResupplyClient() {
               </div>
             )}
           </div>
-          <div style={{ display: "flex", flexDirection: "column", gap: "0.25rem" }}>
-            <label
-              style={{
-                fontFamily: "var(--font-mono)",
-                fontSize: "0.7rem",
-                color: "var(--color-text-muted)",
-                textTransform: "uppercase",
-                letterSpacing: "0.05em",
-              }}
-            >
-              Target Days
-            </label>
-            <input
-              type="number"
-              min="1"
-              value={targetDays}
-              onChange={(e) => setTargetDays(e.target.value)}
-              className="terminal-input"
-              style={{ width: "80px", textAlign: "center" }}
-            />
+          <div style={{ display: "flex", gap: "1rem", flexWrap: "wrap" }}>
+            <div style={{ display: "flex", flexDirection: "column", gap: "0.25rem" }}>
+              <label
+                style={{
+                  fontFamily: "var(--font-mono)",
+                  fontSize: "0.7rem",
+                  color: "var(--color-text-muted)",
+                  textTransform: "uppercase",
+                  letterSpacing: "0.05em",
+                }}
+              >
+                Target Days
+              </label>
+              <input
+                type="number"
+                min="1"
+                value={targetDays}
+                onChange={(e) => setTargetDays(e.target.value)}
+                className="terminal-input"
+                style={{ width: "80px", textAlign: "center" }}
+              />
+            </div>
+            <div style={{ display: "flex", flexDirection: "column", gap: "0.25rem" }}>
+              <label
+                style={{
+                  fontFamily: "var(--font-mono)",
+                  fontSize: "0.7rem",
+                  color: "var(--color-text-muted)",
+                  textTransform: "uppercase",
+                  letterSpacing: "0.05em",
+                }}
+              >
+                Weekly Return %
+              </label>
+              <input
+                type="number"
+                min="0"
+                step="0.5"
+                value={weeklyRate}
+                onChange={(e) => setWeeklyRate(e.target.value)}
+                className="terminal-input"
+                style={{ width: "80px", textAlign: "center" }}
+              />
+            </div>
+            <div style={{ display: "flex", flexDirection: "column", gap: "0.25rem" }}>
+              <label
+                style={{
+                  fontFamily: "var(--font-mono)",
+                  fontSize: "0.7rem",
+                  color: "var(--color-text-muted)",
+                  textTransform: "uppercase",
+                  letterSpacing: "0.05em",
+                }}
+              >
+                Ignore Tickers
+              </label>
+              <input
+                type="text"
+                placeholder="e.g. DW, RAT"
+                value={ignoreTickers}
+                onChange={(e) => setIgnoreTickers(e.target.value)}
+                className="terminal-input"
+                style={{ width: "160px" }}
+              />
+            </div>
           </div>
         </div>
       </div>
@@ -443,11 +653,21 @@ export default function ResupplyClient() {
         </div>
       )}
 
-      {/* Deficit Table */}
-      {deficitRows.length > 0 && (
+      {/* Deficit Table — shown when burn data parsed but no API data yet */}
+      {deficitRows.length > 0 && !rawData && (
         <div className="terminal-box" style={{ marginBottom: "2rem" }}>
           <div className="terminal-header" style={{ marginBottom: "1rem" }}>
-            Supply Deficits — {EXCHANGE_LOCATION[selectedExchange]} — {targetDaysNum} day target ({deficitRows.filter(r => r.deficit > 0).length} need resupply)
+            Supply Deficits — {targetDaysNum} day target ({deficitRows.filter(r => r.deficit > 0).length} need resupply)
+          </div>
+          <div
+            style={{
+              fontFamily: "var(--font-mono)",
+              fontSize: "0.8rem",
+              color: "var(--color-text-muted)",
+              marginBottom: "1rem",
+            }}
+          >
+            Fetch data to see price comparisons and savings across exchanges.
           </div>
           <div style={{ overflowX: "auto" }}>
             <table
@@ -522,6 +742,191 @@ export default function ResupplyClient() {
               </tbody>
             </table>
           </div>
+        </div>
+      )}
+
+      {/* Resupply Results Table */}
+      {rawData && parsedCount > 0 && (
+        <div className="terminal-box" style={{ marginBottom: "2rem" }}>
+          <div
+            style={{
+              display: "flex",
+              justifyContent: "space-between",
+              alignItems: "center",
+              flexWrap: "wrap",
+              gap: "1rem",
+              marginBottom: "1rem",
+            }}
+          >
+            <div className="terminal-header" style={{ margin: 0 }}>
+              Resupply Opportunities — {EXCHANGE_LOCATION[selectedExchange]} ({filteredRows.length} of {resupplyRows.length})
+            </div>
+            <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
+              <label
+                style={{
+                  fontFamily: "var(--font-mono)",
+                  fontSize: "0.7rem",
+                  color: "var(--color-text-muted)",
+                  textTransform: "uppercase",
+                  letterSpacing: "0.05em",
+                }}
+              >
+                Min Savings
+              </label>
+              <input
+                type="number"
+                min="0"
+                value={minSavings}
+                onChange={(e) => setMinSavings(e.target.value)}
+                className="terminal-input"
+                style={{ width: "80px", textAlign: "center" }}
+              />
+            </div>
+          </div>
+          {filteredRows.length === 0 ? (
+            <div
+              style={{
+                fontFamily: "var(--font-mono)",
+                fontSize: "0.8rem",
+                color: "var(--color-text-muted)",
+                textAlign: "center",
+                padding: "2rem 1rem",
+              }}
+            >
+              No tickers meet the {weeklyRateNum}% weekly return threshold
+              {minSavingsNum > 0 ? ` and ${formatCurrency(minSavingsNum)} min savings filter` : ""}.
+            </div>
+          ) : (
+            <div style={{ overflowX: "auto" }}>
+              <table
+                style={{
+                  width: "100%",
+                  borderCollapse: "collapse",
+                  fontFamily: "var(--font-mono)",
+                  fontSize: "0.8rem",
+                }}
+              >
+                <thead>
+                  <tr>
+                    {[
+                      { label: "Ticker", align: "left" },
+                      { label: "Deficit", align: "right" },
+                      { label: `Ask (${EXCHANGE_SHORT[selectedExchange]})`, align: "right" },
+                      ...EXCHANGE_CODES.map(ex => ({ label: `Bid (${EXCHANGE_SHORT[ex]})`, align: "right" as const })),
+                      { label: "Savings @ Selected", align: "right" },
+                      { label: "Best Savings", align: "right" },
+                    ].map((col) => (
+                      <th
+                        key={col.label}
+                        style={{
+                          padding: "0.5rem 0.6rem",
+                          borderBottom: "1px solid var(--color-border-primary)",
+                          fontSize: "0.7rem",
+                          textTransform: "uppercase",
+                          letterSpacing: "0.05em",
+                          color: "var(--color-text-secondary)",
+                          textAlign: col.align as "left" | "right",
+                          whiteSpace: "nowrap",
+                        }}
+                      >
+                        {col.label}
+                      </th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {filteredRows.map((row) => (
+                    <tr
+                      key={row.ticker}
+                      style={{
+                        borderBottom: "1px solid var(--color-border-secondary, rgba(255,255,255,0.05))",
+                      }}
+                    >
+                      <td
+                        style={{
+                          padding: "0.5rem 0.6rem",
+                          color: "var(--color-accent-primary)",
+                          fontWeight: "bold",
+                        }}
+                      >
+                        {row.ticker}
+                      </td>
+                      <td style={{ padding: "0.5rem 0.6rem", textAlign: "right" }}>
+                        {formatNumber(row.deficit)}
+                      </td>
+                      <td style={{ padding: "0.5rem 0.6rem", textAlign: "right" }}>
+                        {row.askAtSelected != null ? formatCurrency(row.askAtSelected) : "—"}
+                      </td>
+                      {EXCHANGE_CODES.map((ex) => {
+                        const bid = row.bids[ex];
+                        const isSelected = ex === selectedExchange;
+                        return (
+                          <td
+                            key={ex}
+                            style={{
+                              padding: "0.5rem 0.6rem",
+                              textAlign: "right",
+                              fontWeight: isSelected ? "bold" : "normal",
+                              color: isSelected
+                                ? "var(--color-accent-primary)"
+                                : "var(--color-text-secondary)",
+                            }}
+                          >
+                            {bid?.marketBid != null ? formatCurrency(bid.marketBid) : "—"}
+                          </td>
+                        );
+                      })}
+                      <td
+                        style={{
+                          padding: "0.5rem 0.6rem",
+                          textAlign: "right",
+                          color: (row.savingsAtSelected ?? 0) > 0
+                            ? "var(--color-accent-primary)"
+                            : "var(--color-text-muted)",
+                        }}
+                      >
+                        {row.savingsAtSelected != null ? (
+                          <>
+                            {formatCurrency(row.savingsAtSelected)}
+                            {row.returnAtSelected != null && (
+                              <span style={{ fontSize: "0.7rem", color: "var(--color-text-muted)", marginLeft: "0.3rem" }}>
+                                ({(row.returnAtSelected * 100).toFixed(1)}%)
+                              </span>
+                            )}
+                          </>
+                        ) : "—"}
+                      </td>
+                      <td
+                        style={{
+                          padding: "0.5rem 0.6rem",
+                          textAlign: "right",
+                          color: (row.bestSavings ?? 0) > 0
+                            ? "var(--color-accent-primary)"
+                            : "var(--color-text-muted)",
+                        }}
+                      >
+                        {row.bestSavings != null ? (
+                          <>
+                            {formatCurrency(row.bestSavings)}
+                            {row.bestReturnPct != null && (
+                              <span style={{ fontSize: "0.7rem", color: "var(--color-text-muted)", marginLeft: "0.3rem" }}>
+                                ({(row.bestReturnPct * 100).toFixed(1)}%)
+                              </span>
+                            )}
+                            {row.bestExchange && row.bestExchange !== selectedExchange && (
+                              <span style={{ fontSize: "0.65rem", color: "var(--color-text-muted)", marginLeft: "0.3rem" }}>
+                                {EXCHANGE_SHORT[row.bestExchange]}
+                              </span>
+                            )}
+                          </>
+                        ) : "—"}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
         </div>
       )}
 
