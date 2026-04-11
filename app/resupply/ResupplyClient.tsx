@@ -39,7 +39,7 @@ interface RawData {
   warehouses: WarehouseEntry[];
   storage: StorageEntry[];
   exchangeData: ExchangeTicker[];
-  orders: unknown[];
+  orders: CxosOrder[];
 }
 
 interface ExchangeTicker {
@@ -47,6 +47,16 @@ interface ExchangeTicker {
   ExchangeCode: string;
   Ask: number | null;
   Bid: number | null;
+  [key: string]: unknown;
+}
+
+interface CxosOrder {
+  MaterialTicker: string;
+  ExchangeCode: string;
+  OrderType: string;
+  Status: string;
+  Limit: number;
+  Amount: number;
   [key: string]: unknown;
 }
 
@@ -76,6 +86,14 @@ interface ResupplyRow {
   bestSavings: number | null;
   bestReturnPct: number | null;
   bestExchange: string | null;
+}
+
+interface StaleBid {
+  ticker: string;
+  exchange: string;
+  myLimit: number;
+  marketBid: number;
+  amount: number;
 }
 
 function formatNumber(value: number): string {
@@ -264,9 +282,10 @@ export default function ResupplyClient() {
     };
   }, [burnText, rawData, selectedExchange, targetDaysNum]);
 
-  // --- Phase 3: Price comparison + savings calculation ---
-  const resupplyRows = useMemo(() => {
-    if (!rawData || deficitRows.length === 0) return [];
+  // --- Phase 3 + 4: Price comparison, order integration, savings calculation ---
+  const { resupplyRows, staleBids } = useMemo(() => {
+    const empty = { resupplyRows: [] as ResupplyRow[], staleBids: [] as StaleBid[] };
+    if (!rawData || deficitRows.length === 0) return empty;
 
     const ignoreSet = new Set(ignoreTickersNormalized ? ignoreTickersNormalized.split(",") : []);
 
@@ -279,13 +298,53 @@ export default function ResupplyClient() {
       if (entry.Bid != null && entry.Bid > 0) bidMap.set(key, entry.Bid);
     }
 
-    // Step 5: Compute resupply rows
+    // Step 4b (Phase 4): Process user orders — classify top bids vs stale bids
+    const staleBids: StaleBid[] = [];
+    // topBidMap: "TICKER.EXCHANGE" → limit price (for effective bid calculation)
+    const topBidMap = new Map<string, number>();
+    // topBidDeductions: ticker → total amount covered by existing top bids
+    const topBidDeductions = new Map<string, number>();
+
+    for (const order of rawData.orders) {
+      const orderType = (order.OrderType || "").toString().toUpperCase();
+      const status = (order.Status || "").toString().toUpperCase();
+      if (orderType !== "BUYING") continue;
+      if (status !== "PLACED" && status !== "PARTIALLY_FILLED") continue;
+
+      const key = `${order.MaterialTicker}.${order.ExchangeCode}`;
+      const marketBid = bidMap.get(key);
+
+      if (marketBid != null && order.Limit === marketBid) {
+        // User has top bid at this exchange
+        topBidMap.set(key, order.Limit);
+        topBidDeductions.set(
+          order.MaterialTicker,
+          (topBidDeductions.get(order.MaterialTicker) || 0) + order.Amount
+        );
+      } else if (marketBid != null) {
+        // Stale bid — limit doesn't match market
+        staleBids.push({
+          ticker: order.MaterialTicker,
+          exchange: order.ExchangeCode,
+          myLimit: order.Limit,
+          marketBid,
+          amount: order.Amount,
+        });
+      }
+    }
+
+    // Step 5: Compute resupply rows (with order-aware deficits and effective bids)
     const returnThreshold = Math.pow(1 + weeklyRateNum / 100, targetDaysNum / 7) - 1;
 
     const rows: ResupplyRow[] = [];
     for (const dr of deficitRows) {
       if (dr.deficit <= 0) continue;
       if (ignoreSet.has(dr.ticker)) continue;
+
+      // Deduct top-bid amounts from deficit
+      const deduction = topBidDeductions.get(dr.ticker) || 0;
+      const adjustedDeficit = dr.deficit - deduction;
+      if (adjustedDeficit <= 0) continue;
 
       const askKey = `${dr.ticker}.${selectedExchange}`;
       const askAtSelected = askMap.get(askKey) ?? null;
@@ -303,11 +362,14 @@ export default function ResupplyClient() {
         let returnPct: number | null = null;
 
         if (marketBid != null) {
-          effectiveBid = incrementBid(marketBid);
+          // If user has top bid at this exchange, use their limit price
+          const userTopBid = topBidMap.get(`${dr.ticker}.${ex}`);
+          effectiveBid = userTopBid != null ? userTopBid : incrementBid(marketBid);
+
           if (askAtSelected != null) {
             perUnitSavings = askAtSelected - effectiveBid;
             returnPct = effectiveBid > 0 ? perUnitSavings / effectiveBid : null;
-            netSavings = perUnitSavings * dr.deficit;
+            netSavings = perUnitSavings * adjustedDeficit;
 
             if (netSavings != null && (bestSavings === null || netSavings > bestSavings)) {
               bestSavings = netSavings;
@@ -333,7 +395,7 @@ export default function ResupplyClient() {
 
       rows.push({
         ticker: dr.ticker,
-        deficit: dr.deficit,
+        deficit: adjustedDeficit,
         askAtSelected,
         bids,
         savingsAtSelected,
@@ -347,7 +409,7 @@ export default function ResupplyClient() {
     // Sort by net savings at selected exchange descending
     rows.sort((a, b) => (b.savingsAtSelected ?? -Infinity) - (a.savingsAtSelected ?? -Infinity));
 
-    return rows;
+    return { resupplyRows: rows, staleBids };
   }, [rawData, deficitRows, selectedExchange, targetDaysNum, weeklyRateNum, ignoreTickersNormalized]);
 
   // Apply min savings filter
@@ -653,6 +715,113 @@ export default function ResupplyClient() {
         </div>
       )}
 
+      {/* Summary Stats */}
+      {rawData && parsedCount > 0 && (
+        <div
+          className="terminal-box"
+          style={{
+            marginBottom: "2rem",
+            display: "flex",
+            gap: "2rem",
+            flexWrap: "wrap",
+          }}
+        >
+          <div>
+            <div
+              style={{
+                fontFamily: "var(--font-mono)",
+                fontSize: "0.7rem",
+                color: "var(--color-text-muted)",
+                textTransform: "uppercase",
+                marginBottom: "0.25rem",
+              }}
+            >
+              Deficit Tickers
+            </div>
+            <div
+              style={{
+                fontFamily: "var(--font-mono)",
+                fontSize: "1.25rem",
+                color: "var(--color-text-primary)",
+              }}
+            >
+              {deficitRows.filter(r => r.deficit > 0).length}
+            </div>
+          </div>
+          <div>
+            <div
+              style={{
+                fontFamily: "var(--font-mono)",
+                fontSize: "0.7rem",
+                color: "var(--color-text-muted)",
+                textTransform: "uppercase",
+                marginBottom: "0.25rem",
+              }}
+            >
+              Bid Opportunities
+            </div>
+            <div
+              style={{
+                fontFamily: "var(--font-mono)",
+                fontSize: "1.25rem",
+                color: "var(--color-text-primary)",
+              }}
+            >
+              {resupplyRows.length}
+            </div>
+          </div>
+          <div>
+            <div
+              style={{
+                fontFamily: "var(--font-mono)",
+                fontSize: "0.7rem",
+                color: "var(--color-text-muted)",
+                textTransform: "uppercase",
+                marginBottom: "0.25rem",
+              }}
+            >
+              Total Potential Savings
+            </div>
+            <div
+              style={{
+                fontFamily: "var(--font-mono)",
+                fontSize: "1.25rem",
+                color: "var(--color-accent-primary)",
+              }}
+            >
+              {formatCurrency(
+                resupplyRows.reduce((sum, r) => sum + (r.savingsAtSelected ?? 0), 0)
+              )}
+            </div>
+          </div>
+          <div>
+            <div
+              style={{
+                fontFamily: "var(--font-mono)",
+                fontSize: "0.7rem",
+                color: "var(--color-text-muted)",
+                textTransform: "uppercase",
+                marginBottom: "0.25rem",
+              }}
+            >
+              Stale Bids
+            </div>
+            <div
+              style={{
+                fontFamily: "var(--font-mono)",
+                fontSize: "1.25rem",
+                color:
+                  staleBids.length > 0
+                    ? "var(--color-error, #ff4444)"
+                    : "var(--color-success, #44ff44)",
+              }}
+            >
+              {staleBids.length}
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Deficit Table — shown when burn data parsed but no API data yet */}
       {deficitRows.length > 0 && !rawData && (
         <div className="terminal-box" style={{ marginBottom: "2rem" }}>
@@ -927,6 +1096,112 @@ export default function ResupplyClient() {
               </table>
             </div>
           )}
+        </div>
+      )}
+
+      {/* Stale Bids Warning */}
+      {staleBids.length > 0 && (
+        <div
+          className="terminal-box"
+          style={{
+            marginBottom: "2rem",
+            borderColor: "var(--color-error, #ff4444)",
+          }}
+        >
+          <div
+            className="terminal-header"
+            style={{
+              marginBottom: "1rem",
+              color: "var(--color-error, #ff4444)",
+            }}
+          >
+            Stale Bids — {staleBids.length} orders need attention
+          </div>
+          <div
+            style={{
+              fontFamily: "var(--font-mono)",
+              fontSize: "0.75rem",
+              color: "var(--color-text-muted)",
+              marginBottom: "1rem",
+            }}
+          >
+            These buy orders no longer match the market bid. Consider updating or removing them in-game.
+          </div>
+          <div style={{ overflowX: "auto" }}>
+            <table
+              style={{
+                width: "100%",
+                borderCollapse: "collapse",
+                fontFamily: "var(--font-mono)",
+                fontSize: "0.8rem",
+              }}
+            >
+              <thead>
+                <tr>
+                  {[
+                    { label: "Ticker", align: "left" },
+                    { label: "Exchange", align: "left" },
+                    { label: "My Limit", align: "right" },
+                    { label: "Market Bid", align: "right" },
+                    { label: "Amount", align: "right" },
+                  ].map((col) => (
+                    <th
+                      key={col.label}
+                      style={{
+                        padding: "0.5rem 0.75rem",
+                        borderBottom: "1px solid var(--color-border-primary)",
+                        fontSize: "0.7rem",
+                        textTransform: "uppercase",
+                        letterSpacing: "0.05em",
+                        color: "var(--color-text-secondary)",
+                        textAlign: col.align as "left" | "right",
+                      }}
+                    >
+                      {col.label}
+                    </th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {staleBids.map((sb, i) => (
+                  <tr
+                    key={`${sb.ticker}-${sb.exchange}-${i}`}
+                    style={{
+                      borderBottom: "1px solid var(--color-border-secondary, rgba(255,255,255,0.05))",
+                    }}
+                  >
+                    <td
+                      style={{
+                        padding: "0.5rem 0.75rem",
+                        color: "var(--color-accent-primary)",
+                        fontWeight: "bold",
+                      }}
+                    >
+                      {sb.ticker}
+                    </td>
+                    <td style={{ padding: "0.5rem 0.75rem" }}>
+                      {EXCHANGE_SHORT[sb.exchange] || sb.exchange}
+                    </td>
+                    <td style={{ padding: "0.5rem 0.75rem", textAlign: "right" }}>
+                      {formatCurrency(sb.myLimit)}
+                    </td>
+                    <td
+                      style={{
+                        padding: "0.5rem 0.75rem",
+                        textAlign: "right",
+                        color: "var(--color-accent-primary)",
+                      }}
+                    >
+                      {formatCurrency(sb.marketBid)}
+                    </td>
+                    <td style={{ padding: "0.5rem 0.75rem", textAlign: "right" }}>
+                      {formatNumber(sb.amount)}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         </div>
       )}
 
