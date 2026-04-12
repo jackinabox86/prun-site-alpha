@@ -180,6 +180,8 @@ export default function ResupplyClient() {
     { updateUrl: false }
   );
 
+  const [showXitModal, setShowXitModal] = useState(false);
+
   const hasCredentials = fioUsername.trim() !== "" && fioApiKey.trim() !== "";
   const targetDaysNum = Math.max(1, parseInt(targetDays, 10) || 14);
   const weeklyRateNum = Math.max(0, parseFloat(weeklyRate) || 3);
@@ -777,6 +779,7 @@ export default function ResupplyClient() {
             display: "flex",
             gap: "2rem",
             flexWrap: "wrap",
+            alignItems: "center",
           }}
         >
           <div>
@@ -871,6 +874,25 @@ export default function ResupplyClient() {
             >
               {staleBids.length}
             </div>
+          </div>
+          <div style={{ marginLeft: "auto" }}>
+            <button
+              type="button"
+              className="terminal-button"
+              onClick={() => setShowXitModal(true)}
+              disabled={filteredRows.length === 0}
+              title={
+                filteredRows.length === 0
+                  ? "No visible resupply rows"
+                  : undefined
+              }
+              style={{
+                padding: "0.5rem 1.25rem",
+                fontSize: "0.85rem",
+              }}
+            >
+              Get XIT Action Package
+            </button>
           </div>
         </div>
       )}
@@ -1254,6 +1276,84 @@ export default function ResupplyClient() {
                 ))}
               </tbody>
             </table>
+          </div>
+        </div>
+      )}
+
+      {/* XIT Action Package Modal */}
+      {showXitModal && (
+        <div
+          onClick={() => setShowXitModal(false)}
+          style={{
+            position: "fixed",
+            inset: 0,
+            background: "rgba(0, 0, 0, 0.75)",
+            zIndex: 1000,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            padding: "2rem",
+          }}
+        >
+          <div
+            className="terminal-box"
+            onClick={(e) => e.stopPropagation()}
+            style={{
+              width: "min(1000px, 90vw)",
+              maxHeight: "90vh",
+              display: "flex",
+              flexDirection: "column",
+              background: "var(--color-bg-primary)",
+            }}
+          >
+            <div
+              style={{
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "space-between",
+                marginBottom: "1rem",
+                paddingBottom: "0.75rem",
+                borderBottom: "1px solid var(--color-border-primary)",
+              }}
+            >
+              <div
+                className="terminal-header"
+                style={{ margin: 0 }}
+              >
+                XIT Action Package
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowXitModal(false)}
+                aria-label="Close"
+                style={{
+                  background: "transparent",
+                  border: "none",
+                  color: "var(--color-accent-primary)",
+                  fontSize: "1.5rem",
+                  cursor: "pointer",
+                  padding: "0 0.5rem",
+                  lineHeight: 1,
+                }}
+              >
+                ×
+              </button>
+            </div>
+            <div
+              style={{
+                flex: 1,
+                overflow: "auto",
+                fontFamily: "var(--font-mono)",
+                fontSize: "0.85rem",
+                color: "var(--color-text-muted)",
+              }}
+            >
+              {/* Stage 2 will render the selection table here. */}
+              Placeholder — selection table and generator coming in later stages.
+              <div style={{ marginTop: "0.75rem" }}>
+                Visible resupply rows: {filteredRows.length}
+              </div>
+            </div>
           </div>
         </div>
       )}
