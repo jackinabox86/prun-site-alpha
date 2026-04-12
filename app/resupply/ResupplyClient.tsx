@@ -96,6 +96,85 @@ interface StaleBid {
   amount: number;
 }
 
+interface XitManualGroup {
+  type: "Manual";
+  name: string;
+  materials: Record<string, number>;
+}
+
+interface XitCXBuyAction {
+  type: "CX Buy";
+  name: string;
+  group: string;
+  exchange: string;
+  buyPartial: boolean;
+  useCXInv: boolean;
+  priceLimits: Record<string, number>;
+}
+
+interface XitActionPackage {
+  global: { name: string };
+  groups: XitManualGroup[];
+  actions: XitCXBuyAction[];
+}
+
+function buildXitPackage(
+  rows: ResupplyRow[],
+  selections: Record<string, string>,
+  packageName: string,
+  fallbackExchange: string,
+): XitActionPackage {
+  // Bucket tickers + effective-bid price limits by chosen exchange.
+  const buckets: Record<
+    string,
+    { materials: Record<string, number>; priceLimits: Record<string, number> }
+  > = {};
+  for (const row of rows) {
+    const qty = Math.max(1, Math.ceil(row.deficit));
+    if (!Number.isFinite(qty) || qty <= 0) continue;
+    const ex = selections[row.ticker] ?? row.bestExchange ?? fallbackExchange;
+    if (!buckets[ex]) buckets[ex] = { materials: {}, priceLimits: {} };
+    buckets[ex].materials[row.ticker] =
+      (buckets[ex].materials[row.ticker] ?? 0) + qty;
+    // Price limit = the same "effective bid" price the savings calc used
+    // at this exchange (the user's existing top-bid limit, or market bid
+    // + 1 credit). Rounded to the 2-decimal precision XIT supports.
+    const effective = row.bids[ex]?.effectiveBid;
+    if (effective != null && Number.isFinite(effective) && effective > 0) {
+      buckets[ex].priceLimits[row.ticker] = Math.round(effective * 100) / 100;
+    }
+  }
+
+  // Emit a Manual group + CX Buy action per distinct exchange, in a
+  // stable order so the preview is deterministic across renders.
+  const exchanges = Object.keys(buckets).sort();
+  const groups: XitManualGroup[] = [];
+  const actions: XitCXBuyAction[] = [];
+  for (const ex of exchanges) {
+    const groupName = `resupply-${ex.toLowerCase()}`;
+    groups.push({
+      type: "Manual",
+      name: groupName,
+      materials: buckets[ex].materials,
+    });
+    actions.push({
+      type: "CX Buy",
+      name: `buy-${ex.toLowerCase()}`,
+      group: groupName,
+      exchange: ex,
+      buyPartial: true,
+      useCXInv: true,
+      priceLimits: buckets[ex].priceLimits,
+    });
+  }
+
+  return {
+    global: { name: packageName.trim() || "Resupply" },
+    groups,
+    actions,
+  };
+}
+
 function formatNumber(value: number): string {
   return value.toLocaleString(undefined, {
     minimumFractionDigits: 0,
@@ -179,6 +258,12 @@ export default function ResupplyClient() {
     "0",
     { updateUrl: false }
   );
+
+  const [showXitModal, setShowXitModal] = useState(false);
+  const [xitSelections, setXitSelections] = useState<Record<string, string>>({});
+  const [xitPackageName, setXitPackageName] = useState("");
+  const [xitGenerated, setXitGenerated] = useState(false);
+  const [xitCopySuccess, setXitCopySuccess] = useState(false);
 
   const hasCredentials = fioUsername.trim() !== "" && fioApiKey.trim() !== "";
   const targetDaysNum = Math.max(1, parseInt(targetDays, 10) || 14);
@@ -425,6 +510,65 @@ export default function ResupplyClient() {
     if (minSavingsNum <= 0) return resupplyRows;
     return resupplyRows.filter(r => (r.bestSavings ?? 0) >= minSavingsNum);
   }, [resupplyRows, minSavingsNum]);
+
+  // When the XIT modal opens, (re)seed the per-ticker exchange picks from
+  // the current filteredRows' bestExchange (falling back to the globally
+  // selected exchange if a row has no best), reset the package name to a
+  // dated default, and hide any previously-generated preview.
+  useEffect(() => {
+    if (!showXitModal) return;
+    const next: Record<string, string> = {};
+    for (const row of filteredRows) {
+      next[row.ticker] = row.bestExchange ?? selectedExchange;
+    }
+    setXitSelections(next);
+    setXitPackageName(`Resupply ${new Date().toISOString().slice(0, 10)}`);
+    setXitGenerated(false);
+  }, [showXitModal, filteredRows, selectedExchange]);
+
+  // Live-compute the action package JSON for preview / copy. Invalidating
+  // on any selection or name change also implicitly re-hides the preview
+  // via the xitGenerated flag below.
+  const xitPackage = useMemo(
+    () => buildXitPackage(filteredRows, xitSelections, xitPackageName, selectedExchange),
+    [filteredRows, xitSelections, xitPackageName, selectedExchange],
+  );
+  const xitPackageJson = useMemo(
+    () => JSON.stringify(xitPackage, null, 2),
+    [xitPackage],
+  );
+
+  // Any edit to selections or the package name hides the previously
+  // generated preview, so the user must click Generate again to confirm.
+  useEffect(() => {
+    setXitGenerated(false);
+  }, [xitSelections, xitPackageName]);
+
+  // While the XIT modal is open, close on Escape and lock the body's
+  // scroll so background content doesn't shift underneath.
+  useEffect(() => {
+    if (!showXitModal) return;
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setShowXitModal(false);
+    };
+    window.addEventListener("keydown", onKeyDown);
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      window.removeEventListener("keydown", onKeyDown);
+      document.body.style.overflow = previousOverflow;
+    };
+  }, [showXitModal]);
+
+  const handleCopyXit = useCallback(async () => {
+    try {
+      await navigator.clipboard.writeText(xitPackageJson);
+      setXitCopySuccess(true);
+      setTimeout(() => setXitCopySuccess(false), 2000);
+    } catch (err) {
+      console.error("Failed to copy XIT action package:", err);
+    }
+  }, [xitPackageJson]);
 
   return (
     <>
@@ -777,6 +921,7 @@ export default function ResupplyClient() {
             display: "flex",
             gap: "2rem",
             flexWrap: "wrap",
+            alignItems: "center",
           }}
         >
           <div>
@@ -871,6 +1016,25 @@ export default function ResupplyClient() {
             >
               {staleBids.length}
             </div>
+          </div>
+          <div style={{ marginLeft: "auto" }}>
+            <button
+              type="button"
+              className="terminal-button"
+              onClick={() => setShowXitModal(true)}
+              disabled={filteredRows.length === 0}
+              title={
+                filteredRows.length === 0
+                  ? "No visible resupply rows"
+                  : undefined
+              }
+              style={{
+                padding: "0.5rem 1.25rem",
+                fontSize: "0.85rem",
+              }}
+            >
+              Get XIT Action Package
+            </button>
           </div>
         </div>
       )}
@@ -1254,6 +1418,312 @@ export default function ResupplyClient() {
                 ))}
               </tbody>
             </table>
+          </div>
+        </div>
+      )}
+
+      {/* XIT Action Package Modal */}
+      {showXitModal && (
+        <div
+          onClick={() => setShowXitModal(false)}
+          style={{
+            position: "fixed",
+            inset: 0,
+            background: "rgba(0, 0, 0, 0.75)",
+            zIndex: 1000,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            padding: "2rem",
+          }}
+        >
+          <div
+            className="terminal-box"
+            onClick={(e) => e.stopPropagation()}
+            style={{
+              width: "min(1000px, 90vw)",
+              maxHeight: "90vh",
+              display: "flex",
+              flexDirection: "column",
+              background: "var(--color-bg-primary)",
+            }}
+          >
+            <div
+              style={{
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "space-between",
+                marginBottom: "1rem",
+                paddingBottom: "0.75rem",
+                borderBottom: "1px solid var(--color-border-primary)",
+              }}
+            >
+              <div
+                className="terminal-header"
+                style={{ margin: 0 }}
+              >
+                XIT Action Package
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowXitModal(false)}
+                aria-label="Close"
+                style={{
+                  background: "transparent",
+                  border: "none",
+                  color: "var(--color-accent-primary)",
+                  fontSize: "1.5rem",
+                  cursor: "pointer",
+                  padding: "0 0.5rem",
+                  lineHeight: 1,
+                }}
+              >
+                ×
+              </button>
+            </div>
+            <div
+              style={{
+                flex: 1,
+                minHeight: 0,
+                overflow: "auto",
+                fontFamily: "var(--font-mono)",
+                fontSize: "0.8rem",
+              }}
+            >
+              {filteredRows.length === 0 ? (
+                <div
+                  style={{
+                    color: "var(--color-text-muted)",
+                    textAlign: "center",
+                    padding: "2rem 1rem",
+                  }}
+                >
+                  No visible resupply rows. Adjust your min savings or
+                  ignore list and try again.
+                </div>
+              ) : (
+                <table
+                  style={{
+                    width: "100%",
+                    borderCollapse: "collapse",
+                  }}
+                >
+                  <thead>
+                    <tr>
+                      {[
+                        { label: "Ticker", align: "left" as const },
+                        { label: "Deficit", align: "right" as const },
+                        { label: "Best CX", align: "center" as const },
+                        { label: "Buy From", align: "left" as const },
+                      ].map((col) => (
+                        <th
+                          key={col.label}
+                          style={{
+                            padding: "0.5rem 0.6rem",
+                            borderBottom: "1px solid var(--color-border-primary)",
+                            fontSize: "0.7rem",
+                            textTransform: "uppercase",
+                            letterSpacing: "0.05em",
+                            color: "var(--color-text-secondary)",
+                            textAlign: col.align,
+                            whiteSpace: "nowrap",
+                          }}
+                        >
+                          {col.label}
+                        </th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {filteredRows.map((row) => {
+                      const picked =
+                        xitSelections[row.ticker] ??
+                        row.bestExchange ??
+                        selectedExchange;
+                      const overridden =
+                        row.bestExchange != null &&
+                        picked !== row.bestExchange;
+                      return (
+                        <tr
+                          key={row.ticker}
+                          style={{
+                            borderBottom:
+                              "1px solid var(--color-border-secondary, rgba(255,255,255,0.05))",
+                          }}
+                        >
+                          <td
+                            style={{
+                              padding: "0.5rem 0.6rem",
+                              color: "var(--color-accent-primary)",
+                              fontWeight: "bold",
+                            }}
+                          >
+                            {row.ticker}
+                          </td>
+                          <td
+                            style={{
+                              padding: "0.5rem 0.6rem",
+                              textAlign: "right",
+                            }}
+                          >
+                            {formatNumber(row.deficit)}
+                          </td>
+                          <td
+                            style={{
+                              padding: "0.5rem 0.6rem",
+                              textAlign: "center",
+                              color: "var(--color-text-muted)",
+                            }}
+                          >
+                            {row.bestExchange ?? "—"}
+                          </td>
+                          <td style={{ padding: "0.5rem 0.6rem" }}>
+                            <select
+                              value={picked}
+                              onChange={(e) =>
+                                setXitSelections((prev) => ({
+                                  ...prev,
+                                  [row.ticker]: e.target.value,
+                                }))
+                              }
+                              className="terminal-input"
+                              style={{
+                                padding: "0.25rem 0.5rem",
+                                fontSize: "0.8rem",
+                                color: overridden
+                                  ? "var(--color-accent-primary)"
+                                  : "var(--color-text-primary)",
+                                borderColor: overridden
+                                  ? "var(--color-accent-primary)"
+                                  : undefined,
+                              }}
+                            >
+                              {EXCHANGE_OPTIONS.map((opt) => (
+                                <option key={opt.code} value={opt.code}>
+                                  {opt.label}
+                                </option>
+                              ))}
+                            </select>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              )}
+            </div>
+            {filteredRows.length > 0 && (
+              <div
+                style={{
+                  marginTop: "1rem",
+                  paddingTop: "0.75rem",
+                  borderTop: "1px solid var(--color-border-primary)",
+                  display: "flex",
+                  flexDirection: "column",
+                  gap: "0.75rem",
+                }}
+              >
+                <div
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: "0.75rem",
+                    flexWrap: "wrap",
+                  }}
+                >
+                  <label
+                    style={{
+                      fontFamily: "var(--font-mono)",
+                      fontSize: "0.7rem",
+                      color: "var(--color-text-muted)",
+                      textTransform: "uppercase",
+                      letterSpacing: "0.05em",
+                    }}
+                  >
+                    Package Name
+                  </label>
+                  <input
+                    type="text"
+                    value={xitPackageName}
+                    onChange={(e) => setXitPackageName(e.target.value)}
+                    className="terminal-input"
+                    style={{ flex: 1, minWidth: "200px" }}
+                  />
+                  <button
+                    type="button"
+                    className="terminal-button"
+                    onClick={() => setXitGenerated(true)}
+                    disabled={xitPackageName.trim() === ""}
+                    style={{
+                      padding: "0.5rem 1.25rem",
+                      fontSize: "0.85rem",
+                    }}
+                  >
+                    Generate Action Package
+                  </button>
+                </div>
+                {xitGenerated && (
+                  <>
+                    <div
+                      style={{
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "space-between",
+                        gap: "0.5rem",
+                      }}
+                    >
+                      <div
+                        style={{
+                          fontFamily: "var(--font-mono)",
+                          fontSize: "0.7rem",
+                          color: "var(--color-text-muted)",
+                          textTransform: "uppercase",
+                          letterSpacing: "0.05em",
+                        }}
+                      >
+                        Action Package JSON
+                      </div>
+                      <button
+                        type="button"
+                        className="terminal-button"
+                        onClick={handleCopyXit}
+                        style={{
+                          padding: "0.4rem 1rem",
+                          fontSize: "0.8rem",
+                          background: xitCopySuccess
+                            ? "var(--color-success)"
+                            : "var(--color-bg-tertiary)",
+                          color: xitCopySuccess
+                            ? "var(--color-bg-primary)"
+                            : "var(--color-accent-primary)",
+                          borderColor: xitCopySuccess
+                            ? "var(--color-success)"
+                            : "var(--color-border-primary)",
+                        }}
+                      >
+                        {xitCopySuccess ? "✓ Copied to Clipboard" : "Copy JSON"}
+                      </button>
+                    </div>
+                    <pre
+                      style={{
+                        margin: 0,
+                        padding: "0.75rem",
+                        background: "var(--color-bg-tertiary)",
+                        border: "1px solid var(--color-border-primary)",
+                        fontFamily: "var(--font-mono)",
+                        fontSize: "0.75rem",
+                        color: "var(--color-text-primary)",
+                        maxHeight: "30vh",
+                        overflow: "auto",
+                        whiteSpace: "pre",
+                      }}
+                    >
+                      {xitPackageJson}
+                    </pre>
+                  </>
+                )}
+              </div>
+            )}
           </div>
         </div>
       )}
