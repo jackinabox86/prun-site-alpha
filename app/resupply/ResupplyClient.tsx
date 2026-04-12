@@ -250,6 +250,7 @@ export default function ResupplyClient() {
   const [xitSelections, setXitSelections] = useState<Record<string, string>>({});
   const [xitPackageName, setXitPackageName] = useState("");
   const [xitGenerated, setXitGenerated] = useState(false);
+  const [xitCopySuccess, setXitCopySuccess] = useState(false);
 
   const hasCredentials = fioUsername.trim() !== "" && fioApiKey.trim() !== "";
   const targetDaysNum = Math.max(1, parseInt(targetDays, 10) || 14);
@@ -529,6 +530,16 @@ export default function ResupplyClient() {
   useEffect(() => {
     setXitGenerated(false);
   }, [xitSelections, xitPackageName]);
+
+  const handleCopyXit = useCallback(async () => {
+    try {
+      await navigator.clipboard.writeText(xitPackageJson);
+      setXitCopySuccess(true);
+      setTimeout(() => setXitCopySuccess(false), 2000);
+    } catch (err) {
+      console.error("Failed to copy XIT action package:", err);
+    }
+  }, [xitPackageJson]);
 
   return (
     <>
@@ -1622,22 +1633,64 @@ export default function ResupplyClient() {
                   </button>
                 </div>
                 {xitGenerated && (
-                  <pre
-                    style={{
-                      margin: 0,
-                      padding: "0.75rem",
-                      background: "var(--color-bg-tertiary)",
-                      border: "1px solid var(--color-border-primary)",
-                      fontFamily: "var(--font-mono)",
-                      fontSize: "0.75rem",
-                      color: "var(--color-text-primary)",
-                      maxHeight: "30vh",
-                      overflow: "auto",
-                      whiteSpace: "pre",
-                    }}
-                  >
-                    {xitPackageJson}
-                  </pre>
+                  <>
+                    <div
+                      style={{
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "space-between",
+                        gap: "0.5rem",
+                      }}
+                    >
+                      <div
+                        style={{
+                          fontFamily: "var(--font-mono)",
+                          fontSize: "0.7rem",
+                          color: "var(--color-text-muted)",
+                          textTransform: "uppercase",
+                          letterSpacing: "0.05em",
+                        }}
+                      >
+                        Action Package JSON
+                      </div>
+                      <button
+                        type="button"
+                        className="terminal-button"
+                        onClick={handleCopyXit}
+                        style={{
+                          padding: "0.4rem 1rem",
+                          fontSize: "0.8rem",
+                          background: xitCopySuccess
+                            ? "var(--color-success)"
+                            : "var(--color-bg-tertiary)",
+                          color: xitCopySuccess
+                            ? "var(--color-bg-primary)"
+                            : "var(--color-accent-primary)",
+                          borderColor: xitCopySuccess
+                            ? "var(--color-success)"
+                            : "var(--color-border-primary)",
+                        }}
+                      >
+                        {xitCopySuccess ? "✓ Copied to Clipboard" : "Copy JSON"}
+                      </button>
+                    </div>
+                    <pre
+                      style={{
+                        margin: 0,
+                        padding: "0.75rem",
+                        background: "var(--color-bg-tertiary)",
+                        border: "1px solid var(--color-border-primary)",
+                        fontFamily: "var(--font-mono)",
+                        fontSize: "0.75rem",
+                        color: "var(--color-text-primary)",
+                        maxHeight: "30vh",
+                        overflow: "auto",
+                        whiteSpace: "pre",
+                      }}
+                    >
+                      {xitPackageJson}
+                    </pre>
+                  </>
                 )}
               </div>
             )}
