@@ -109,6 +109,7 @@ interface XitCXBuyAction {
   exchange: string;
   buyPartial: boolean;
   useCXInv: boolean;
+  priceLimits: Record<string, number>;
 }
 
 interface XitActionPackage {
@@ -123,14 +124,25 @@ function buildXitPackage(
   packageName: string,
   fallbackExchange: string,
 ): XitActionPackage {
-  // Bucket tickers by chosen exchange.
-  const buckets: Record<string, Record<string, number>> = {};
+  // Bucket tickers + effective-bid price limits by chosen exchange.
+  const buckets: Record<
+    string,
+    { materials: Record<string, number>; priceLimits: Record<string, number> }
+  > = {};
   for (const row of rows) {
     const qty = Math.max(1, Math.ceil(row.deficit));
     if (!Number.isFinite(qty) || qty <= 0) continue;
     const ex = selections[row.ticker] ?? row.bestExchange ?? fallbackExchange;
-    if (!buckets[ex]) buckets[ex] = {};
-    buckets[ex][row.ticker] = (buckets[ex][row.ticker] ?? 0) + qty;
+    if (!buckets[ex]) buckets[ex] = { materials: {}, priceLimits: {} };
+    buckets[ex].materials[row.ticker] =
+      (buckets[ex].materials[row.ticker] ?? 0) + qty;
+    // Price limit = the same "effective bid" price the savings calc used
+    // at this exchange (the user's existing top-bid limit, or market bid
+    // + 1 credit). Rounded to the 2-decimal precision XIT supports.
+    const effective = row.bids[ex]?.effectiveBid;
+    if (effective != null && Number.isFinite(effective) && effective > 0) {
+      buckets[ex].priceLimits[row.ticker] = Math.round(effective * 100) / 100;
+    }
   }
 
   // Emit a Manual group + CX Buy action per distinct exchange, in a
@@ -143,7 +155,7 @@ function buildXitPackage(
     groups.push({
       type: "Manual",
       name: groupName,
-      materials: buckets[ex],
+      materials: buckets[ex].materials,
     });
     actions.push({
       type: "CX Buy",
@@ -152,6 +164,7 @@ function buildXitPackage(
       exchange: ex,
       buyPartial: true,
       useCXInv: true,
+      priceLimits: buckets[ex].priceLimits,
     });
   }
 
