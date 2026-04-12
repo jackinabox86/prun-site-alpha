@@ -181,6 +181,7 @@ export default function ResupplyClient() {
   );
 
   const [showXitModal, setShowXitModal] = useState(false);
+  const [xitSelections, setXitSelections] = useState<Record<string, string>>({});
 
   const hasCredentials = fioUsername.trim() !== "" && fioApiKey.trim() !== "";
   const targetDaysNum = Math.max(1, parseInt(targetDays, 10) || 14);
@@ -427,6 +428,18 @@ export default function ResupplyClient() {
     if (minSavingsNum <= 0) return resupplyRows;
     return resupplyRows.filter(r => (r.bestSavings ?? 0) >= minSavingsNum);
   }, [resupplyRows, minSavingsNum]);
+
+  // When the XIT modal opens, (re)seed the per-ticker exchange picks from
+  // the current filteredRows' bestExchange (falling back to the globally
+  // selected exchange if a row has no best).
+  useEffect(() => {
+    if (!showXitModal) return;
+    const next: Record<string, string> = {};
+    for (const row of filteredRows) {
+      next[row.ticker] = row.bestExchange ?? selectedExchange;
+    }
+    setXitSelections(next);
+  }, [showXitModal, filteredRows, selectedExchange]);
 
   return (
     <>
@@ -1344,15 +1357,130 @@ export default function ResupplyClient() {
                 flex: 1,
                 overflow: "auto",
                 fontFamily: "var(--font-mono)",
-                fontSize: "0.85rem",
-                color: "var(--color-text-muted)",
+                fontSize: "0.8rem",
               }}
             >
-              {/* Stage 2 will render the selection table here. */}
-              Placeholder — selection table and generator coming in later stages.
-              <div style={{ marginTop: "0.75rem" }}>
-                Visible resupply rows: {filteredRows.length}
-              </div>
+              {filteredRows.length === 0 ? (
+                <div
+                  style={{
+                    color: "var(--color-text-muted)",
+                    textAlign: "center",
+                    padding: "2rem 1rem",
+                  }}
+                >
+                  No visible resupply rows. Adjust your min savings or
+                  ignore list and try again.
+                </div>
+              ) : (
+                <table
+                  style={{
+                    width: "100%",
+                    borderCollapse: "collapse",
+                  }}
+                >
+                  <thead>
+                    <tr>
+                      {[
+                        { label: "Ticker", align: "left" as const },
+                        { label: "Deficit", align: "right" as const },
+                        { label: "Best CX", align: "center" as const },
+                        { label: "Buy From", align: "left" as const },
+                      ].map((col) => (
+                        <th
+                          key={col.label}
+                          style={{
+                            padding: "0.5rem 0.6rem",
+                            borderBottom: "1px solid var(--color-border-primary)",
+                            fontSize: "0.7rem",
+                            textTransform: "uppercase",
+                            letterSpacing: "0.05em",
+                            color: "var(--color-text-secondary)",
+                            textAlign: col.align,
+                            whiteSpace: "nowrap",
+                          }}
+                        >
+                          {col.label}
+                        </th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {filteredRows.map((row) => {
+                      const picked =
+                        xitSelections[row.ticker] ??
+                        row.bestExchange ??
+                        selectedExchange;
+                      const overridden =
+                        row.bestExchange != null &&
+                        picked !== row.bestExchange;
+                      return (
+                        <tr
+                          key={row.ticker}
+                          style={{
+                            borderBottom:
+                              "1px solid var(--color-border-secondary, rgba(255,255,255,0.05))",
+                          }}
+                        >
+                          <td
+                            style={{
+                              padding: "0.5rem 0.6rem",
+                              color: "var(--color-accent-primary)",
+                              fontWeight: "bold",
+                            }}
+                          >
+                            {row.ticker}
+                          </td>
+                          <td
+                            style={{
+                              padding: "0.5rem 0.6rem",
+                              textAlign: "right",
+                            }}
+                          >
+                            {formatNumber(row.deficit)}
+                          </td>
+                          <td
+                            style={{
+                              padding: "0.5rem 0.6rem",
+                              textAlign: "center",
+                              color: "var(--color-text-muted)",
+                            }}
+                          >
+                            {row.bestExchange ?? "—"}
+                          </td>
+                          <td style={{ padding: "0.5rem 0.6rem" }}>
+                            <select
+                              value={picked}
+                              onChange={(e) =>
+                                setXitSelections((prev) => ({
+                                  ...prev,
+                                  [row.ticker]: e.target.value,
+                                }))
+                              }
+                              className="terminal-input"
+                              style={{
+                                padding: "0.25rem 0.5rem",
+                                fontSize: "0.8rem",
+                                color: overridden
+                                  ? "var(--color-accent-primary)"
+                                  : "var(--color-text-primary)",
+                                borderColor: overridden
+                                  ? "var(--color-accent-primary)"
+                                  : undefined,
+                              }}
+                            >
+                              {EXCHANGE_OPTIONS.map((opt) => (
+                                <option key={opt.code} value={opt.code}>
+                                  {opt.label}
+                                </option>
+                              ))}
+                            </select>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              )}
             </div>
           </div>
         </div>
