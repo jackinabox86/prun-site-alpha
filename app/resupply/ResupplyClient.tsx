@@ -168,7 +168,7 @@ function buildXitPackage(
       // package fails without creating any orders.
       allowUnfilled: true,
       buyPartial: true,
-      useCXInv: true,
+      useCXInv: false,
       priceLimits: buckets[ex].priceLimits,
     });
   }
