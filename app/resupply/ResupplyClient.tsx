@@ -531,6 +531,22 @@ export default function ResupplyClient() {
     setXitGenerated(false);
   }, [xitSelections, xitPackageName]);
 
+  // While the XIT modal is open, close on Escape and lock the body's
+  // scroll so background content doesn't shift underneath.
+  useEffect(() => {
+    if (!showXitModal) return;
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setShowXitModal(false);
+    };
+    window.addEventListener("keydown", onKeyDown);
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      window.removeEventListener("keydown", onKeyDown);
+      document.body.style.overflow = previousOverflow;
+    };
+  }, [showXitModal]);
+
   const handleCopyXit = useCallback(async () => {
     try {
       await navigator.clipboard.writeText(xitPackageJson);
@@ -1455,6 +1471,7 @@ export default function ResupplyClient() {
             <div
               style={{
                 flex: 1,
+                minHeight: 0,
                 overflow: "auto",
                 fontFamily: "var(--font-mono)",
                 fontSize: "0.8rem",
