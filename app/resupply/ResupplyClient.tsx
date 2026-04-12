@@ -462,6 +462,94 @@ export default function ResupplyClient() {
         </p>
       </div>
 
+      {/* Burn Data */}
+      <div className="terminal-box" style={{ marginBottom: "2rem" }}>
+        <div className="terminal-header" style={{ marginBottom: "1rem" }}>
+          Burn Data
+        </div>
+        <div
+          style={{
+            display: "flex",
+            gap: "1rem",
+            flexWrap: "wrap",
+            alignItems: "flex-start",
+          }}
+        >
+          <div style={{ flex: "3 1 0", minWidth: "300px" }}>
+            <label
+              style={{
+                display: "block",
+                fontFamily: "var(--font-mono)",
+                fontSize: "0.7rem",
+                color: "var(--color-text-muted)",
+                textTransform: "uppercase",
+                letterSpacing: "0.05em",
+                marginBottom: "0.25rem",
+              }}
+            >
+              Paste RPrUn Burn Data
+            </label>
+            <textarea
+              placeholder="Paste burn table from game (select all rows in BUI BRA burn section, copy with Ctrl+C)"
+              value={burnText}
+              onChange={(e) => setBurnText(e.target.value)}
+              className="terminal-input"
+              rows={4}
+              style={{
+                width: "100%",
+                resize: "vertical",
+                fontFamily: "var(--font-mono)",
+                fontSize: "0.75rem",
+              }}
+            />
+            {burnText.trim() && (
+              <div
+                style={{
+                  marginTop: "0.5rem",
+                  fontFamily: "var(--font-mono)",
+                  fontSize: "0.75rem",
+                  color: parsedCount > 0
+                    ? "var(--color-text-secondary)"
+                    : "var(--color-error, #ff4444)",
+                }}
+              >
+                {parsedCount > 0
+                  ? `Parsed ${parsedCount} consumption items from Overall`
+                  : "No consumption items found. Ensure burn table has Overall rows with negative Burn/day."}
+              </div>
+            )}
+          </div>
+          <div style={{ flex: "1 1 0", minWidth: "140px" }}>
+            <label
+              style={{
+                display: "block",
+                fontFamily: "var(--font-mono)",
+                fontSize: "0.7rem",
+                color: "var(--color-text-muted)",
+                textTransform: "uppercase",
+                letterSpacing: "0.05em",
+                marginBottom: "0.25rem",
+              }}
+            >
+              Ignore Tickers
+            </label>
+            <textarea
+              placeholder="e.g. DW, RAT, H2O"
+              value={ignoreTickers}
+              onChange={(e) => setIgnoreTickers(e.target.value)}
+              className="terminal-input"
+              rows={4}
+              style={{
+                width: "100%",
+                resize: "vertical",
+                fontFamily: "var(--font-mono)",
+                fontSize: "0.75rem",
+              }}
+            />
+          </div>
+        </div>
+      </div>
+
       {/* Settings */}
       <div className="terminal-box" style={{ marginBottom: "2rem" }}>
         <div className="terminal-header" style={{ marginBottom: "1rem" }}>
@@ -636,62 +724,6 @@ export default function ResupplyClient() {
             </span>
           )}
         </div>
-      </div>
-
-      {/* Burn Data */}
-      <div className="terminal-box" style={{ marginBottom: "2rem" }}>
-        <div className="terminal-header" style={{ marginBottom: "1rem" }}>
-          Paste RPrUn Burn Data
-        </div>
-        <textarea
-          placeholder="Paste burn table from game (select all rows in BUI BRA burn section, copy with Ctrl+C)"
-          value={burnText}
-          onChange={(e) => setBurnText(e.target.value)}
-          className="terminal-input"
-          rows={4}
-          style={{
-            width: "100%",
-            resize: "vertical",
-            fontFamily: "var(--font-mono)",
-            fontSize: "0.75rem",
-          }}
-        />
-        {burnText.trim() && (
-          <div
-            style={{
-              marginTop: "0.5rem",
-              fontFamily: "var(--font-mono)",
-              fontSize: "0.75rem",
-              color: parsedCount > 0
-                ? "var(--color-text-secondary)"
-                : "var(--color-error, #ff4444)",
-            }}
-          >
-            {parsedCount > 0
-              ? `Parsed ${parsedCount} consumption items from Overall`
-              : "No consumption items found. Ensure burn table has Overall rows with negative Burn/day."}
-          </div>
-        )}
-      </div>
-
-      {/* Ignore Tickers */}
-      <div className="terminal-box" style={{ marginBottom: "2rem" }}>
-        <div className="terminal-header" style={{ marginBottom: "1rem" }}>
-          Ignore Tickers
-        </div>
-        <textarea
-          placeholder="e.g. DW, RAT, H2O (comma or whitespace separated)"
-          value={ignoreTickers}
-          onChange={(e) => setIgnoreTickers(e.target.value)}
-          className="terminal-input"
-          rows={2}
-          style={{
-            width: "100%",
-            resize: "vertical",
-            fontFamily: "var(--font-mono)",
-            fontSize: "0.75rem",
-          }}
-        />
       </div>
 
       {/* Error */}
