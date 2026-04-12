@@ -96,6 +96,72 @@ interface StaleBid {
   amount: number;
 }
 
+interface XitManualGroup {
+  type: "Manual";
+  name: string;
+  materials: Record<string, number>;
+}
+
+interface XitCXBuyAction {
+  type: "CX Buy";
+  name: string;
+  group: string;
+  exchange: string;
+  buyPartial: boolean;
+  useCXInv: boolean;
+}
+
+interface XitActionPackage {
+  global: { name: string };
+  groups: XitManualGroup[];
+  actions: XitCXBuyAction[];
+}
+
+function buildXitPackage(
+  rows: ResupplyRow[],
+  selections: Record<string, string>,
+  packageName: string,
+  fallbackExchange: string,
+): XitActionPackage {
+  // Bucket tickers by chosen exchange.
+  const buckets: Record<string, Record<string, number>> = {};
+  for (const row of rows) {
+    const qty = Math.max(1, Math.ceil(row.deficit));
+    if (!Number.isFinite(qty) || qty <= 0) continue;
+    const ex = selections[row.ticker] ?? row.bestExchange ?? fallbackExchange;
+    if (!buckets[ex]) buckets[ex] = {};
+    buckets[ex][row.ticker] = (buckets[ex][row.ticker] ?? 0) + qty;
+  }
+
+  // Emit a Manual group + CX Buy action per distinct exchange, in a
+  // stable order so the preview is deterministic across renders.
+  const exchanges = Object.keys(buckets).sort();
+  const groups: XitManualGroup[] = [];
+  const actions: XitCXBuyAction[] = [];
+  for (const ex of exchanges) {
+    const groupName = `resupply-${ex.toLowerCase()}`;
+    groups.push({
+      type: "Manual",
+      name: groupName,
+      materials: buckets[ex],
+    });
+    actions.push({
+      type: "CX Buy",
+      name: `buy-${ex.toLowerCase()}`,
+      group: groupName,
+      exchange: ex,
+      buyPartial: true,
+      useCXInv: true,
+    });
+  }
+
+  return {
+    global: { name: packageName.trim() || "Resupply" },
+    groups,
+    actions,
+  };
+}
+
 function formatNumber(value: number): string {
   return value.toLocaleString(undefined, {
     minimumFractionDigits: 0,
@@ -182,6 +248,8 @@ export default function ResupplyClient() {
 
   const [showXitModal, setShowXitModal] = useState(false);
   const [xitSelections, setXitSelections] = useState<Record<string, string>>({});
+  const [xitPackageName, setXitPackageName] = useState("");
+  const [xitGenerated, setXitGenerated] = useState(false);
 
   const hasCredentials = fioUsername.trim() !== "" && fioApiKey.trim() !== "";
   const targetDaysNum = Math.max(1, parseInt(targetDays, 10) || 14);
@@ -431,7 +499,8 @@ export default function ResupplyClient() {
 
   // When the XIT modal opens, (re)seed the per-ticker exchange picks from
   // the current filteredRows' bestExchange (falling back to the globally
-  // selected exchange if a row has no best).
+  // selected exchange if a row has no best), reset the package name to a
+  // dated default, and hide any previously-generated preview.
   useEffect(() => {
     if (!showXitModal) return;
     const next: Record<string, string> = {};
@@ -439,7 +508,27 @@ export default function ResupplyClient() {
       next[row.ticker] = row.bestExchange ?? selectedExchange;
     }
     setXitSelections(next);
+    setXitPackageName(`Resupply ${new Date().toISOString().slice(0, 10)}`);
+    setXitGenerated(false);
   }, [showXitModal, filteredRows, selectedExchange]);
+
+  // Live-compute the action package JSON for preview / copy. Invalidating
+  // on any selection or name change also implicitly re-hides the preview
+  // via the xitGenerated flag below.
+  const xitPackage = useMemo(
+    () => buildXitPackage(filteredRows, xitSelections, xitPackageName, selectedExchange),
+    [filteredRows, xitSelections, xitPackageName, selectedExchange],
+  );
+  const xitPackageJson = useMemo(
+    () => JSON.stringify(xitPackage, null, 2),
+    [xitPackage],
+  );
+
+  // Any edit to selections or the package name hides the previously
+  // generated preview, so the user must click Generate again to confirm.
+  useEffect(() => {
+    setXitGenerated(false);
+  }, [xitSelections, xitPackageName]);
 
   return (
     <>
@@ -1482,6 +1571,76 @@ export default function ResupplyClient() {
                 </table>
               )}
             </div>
+            {filteredRows.length > 0 && (
+              <div
+                style={{
+                  marginTop: "1rem",
+                  paddingTop: "0.75rem",
+                  borderTop: "1px solid var(--color-border-primary)",
+                  display: "flex",
+                  flexDirection: "column",
+                  gap: "0.75rem",
+                }}
+              >
+                <div
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: "0.75rem",
+                    flexWrap: "wrap",
+                  }}
+                >
+                  <label
+                    style={{
+                      fontFamily: "var(--font-mono)",
+                      fontSize: "0.7rem",
+                      color: "var(--color-text-muted)",
+                      textTransform: "uppercase",
+                      letterSpacing: "0.05em",
+                    }}
+                  >
+                    Package Name
+                  </label>
+                  <input
+                    type="text"
+                    value={xitPackageName}
+                    onChange={(e) => setXitPackageName(e.target.value)}
+                    className="terminal-input"
+                    style={{ flex: 1, minWidth: "200px" }}
+                  />
+                  <button
+                    type="button"
+                    className="terminal-button"
+                    onClick={() => setXitGenerated(true)}
+                    disabled={xitPackageName.trim() === ""}
+                    style={{
+                      padding: "0.5rem 1.25rem",
+                      fontSize: "0.85rem",
+                    }}
+                  >
+                    Generate Action Package
+                  </button>
+                </div>
+                {xitGenerated && (
+                  <pre
+                    style={{
+                      margin: 0,
+                      padding: "0.75rem",
+                      background: "var(--color-bg-tertiary)",
+                      border: "1px solid var(--color-border-primary)",
+                      fontFamily: "var(--font-mono)",
+                      fontSize: "0.75rem",
+                      color: "var(--color-text-primary)",
+                      maxHeight: "30vh",
+                      overflow: "auto",
+                      whiteSpace: "pre",
+                    }}
+                  >
+                    {xitPackageJson}
+                  </pre>
+                )}
+              </div>
+            )}
           </div>
         </div>
       )}
