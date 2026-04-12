@@ -107,6 +107,7 @@ interface XitCXBuyAction {
   name: string;
   group: string;
   exchange: string;
+  allowUnfilled: boolean;
   buyPartial: boolean;
   useCXInv: boolean;
   priceLimits: Record<string, number>;
@@ -162,6 +163,10 @@ function buildXitPackage(
       name: `buy-${ex.toLowerCase()}`,
       group: groupName,
       exchange: ex,
+      // Required so the action still posts bids when the exchange has
+      // fewer units available than we need — otherwise the whole
+      // package fails without creating any orders.
+      allowUnfilled: true,
       buyPartial: true,
       useCXInv: true,
       priceLimits: buckets[ex].priceLimits,
