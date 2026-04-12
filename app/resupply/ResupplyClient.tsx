@@ -104,9 +104,17 @@ function formatNumber(value: number): string {
 }
 
 function formatCurrency(value: number): string {
-  return value.toLocaleString(undefined, {
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
+  // Whole numbers shown without decimals; otherwise show one decimal place
+  const rounded = Math.round(value * 10) / 10;
+  if (rounded === Math.trunc(rounded)) {
+    return rounded.toLocaleString(undefined, {
+      minimumFractionDigits: 0,
+      maximumFractionDigits: 0,
+    });
+  }
+  return rounded.toLocaleString(undefined, {
+    minimumFractionDigits: 1,
+    maximumFractionDigits: 1,
   });
 }
 
@@ -406,8 +414,8 @@ export default function ResupplyClient() {
       });
     }
 
-    // Sort by net savings at selected exchange descending
-    rows.sort((a, b) => (b.savingsAtSelected ?? -Infinity) - (a.savingsAtSelected ?? -Infinity));
+    // Sort by best net savings descending
+    rows.sort((a, b) => (b.bestSavings ?? -Infinity) - (a.bestSavings ?? -Infinity));
 
     return { resupplyRows: rows, staleBids };
   }, [rawData, deficitRows, selectedExchange, targetDaysNum, weeklyRateNum, ignoreTickersNormalized]);
@@ -415,7 +423,7 @@ export default function ResupplyClient() {
   // Apply min savings filter
   const filteredRows = useMemo(() => {
     if (minSavingsNum <= 0) return resupplyRows;
-    return resupplyRows.filter(r => (r.savingsAtSelected ?? 0) >= minSavingsNum);
+    return resupplyRows.filter(r => (r.bestSavings ?? 0) >= minSavingsNum);
   }, [resupplyRows, minSavingsNum]);
 
   return (
@@ -1082,7 +1090,7 @@ export default function ResupplyClient() {
                                 ({(row.bestReturnPct * 100).toFixed(1)}%)
                               </span>
                             )}
-                            {row.bestExchange && row.bestExchange !== selectedExchange && (
+                            {row.bestExchange && (
                               <span style={{ fontSize: "0.65rem", color: "var(--color-text-muted)", marginLeft: "0.3rem" }}>
                                 {EXCHANGE_SHORT[row.bestExchange]}
                               </span>
