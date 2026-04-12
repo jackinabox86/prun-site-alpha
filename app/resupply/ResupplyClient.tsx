@@ -141,7 +141,6 @@ export default function ResupplyClient() {
   const [rawData, setRawData] = useState<RawData | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [showDebug, setShowDebug] = useState(false);
   const [lastRefresh, setLastRefresh] = useState<Date | null>(null);
 
   const [fioUsername, setFioUsername] = usePersistedSettings<string>(
@@ -186,6 +185,7 @@ export default function ResupplyClient() {
   const weeklyRateNum = Math.max(0, parseFloat(weeklyRate) || 3);
   const minSavingsNum = Math.max(0, parseFloat(minSavings) || 0);
   const ignoreTickersNormalized = ignoreTickers.split(/[,\s]+/).map(t => t.trim().toUpperCase()).filter(Boolean).sort().join(",");
+  const returnFloorPct = (Math.pow(1 + weeklyRateNum / 100, targetDaysNum / 7) - 1) * 100;
 
   const fetchData = useCallback(async () => {
     if (!fioUsername.trim() || !fioApiKey.trim()) return;
@@ -462,35 +462,157 @@ export default function ResupplyClient() {
         </p>
       </div>
 
-      {/* FIO Credentials */}
+      {/* Settings */}
       <div className="terminal-box" style={{ marginBottom: "2rem" }}>
         <div className="terminal-header" style={{ marginBottom: "1rem" }}>
-          FIO Credentials
+          Settings
         </div>
         <div
           style={{
             display: "flex",
             gap: "1rem",
             flexWrap: "wrap",
-            alignItems: "center",
+            alignItems: "flex-start",
           }}
         >
-          <input
-            type="text"
-            placeholder="FIO username"
-            value={fioUsername}
-            onChange={(e) => setFioUsername(e.target.value)}
-            className="terminal-input"
-            style={{ flex: 1, minWidth: "150px", maxWidth: "250px" }}
-          />
-          <input
-            type="password"
-            placeholder="FIO API key"
-            value={fioApiKey}
-            onChange={(e) => setFioApiKey(e.target.value)}
-            className="terminal-input"
-            style={{ flex: 2, minWidth: "250px", maxWidth: "450px" }}
-          />
+          <div style={{ display: "flex", flexDirection: "column", gap: "0.25rem", flex: "1 1 200px", minWidth: "180px" }}>
+            <label
+              style={{
+                fontFamily: "var(--font-mono)",
+                fontSize: "0.7rem",
+                color: "var(--color-text-muted)",
+                textTransform: "uppercase",
+                letterSpacing: "0.05em",
+              }}
+            >
+              FIO Username <span style={{ textTransform: "none", opacity: 0.7 }}>(local storage only)</span>
+            </label>
+            <input
+              type="text"
+              value={fioUsername}
+              onChange={(e) => setFioUsername(e.target.value)}
+              className="terminal-input"
+              style={{ width: "100%" }}
+            />
+          </div>
+          <div style={{ display: "flex", flexDirection: "column", gap: "0.25rem", flex: "2 1 280px", minWidth: "240px" }}>
+            <label
+              style={{
+                fontFamily: "var(--font-mono)",
+                fontSize: "0.7rem",
+                color: "var(--color-text-muted)",
+                textTransform: "uppercase",
+                letterSpacing: "0.05em",
+              }}
+            >
+              FIO API Key <span style={{ textTransform: "none", opacity: 0.7 }}>(local storage only)</span>
+            </label>
+            <input
+              type="password"
+              value={fioApiKey}
+              onChange={(e) => setFioApiKey(e.target.value)}
+              className="terminal-input"
+              style={{ width: "100%" }}
+            />
+          </div>
+          <div style={{ display: "flex", flexDirection: "column", gap: "0.25rem" }}>
+            <label
+              style={{
+                fontFamily: "var(--font-mono)",
+                fontSize: "0.7rem",
+                color: "var(--color-text-muted)",
+                textTransform: "uppercase",
+                letterSpacing: "0.05em",
+              }}
+            >
+              Commodity Exchange
+            </label>
+            <select
+              value={selectedExchange}
+              onChange={(e) => setSelectedExchange(e.target.value)}
+              className="terminal-input"
+              style={{ minWidth: "180px" }}
+            >
+              {EXCHANGE_OPTIONS.map((ex) => (
+                <option key={ex.code} value={ex.code}>
+                  {ex.label}
+                </option>
+              ))}
+            </select>
+          </div>
+          <div style={{ display: "flex", flexDirection: "column", gap: "0.25rem" }}>
+            <label
+              style={{
+                fontFamily: "var(--font-mono)",
+                fontSize: "0.7rem",
+                color: "var(--color-text-muted)",
+                textTransform: "uppercase",
+                letterSpacing: "0.05em",
+              }}
+            >
+              Target Days
+            </label>
+            <input
+              type="number"
+              min="1"
+              value={targetDays}
+              onChange={(e) => setTargetDays(e.target.value)}
+              className="terminal-input"
+              style={{ width: "90px", textAlign: "center" }}
+            />
+          </div>
+          <div style={{ display: "flex", flexDirection: "column", gap: "0.25rem" }}>
+            <label
+              style={{
+                fontFamily: "var(--font-mono)",
+                fontSize: "0.7rem",
+                color: "var(--color-text-muted)",
+                textTransform: "uppercase",
+                letterSpacing: "0.05em",
+              }}
+            >
+              Weekly Return %
+            </label>
+            <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
+              <input
+                type="number"
+                min="0"
+                step="0.5"
+                value={weeklyRate}
+                onChange={(e) => setWeeklyRate(e.target.value)}
+                className="terminal-input"
+                style={{ width: "90px", textAlign: "center" }}
+              />
+              <span
+                style={{
+                  fontFamily: "var(--font-mono)",
+                  fontSize: "0.7rem",
+                  color: "var(--color-text-muted)",
+                  whiteSpace: "nowrap",
+                }}
+              >
+                Return Floor: <span style={{ color: "var(--color-accent-primary)" }}>{returnFloorPct.toFixed(1)}%</span>
+              </span>
+            </div>
+          </div>
+        </div>
+        <div
+          style={{
+            marginTop: "1rem",
+            display: "flex",
+            gap: "1rem",
+            alignItems: "center",
+            flexWrap: "wrap",
+          }}
+        >
+          <button
+            onClick={fetchData}
+            disabled={loading || !hasCredentials}
+            className="terminal-button"
+            style={{ padding: "0.5rem 1.5rem" }}
+          >
+            {loading ? "Fetching..." : "Fetch Data"}
+          </button>
           {!hasCredentials && (
             <span
               style={{
@@ -502,183 +624,74 @@ export default function ResupplyClient() {
               Enter your FIO username and API key
             </span>
           )}
-        </div>
-      </div>
-
-      {/* Exchange Selector */}
-      <div className="terminal-box" style={{ marginBottom: "2rem" }}>
-        <div className="terminal-header" style={{ marginBottom: "1rem" }}>
-          Exchange
-        </div>
-        <select
-          value={selectedExchange}
-          onChange={(e) => setSelectedExchange(e.target.value)}
-          className="terminal-select"
-        >
-          {EXCHANGE_OPTIONS.map((ex) => (
-            <option key={ex.code} value={ex.code}>
-              {ex.label}
-            </option>
-          ))}
-        </select>
-      </div>
-
-      {/* Burn Table + Target Days */}
-      <div className="terminal-box" style={{ marginBottom: "2rem" }}>
-        <div className="terminal-header" style={{ marginBottom: "1rem" }}>
-          Burn Data
-        </div>
-        <div
-          style={{
-            display: "flex",
-            gap: "1rem",
-            flexWrap: "wrap",
-            alignItems: "flex-start",
-          }}
-        >
-          <div style={{ flex: "1 1 400px" }}>
-            <textarea
-              placeholder="Paste burn table from game (select all rows in BUI BRA burn section, copy with Ctrl+C)"
-              value={burnText}
-              onChange={(e) => setBurnText(e.target.value)}
-              className="terminal-input"
-              rows={4}
+          {lastRefresh && (
+            <span
               style={{
-                width: "100%",
-                resize: "vertical",
                 fontFamily: "var(--font-mono)",
                 fontSize: "0.75rem",
+                color: "var(--color-text-muted)",
               }}
-            />
-            {burnText.trim() && (
-              <div
-                style={{
-                  marginTop: "0.5rem",
-                  fontFamily: "var(--font-mono)",
-                  fontSize: "0.75rem",
-                  color: parsedCount > 0
-                    ? "var(--color-text-secondary)"
-                    : "var(--color-error, #ff4444)",
-                }}
-              >
-                {parsedCount > 0
-                  ? `Parsed ${parsedCount} consumption items from Overall`
-                  : "No consumption items found. Ensure burn table has Overall rows with negative Burn/day."}
-              </div>
-            )}
-          </div>
-          <div style={{ display: "flex", gap: "1rem", flexWrap: "wrap" }}>
-            <div style={{ display: "flex", flexDirection: "column", gap: "0.25rem" }}>
-              <label
-                style={{
-                  fontFamily: "var(--font-mono)",
-                  fontSize: "0.7rem",
-                  color: "var(--color-text-muted)",
-                  textTransform: "uppercase",
-                  letterSpacing: "0.05em",
-                }}
-              >
-                Target Days
-              </label>
-              <input
-                type="number"
-                min="1"
-                value={targetDays}
-                onChange={(e) => setTargetDays(e.target.value)}
-                className="terminal-input"
-                style={{ width: "80px", textAlign: "center" }}
-              />
-            </div>
-            <div style={{ display: "flex", flexDirection: "column", gap: "0.25rem" }}>
-              <label
-                style={{
-                  fontFamily: "var(--font-mono)",
-                  fontSize: "0.7rem",
-                  color: "var(--color-text-muted)",
-                  textTransform: "uppercase",
-                  letterSpacing: "0.05em",
-                }}
-              >
-                Weekly Return %
-              </label>
-              <input
-                type="number"
-                min="0"
-                step="0.5"
-                value={weeklyRate}
-                onChange={(e) => setWeeklyRate(e.target.value)}
-                className="terminal-input"
-                style={{ width: "80px", textAlign: "center" }}
-              />
-            </div>
-            <div style={{ display: "flex", flexDirection: "column", gap: "0.25rem" }}>
-              <label
-                style={{
-                  fontFamily: "var(--font-mono)",
-                  fontSize: "0.7rem",
-                  color: "var(--color-text-muted)",
-                  textTransform: "uppercase",
-                  letterSpacing: "0.05em",
-                }}
-              >
-                Ignore Tickers
-              </label>
-              <input
-                type="text"
-                placeholder="e.g. DW, RAT"
-                value={ignoreTickers}
-                onChange={(e) => setIgnoreTickers(e.target.value)}
-                className="terminal-input"
-                style={{ width: "160px" }}
-              />
-            </div>
-          </div>
+            >
+              Last fetch: {lastRefresh.toLocaleTimeString()}
+            </span>
+          )}
         </div>
       </div>
 
-      {/* Controls */}
-      <div
-        style={{
-          marginBottom: "2rem",
-          display: "flex",
-          gap: "1rem",
-          alignItems: "center",
-          flexWrap: "wrap",
-        }}
-      >
-        <button
-          onClick={fetchData}
-          disabled={loading || !hasCredentials}
-          className="terminal-button"
-          style={{ padding: "0.5rem 1.5rem" }}
-        >
-          {loading ? "Fetching..." : "Fetch Data"}
-        </button>
-        {lastRefresh && (
-          <span
+      {/* Burn Data */}
+      <div className="terminal-box" style={{ marginBottom: "2rem" }}>
+        <div className="terminal-header" style={{ marginBottom: "1rem" }}>
+          Paste RPrUn Burn Data
+        </div>
+        <textarea
+          placeholder="Paste burn table from game (select all rows in BUI BRA burn section, copy with Ctrl+C)"
+          value={burnText}
+          onChange={(e) => setBurnText(e.target.value)}
+          className="terminal-input"
+          rows={4}
+          style={{
+            width: "100%",
+            resize: "vertical",
+            fontFamily: "var(--font-mono)",
+            fontSize: "0.75rem",
+          }}
+        />
+        {burnText.trim() && (
+          <div
             style={{
+              marginTop: "0.5rem",
               fontFamily: "var(--font-mono)",
               fontSize: "0.75rem",
-              color: "var(--color-text-muted)",
+              color: parsedCount > 0
+                ? "var(--color-text-secondary)"
+                : "var(--color-error, #ff4444)",
             }}
           >
-            Last fetch: {lastRefresh.toLocaleTimeString()}
-          </span>
+            {parsedCount > 0
+              ? `Parsed ${parsedCount} consumption items from Overall`
+              : "No consumption items found. Ensure burn table has Overall rows with negative Burn/day."}
+          </div>
         )}
-        {rawData && (
-          <button
-            onClick={() => setShowDebug(!showDebug)}
-            className="terminal-button"
-            style={{
-              padding: "0.25rem 0.75rem",
-              fontSize: "0.7rem",
-              marginLeft: "auto",
-              opacity: 0.5,
-            }}
-          >
-            {showDebug ? "Hide Debug" : "Debug"}
-          </button>
-        )}
+      </div>
+
+      {/* Ignore Tickers */}
+      <div className="terminal-box" style={{ marginBottom: "2rem" }}>
+        <div className="terminal-header" style={{ marginBottom: "1rem" }}>
+          Ignore Tickers
+        </div>
+        <textarea
+          placeholder="e.g. DW, RAT, H2O (comma or whitespace separated)"
+          value={ignoreTickers}
+          onChange={(e) => setIgnoreTickers(e.target.value)}
+          className="terminal-input"
+          rows={2}
+          style={{
+            width: "100%",
+            resize: "vertical",
+            fontFamily: "var(--font-mono)",
+            fontSize: "0.75rem",
+          }}
+        />
       </div>
 
       {/* Error */}
@@ -990,8 +1003,8 @@ export default function ResupplyClient() {
                       { label: "Deficit", align: "right" },
                       { label: `Ask (${EXCHANGE_SHORT[selectedExchange]})`, align: "right" },
                       ...EXCHANGE_CODES.map(ex => ({ label: `Bid (${EXCHANGE_SHORT[ex]})`, align: "right" as const })),
-                      { label: "Savings @ Selected", align: "right" },
-                      { label: "Best Savings", align: "right" },
+                      { label: "Savings @ Selected CX", align: "right" },
+                      { label: "Best Savings", align: "center" },
                     ].map((col) => (
                       <th
                         key={col.label}
@@ -1002,7 +1015,7 @@ export default function ResupplyClient() {
                           textTransform: "uppercase",
                           letterSpacing: "0.05em",
                           color: "var(--color-text-secondary)",
-                          textAlign: col.align as "left" | "right",
+                          textAlign: col.align as "left" | "right" | "center",
                           whiteSpace: "nowrap",
                         }}
                       >
@@ -1078,7 +1091,7 @@ export default function ResupplyClient() {
                           padding: "0.5rem 0.6rem",
                           textAlign: "right",
                           color: (row.bestSavings ?? 0) > 0
-                            ? "var(--color-accent-primary)"
+                            ? "var(--color-success, #44ff44)"
                             : "var(--color-text-muted)",
                         }}
                       >
@@ -1213,27 +1226,6 @@ export default function ResupplyClient() {
         </div>
       )}
 
-      {/* Debug View */}
-      {rawData && showDebug && (
-        <div className="terminal-box" style={{ marginBottom: "2rem" }}>
-          <div className="terminal-header" style={{ marginBottom: "1rem" }}>
-            Raw API Response
-          </div>
-          <pre
-            style={{
-              fontFamily: "var(--font-mono)",
-              fontSize: "0.7rem",
-              color: "var(--color-text-secondary)",
-              overflow: "auto",
-              maxHeight: "500px",
-              whiteSpace: "pre-wrap",
-              wordBreak: "break-all",
-            }}
-          >
-            {JSON.stringify(rawData, null, 2)}
-          </pre>
-        </div>
-      )}
     </>
   );
 }
