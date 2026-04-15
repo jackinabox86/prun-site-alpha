@@ -196,8 +196,14 @@ export async function GET(request: Request) {
       weekBuckets[weekIndex].NCC += ex.NCC ?? 0;
     }
 
+    // Only include buckets whose full 7-day window sits entirely before the upper cutoff.
+    // A bucket at index k spans [cutoffMs + k*7d, cutoffMs + (k+1)*7d).
+    // It is complete iff cutoffMs + (k+1)*7d <= upperCutoffMs.
+    const maxCompleteWeekIndex = Math.floor((upperCutoffMs - cutoffMs) / MS_PER_WEEK) - 1;
+
     const dataPoints: VolumeDataPoint[] = Object.keys(weekBuckets)
       .map(Number)
+      .filter((idx) => idx <= maxCompleteWeekIndex)
       .sort((a, b) => a - b)
       .map((idx) => {
         const b = weekBuckets[idx];
