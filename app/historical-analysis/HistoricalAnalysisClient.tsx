@@ -1132,7 +1132,7 @@ export default function HistoricalAnalysisClient() {
           mode: "lines" as const,
           name: ex,
           line: { color: exchangeColors[ex], width: 2 },
-          hovertemplate: `<b>%{x}</b><br>${ex}: %{y:,.0f}<extra></extra>`,
+          hovertemplate: `<b>Week of %{x}</b><br>${ex}: %{y:,.0f}<extra></extra>`,
         }));
 
         const allValues = volumeChartData.dataPoints.flatMap((d) => [d.ANT, d.CIS, d.ICA, d.NCC]);
@@ -1140,7 +1140,7 @@ export default function HistoricalAnalysisClient() {
 
         const chartLayout = {
           title: {
-            text: "Total Daily Volume by Exchange",
+            text: "Total Volume by Exchange (7-Day Periods)",
             font: { color: "#e6e8eb", family: "-apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif", size: 18 },
           },
           paper_bgcolor: "#0a0e14",
@@ -1171,7 +1171,7 @@ export default function HistoricalAnalysisClient() {
             },
           },
           yaxis: {
-            title: "Daily Volume (credits)",
+            title: "7-Day Volume (credits)",
             gridcolor: "#2a3f5f",
             showgrid: true,
             color: "#a0a8b5",
@@ -1234,7 +1234,7 @@ export default function HistoricalAnalysisClient() {
             }}>
               <div style={{ color: "var(--color-text-secondary)", fontSize: "0.875rem", lineHeight: "1.6" }}>
                 <strong style={{ color: "#7c5cbf" }}>Note:</strong> Each data point represents the sum of all
-                ticker Volume values (total currency traded) recorded on that exchange on that day.
+                ticker Volume values (total currency traded) recorded on that exchange over a 7-day period.
                 Volume is the total credit value of trades, not unit count.
               </div>
             </div>

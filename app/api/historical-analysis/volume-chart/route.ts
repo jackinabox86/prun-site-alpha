@@ -165,24 +165,37 @@ export async function GET(request: Request) {
       console.log(`Volume chart: processed batch ${Math.floor(i / BATCH_SIZE) + 1}/${Math.ceil(files.length / BATCH_SIZE)}`);
     }
 
-    // Build sorted array of data points
-    const dataPoints: VolumeDataPoint[] = Object.keys(dailyVolume)
-      .sort()
-      .map((date) => {
-        const ex = dailyVolume[date];
-        const ant = ex.ANT ?? 0;
-        const cis = ex.CIS ?? 0;
-        const ica = ex.ICA ?? 0;
-        const ncc = ex.NCC ?? 0;
-        return {
-          date,
-          timestamp: new Date(date + "T00:00:00Z").getTime(),
-          ANT: ant,
-          CIS: cis,
-          ICA: ica,
-          NCC: ncc,
-          total: ant + cis + ica + ncc,
+    // Build sorted daily points, then bucket into 7-day periods
+    const MS_PER_WEEK = 7 * 24 * 60 * 60 * 1000;
+
+    type WeekBucket = { date: string; timestamp: number; ANT: number; CIS: number; ICA: number; NCC: number };
+    const weekBuckets: Record<number, WeekBucket> = {};
+
+    for (const date of Object.keys(dailyVolume).sort()) {
+      const ts = new Date(date + "T00:00:00Z").getTime();
+      const weekIndex = Math.floor((ts - cutoffMs) / MS_PER_WEEK);
+      if (!weekBuckets[weekIndex]) {
+        // Label each bucket by the Monday-aligned week start date
+        const weekStartTs = cutoffMs + weekIndex * MS_PER_WEEK;
+        weekBuckets[weekIndex] = {
+          date: new Date(weekStartTs).toISOString().split("T")[0],
+          timestamp: weekStartTs,
+          ANT: 0, CIS: 0, ICA: 0, NCC: 0,
         };
+      }
+      const ex = dailyVolume[date];
+      weekBuckets[weekIndex].ANT += ex.ANT ?? 0;
+      weekBuckets[weekIndex].CIS += ex.CIS ?? 0;
+      weekBuckets[weekIndex].ICA += ex.ICA ?? 0;
+      weekBuckets[weekIndex].NCC += ex.NCC ?? 0;
+    }
+
+    const dataPoints: VolumeDataPoint[] = Object.keys(weekBuckets)
+      .map(Number)
+      .sort((a, b) => a - b)
+      .map((idx) => {
+        const b = weekBuckets[idx];
+        return { ...b, total: b.ANT + b.CIS + b.ICA + b.NCC };
       });
 
     const result: VolumeChartResult = {
