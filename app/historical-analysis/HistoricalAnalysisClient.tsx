@@ -1,6 +1,9 @@
 "use client";
 
 import { useState, useEffect, useCallback, useRef } from "react";
+import dynamic from "next/dynamic";
+
+const Plot = dynamic(() => import("react-plotly.js"), { ssr: false });
 
 interface ExchangeStats {
   exchange: string;
@@ -79,6 +82,26 @@ interface OrdersSummaryResult {
   error?: string;
 }
 
+interface VolumeDataPoint {
+  date: string;
+  timestamp: number;
+  ANT: number;
+  CIS: number;
+  ICA: number;
+  NCC: number;
+  total: number;
+}
+
+interface VolumeChartResult {
+  days: number;
+  cutoffDate: string;
+  dataPoints: VolumeDataPoint[];
+  filesProcessed: number;
+  lastUpdated: number;
+  error?: string;
+  hint?: string;
+}
+
 // All available tickers
 const TICKERS = [
   "GWS", "NV2", "CRU", "SST", "TAC", "CC", "STS", "PFG", "BOS", "BE", "TA", "ZR", "W", "SDM", "WR",
@@ -122,6 +145,8 @@ export default function HistoricalAnalysisClient() {
   const [ordersSummaryLoading, setOrdersSummaryLoading] = useState(false);
   const [ordersSummaryData, setOrdersSummaryData] = useState<OrdersSummaryResult | null>(null);
   const [expandedExchanges, setExpandedExchanges] = useState<Set<string>>(new Set());
+  const [volumeChartLoading, setVolumeChartLoading] = useState(false);
+  const [volumeChartData, setVolumeChartData] = useState<VolumeChartResult | null>(null);
   const [error, setError] = useState<string | null>(null);
   const autocompleteRef = useRef<HTMLDivElement>(null);
 
@@ -310,6 +335,42 @@ export default function HistoricalAnalysisClient() {
     }
   }, []);
 
+  const loadVolumeChart = useCallback(async () => {
+    setVolumeChartLoading(true);
+    setError(null);
+    try {
+      const daysNum = parseInt(days, 10);
+      if (isNaN(daysNum) || daysNum <= 0) {
+        setError("Please enter a valid number of days");
+        setVolumeChartLoading(false);
+        return;
+      }
+
+      const params = new URLSearchParams({ days });
+      const res = await fetch(`/api/historical-analysis/volume-chart?${params.toString()}`, {
+        cache: "no-store",
+      });
+
+      const json: VolumeChartResult = await res.json();
+
+      if (json.error) {
+        setError(json.hint ? `${json.error}\n\nHint: ${json.hint}` : json.error);
+        setVolumeChartData(null);
+        return;
+      }
+
+      setVolumeChartData(json);
+      setData(null);
+      setLeaderboardData(null);
+      setOrdersSummaryData(null);
+    } catch (err: any) {
+      setError(err.message || "Failed to load volume chart data");
+      setVolumeChartData(null);
+    } finally {
+      setVolumeChartLoading(false);
+    }
+  }, [days]);
+
   const toggleExchange = (exchange: string) => {
     setExpandedExchanges((prev) => {
       const next = new Set(prev);
@@ -472,6 +533,18 @@ export default function HistoricalAnalysisClient() {
               }}
             >
               {loading ? "Loading..." : "Analyze Universe"}
+            </button>
+            <button
+              onClick={loadVolumeChart}
+              disabled={volumeChartLoading}
+              className="terminal-button"
+              style={{
+                backgroundColor: "#7c5cbf",
+                color: "var(--color-bg-primary)",
+                borderColor: "#7c5cbf",
+              }}
+            >
+              {volumeChartLoading ? "Loading..." : "Historical Volume"}
             </button>
             <button
               onClick={downloadFIOSummary}
@@ -1040,6 +1113,134 @@ export default function HistoricalAnalysisClient() {
           </div>
         </>
       )}
+
+      {/* Volume Chart Results */}
+      {volumeChartData && (() => {
+        const exchangeColors: Record<string, string> = {
+          ANT: "#ff7b3d",
+          CIS: "#ff1744",
+          ICA: "#00cc66",
+          NCC: "#ffdd66",
+        };
+
+        const dates = volumeChartData.dataPoints.map((d) => d.date);
+
+        const chartTraces = (["ANT", "CIS", "ICA", "NCC"] as const).map((ex) => ({
+          x: dates,
+          y: volumeChartData.dataPoints.map((d) => d[ex]),
+          type: "scatter" as const,
+          mode: "lines" as const,
+          name: ex,
+          line: { color: exchangeColors[ex], width: 2 },
+          hovertemplate: `<b>%{x}</b><br>${ex}: %{y:,.0f}<extra></extra>`,
+        }));
+
+        const allValues = volumeChartData.dataPoints.flatMap((d) => [d.ANT, d.CIS, d.ICA, d.NCC]);
+        const maxVal = allValues.length > 0 ? Math.max(...allValues) : 0;
+
+        const chartLayout = {
+          title: {
+            text: "Total Daily Volume by Exchange",
+            font: { color: "#e6e8eb", family: "-apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif", size: 18 },
+          },
+          paper_bgcolor: "#0a0e14",
+          plot_bgcolor: "#101419",
+          font: { color: "#e6e8eb", family: "-apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif" },
+          xaxis: {
+            title: "Date",
+            gridcolor: "#2a3f5f",
+            showgrid: true,
+            color: "#a0a8b5",
+            rangeselector: {
+              buttons: [
+                { count: 1, label: "1M", step: "month", stepmode: "backward" },
+                { count: 3, label: "3M", step: "month", stepmode: "backward" },
+                { count: 6, label: "6M", step: "month", stepmode: "backward" },
+                { count: 1, label: "1Y", step: "year", stepmode: "backward" },
+                { step: "all", label: "All" },
+              ],
+              bgcolor: "#1a1f26",
+              activecolor: "#7c5cbf",
+              bordercolor: "#2a3f5f",
+              font: { color: "#e6e8eb" },
+            },
+            rangeslider: {
+              visible: true,
+              bgcolor: "#1a1f26",
+              bordercolor: "#2a3f5f",
+            },
+          },
+          yaxis: {
+            title: "Daily Volume (credits)",
+            gridcolor: "#2a3f5f",
+            showgrid: true,
+            color: "#a0a8b5",
+            rangemode: "tozero" as const,
+            range: [0, maxVal * 1.05],
+          },
+          hovermode: "x unified" as const,
+          margin: { l: 80, r: 40, t: 80, b: 120 },
+        };
+
+        return (
+          <>
+            <div className="terminal-box" style={{ marginBottom: "2rem" }}>
+              <h2 className="terminal-header">HISTORICAL VOLUME CHART</h2>
+              <div style={{
+                display: "grid",
+                gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))",
+                gap: "1.5rem",
+                marginBottom: "1.5rem",
+              }}>
+                <div>
+                  <div style={{ color: "var(--color-text-muted)", fontSize: "0.75rem", marginBottom: "0.25rem", textTransform: "uppercase", letterSpacing: "0.05em" }}>Period</div>
+                  <div style={{ color: "var(--color-text-primary)", fontSize: "1rem", fontWeight: "600", fontFamily: "var(--font-mono)" }}>
+                    Last {volumeChartData.days} days
+                  </div>
+                  <div style={{ color: "var(--color-text-muted)", fontSize: "0.75rem", marginTop: "0.25rem" }}>
+                    Since {new Date(volumeChartData.cutoffDate).toLocaleDateString()}
+                  </div>
+                </div>
+                <div>
+                  <div style={{ color: "var(--color-text-muted)", fontSize: "0.75rem", marginBottom: "0.25rem", textTransform: "uppercase", letterSpacing: "0.05em" }}>Date Points</div>
+                  <div style={{ color: "var(--color-text-primary)", fontSize: "1rem", fontWeight: "600", fontFamily: "var(--font-mono)" }}>
+                    {volumeChartData.dataPoints.length}
+                  </div>
+                </div>
+                <div>
+                  <div style={{ color: "var(--color-text-muted)", fontSize: "0.75rem", marginBottom: "0.25rem", textTransform: "uppercase", letterSpacing: "0.05em" }}>Files Processed</div>
+                  <div style={{ color: "var(--color-text-primary)", fontSize: "1rem", fontWeight: "600", fontFamily: "var(--font-mono)" }}>
+                    {volumeChartData.filesProcessed}
+                  </div>
+                </div>
+                <div>
+                  <div style={{ color: "var(--color-text-muted)", fontSize: "0.75rem", marginBottom: "0.25rem", textTransform: "uppercase", letterSpacing: "0.05em" }}>Last Updated</div>
+                  <div style={{ color: "var(--color-text-primary)", fontSize: "1rem", fontWeight: "600", fontFamily: "var(--font-mono)" }}>
+                    {new Date(volumeChartData.lastUpdated).toLocaleTimeString()}
+                  </div>
+                </div>
+              </div>
+              <Plot
+                data={chartTraces}
+                layout={chartLayout}
+                config={{ displayModeBar: false, displaylogo: false }}
+                style={{ width: "100%", height: "600px" }}
+                useResizeHandler={true}
+              />
+            </div>
+            <div className="terminal-box" style={{
+              backgroundColor: "var(--color-bg-tertiary)",
+              borderColor: "#7c5cbf",
+            }}>
+              <div style={{ color: "var(--color-text-secondary)", fontSize: "0.875rem", lineHeight: "1.6" }}>
+                <strong style={{ color: "#7c5cbf" }}>Note:</strong> Each data point represents the sum of all
+                ticker Volume values (total currency traded) recorded on that exchange on that day.
+                Volume is the total credit value of trades, not unit count.
+              </div>
+            </div>
+          </>
+        );
+      })()}
     </div>
   );
 }
