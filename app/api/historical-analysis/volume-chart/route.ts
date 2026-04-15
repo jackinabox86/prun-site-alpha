@@ -67,11 +67,17 @@ export async function GET(request: Request) {
       );
     }
 
-    // Calculate cutoff date
+    // Calculate cutoff date (lower bound)
     const cutoffDate = new Date();
     cutoffDate.setDate(cutoffDate.getDate() - days);
     cutoffDate.setUTCHours(0, 0, 0, 0);
     const cutoffMs = cutoffDate.getTime();
+
+    // Exclude the most recent 10 days (data is incomplete / not yet settled)
+    const upperCutoff = new Date();
+    upperCutoff.setUTCDate(upperCutoff.getUTCDate() - 10);
+    upperCutoff.setUTCHours(0, 0, 0, 0);
+    const upperCutoffMs = upperCutoff.getTime();
 
     // Load manifest from GCS, fall back to local file
     let manifest: Manifest | null = null;
@@ -132,8 +138,8 @@ export async function GET(request: Request) {
           const data: HistoricalPriceData = await response.json();
           const exchangeName = EXCHANGE_CODE_TO_NAME[data.exchange] || data.exchange;
 
-          // Filter to the requested date range
-          const points = data.data.filter((d) => d.DateEpochMs >= cutoffMs);
+          // Filter to the requested date range, excluding the most recent 10 days
+          const points = data.data.filter((d) => d.DateEpochMs >= cutoffMs && d.DateEpochMs < upperCutoffMs);
 
           if (points.length === 0) return null;
 
