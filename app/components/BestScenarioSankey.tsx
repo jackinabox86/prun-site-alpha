@@ -33,6 +33,7 @@ type ApiMakeOption = {
   baseProfitPerDay: number;
   profitPerDay: number;
   cogmPerOutput?: number | null;
+  valuePerOutput?: number | null;
   area: number;
   buildCost: number;
   inputBuffer7?: number | null;
@@ -137,6 +138,12 @@ const BestScenarioSankey = memo(function BestScenarioSankey({
     const fmtROI = (n: number) =>
       Number.isFinite(n) ? n.toFixed(1).replace(/\.0$/, "") : "n/a";
 
+    // Price label helpers
+    const outputPriceLabel = (priceType ?? "ask").toUpperCase();
+    const inputPriceLabel = (exchange ?? "ANT") === "UNV"
+      ? (priceType ?? "ask").toUpperCase()
+      : "Ask";
+
     const ensureNode = (
       id: string,
       label: string,
@@ -179,6 +186,7 @@ const BestScenarioSankey = memo(function BestScenarioSankey({
     const rootHover = [
       `<b>${best.ticker}</b>`,
       best.building ? `BUI: ${best.building}` : null,
+      best.valuePerOutput != null ? `Price (${outputPriceLabel}): ${money(best.valuePerOutput)}` : null,
       `Profit/d: ${fmtWholeNumber(best.baseProfitPerDay)}`,
       `Adj. Profit/d: ${fmtWholeNumber(best.profitPerDay)}`,
       `Area/day: ${fmtROI(best.totalAreaPerDay ?? best.fullSelfAreaPerDay)}`,
@@ -211,7 +219,7 @@ const BestScenarioSankey = memo(function BestScenarioSankey({
           const buyLabel = `<b>&nbsp;Buy ${inp.ticker}</b>`;
           const buyHover = [
             `<b>Buy ${inp.ticker}</b>`,
-            inp.unitCost != null ? `Price: ${money(inp.unitCost)}` : null,
+            inp.unitCost != null ? `Price (${inputPriceLabel}): ${money(inp.unitCost)}` : null,
           ].filter(Boolean).join("<br>");
 
           const buyIdx = ensureNode(buyNodeId, buyLabel, palette.buy, buyHover, depth + 1);
@@ -242,6 +250,7 @@ const BestScenarioSankey = memo(function BestScenarioSankey({
           `<b>Make ${child.recipeId || child.ticker}</b>`,
           child.building ? `BUI: ${child.building}` : null,
           inp.childScenario ? `Scen: ${scenarioDisplayName(inp.childScenario)}` : null,
+          child.valuePerOutput != null ? `Price (${outputPriceLabel}): ${money(child.valuePerOutput)}` : null,
           `COGM: ${money(cogm)}`,
           `Base profit/day: ${money(child.baseProfitPerDay)}`,
           `Area/day: ${fmtROI(child.totalAreaPerDay ?? child.fullSelfAreaPerDay)}`,
@@ -301,6 +310,7 @@ const BestScenarioSankey = memo(function BestScenarioSankey({
         `<b>Make ${child.recipeId || child.ticker}</b>`,
         child.building ? `BUI: ${child.building}` : null,
         scenario ? `Scen: ${scenarioDisplayName(scenario)}` : null,
+        child.valuePerOutput != null ? `Price (${outputPriceLabel}): ${money(child.valuePerOutput)}` : null,
         `COGM: ${money(Number(child.cogmPerOutput ?? 0))}`,
         `Base profit/day: ${money(child.baseProfitPerDay)}`,
         `Area/day: ${fmtROI(child.totalAreaPerDay ?? child.fullSelfAreaPerDay)}`,
