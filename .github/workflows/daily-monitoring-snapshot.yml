@@ -1,0 +1,86 @@
+name: Daily Monitoring Snapshot
+
+on:
+  schedule:
+    - cron: '0 0 * * *'  # 0:00 UTC daily
+
+  workflow_dispatch:
+    inputs:
+      date_override:
+        description: 'Override date for snapshot (YYYY-MM-DD). Defaults to today.'
+        required: false
+        type: string
+
+jobs:
+  snapshot:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Fetch monitoring data
+        id: fetch
+        run: |
+          DATE="${{ github.event.inputs.date_override }}"
+          if [ -z "$DATE" ]; then
+            DATE=$(date -u +"%Y-%m-%d")
+          fi
+          echo "DATE=${DATE}" >> $GITHUB_ENV
+          echo "Fetching monitoring snapshot for ${DATE}..."
+
+          HTTP_STATUS=$(curl -s -o /tmp/monitoring.txt -w "%{http_code}" \
+            --max-time 30 \
+            "https://monitoring.apex.prosperousuniverse.com/")
+
+          echo "HTTP_STATUS=${HTTP_STATUS}" >> $GITHUB_ENV
+
+          if [ "$HTTP_STATUS" != "200" ]; then
+            echo "❌ Failed to fetch monitoring data: HTTP ${HTTP_STATUS}"
+            cat /tmp/monitoring.txt
+            exit 1
+          fi
+
+          LINE_COUNT=$(wc -l < /tmp/monitoring.txt)
+          echo "✅ Fetched ${LINE_COUNT} lines of metrics"
+          echo "LINE_COUNT=${LINE_COUNT}" >> $GITHUB_ENV
+
+      - name: Authenticate to Google Cloud
+        uses: google-github-actions/auth@v2
+        with:
+          credentials_json: ${{ secrets.GCP_SA_KEY }}
+
+      - name: Set up Cloud SDK
+        uses: google-github-actions/setup-gcloud@v2
+
+      - name: Upload to GCS
+        run: |
+          # Daily snapshot (immutable, cached for 1 year)
+          gsutil -h "Cache-Control:public, max-age=31536000" \
+                 -h "Content-Type:text/plain; charset=utf-8" \
+                 cp /tmp/monitoring.txt \
+                 gs://prun-site-alpha-bucket/monitoring-snapshots/${DATE}.txt
+
+          # Latest pointer (short cache so it refreshes quickly)
+          gsutil -h "Cache-Control:public, max-age=300" \
+                 -h "Content-Type:text/plain; charset=utf-8" \
+                 cp /tmp/monitoring.txt \
+                 gs://prun-site-alpha-bucket/monitoring-snapshots/latest.txt
+
+          echo "✅ Uploaded:"
+          echo "  gs://prun-site-alpha-bucket/monitoring-snapshots/${DATE}.txt"
+          echo "  gs://prun-site-alpha-bucket/monitoring-snapshots/latest.txt"
+
+      - name: Summary
+        if: always()
+        run: |
+          echo "## 📊 Monitoring Snapshot" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Date:** ${DATE}" >> $GITHUB_STEP_SUMMARY
+          echo "**HTTP Status:** ${HTTP_STATUS}" >> $GITHUB_STEP_SUMMARY
+          echo "**Lines fetched:** ${LINE_COUNT:-0}" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### Paths" >> $GITHUB_STEP_SUMMARY
+          echo "- Daily: \`gs://prun-site-alpha-bucket/monitoring-snapshots/${DATE}.txt\`" >> $GITHUB_STEP_SUMMARY
+          echo "- Latest: \`gs://prun-site-alpha-bucket/monitoring-snapshots/latest.txt\`" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### Public URLs" >> $GITHUB_STEP_SUMMARY
+          echo "- https://storage.googleapis.com/prun-site-alpha-bucket/monitoring-snapshots/${DATE}.txt" >> $GITHUB_STEP_SUMMARY
+          echo "- https://storage.googleapis.com/prun-site-alpha-bucket/monitoring-snapshots/latest.txt" >> $GITHUB_STEP_SUMMARY
