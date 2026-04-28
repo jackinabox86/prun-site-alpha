@@ -1,9 +1,6 @@
 name: Daily Monitoring Snapshot
 
 on:
-  schedule:
-    - cron: '0 0 * * *'  # 0:00 UTC daily
-
   workflow_dispatch:
     inputs:
       date_override:
