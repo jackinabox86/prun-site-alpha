@@ -289,6 +289,16 @@ export default function BestRecipesHistoryClient() {
     ).length,
   } : null;
 
+  // Calculate stats for buy-all profit history (excludes null entries)
+  const buyAllHistoryData = historyData.filter(h => h.buyAllProfitPA !== null) as (HistoricalSnapshot & { buyAllProfitPA: number })[];
+  const buyAllHistoryStats = buyAllHistoryData.length > 0 ? {
+    current: buyAllHistoryData[buyAllHistoryData.length - 1].buyAllProfitPA,
+    oldest: buyAllHistoryData[0].buyAllProfitPA,
+    max: Math.max(...buyAllHistoryData.map(h => h.buyAllProfitPA)),
+    min: Math.min(...buyAllHistoryData.map(h => h.buyAllProfitPA)),
+    avg: buyAllHistoryData.reduce((sum, h) => sum + h.buyAllProfitPA, 0) / buyAllHistoryData.length,
+  } : null;
+
   return (
     <div className="terminal-container">
       {/* Header Section */}
@@ -607,6 +617,9 @@ export default function BestRecipesHistoryClient() {
 
             {/* Chart */}
             <div style={{ marginBottom: "1.5rem" }}>
+              <h3 style={{ color: "var(--color-text-secondary)", fontSize: "0.875rem", marginBottom: "0.75rem", textTransform: "uppercase", letterSpacing: "0.05em" }}>
+                Profit P/A — {selectedTicker}
+              </h3>
               <Plot
                 data={[
                   {
@@ -639,6 +652,100 @@ export default function BestRecipesHistoryClient() {
                 config={{ responsive: true }}
                 style={{ width: "100%", height: "400px" }}
               />
+            </div>
+
+            {/* Buy-All Profit Chart */}
+            <div style={{ marginBottom: "1.5rem" }}>
+              <h3 style={{ color: "var(--color-text-secondary)", fontSize: "0.875rem", marginBottom: "0.75rem", textTransform: "uppercase", letterSpacing: "0.05em" }}>
+                Buy-All Profit P/A — {selectedTicker}
+              </h3>
+              {buyAllHistoryStats && (
+                <div
+                  style={{
+                    display: "grid",
+                    gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))",
+                    gap: "1rem",
+                    marginBottom: "1rem",
+                    padding: "1.25rem",
+                    backgroundColor: "var(--color-bg-tertiary)",
+                    border: "1px solid var(--color-border-primary)",
+                    borderRadius: "4px",
+                  }}
+                >
+                  <div>
+                    <div style={{ color: "var(--color-text-muted)", fontSize: "0.75rem" }}>Current Buy-All P/A</div>
+                    <div style={{ color: "var(--color-accent-primary)", fontSize: "1.125rem", fontWeight: "bold" }}>
+                      {formatProfitPerArea(buyAllHistoryStats.current, exchange as Exchange)}
+                    </div>
+                  </div>
+                  <div>
+                    <div style={{ color: "var(--color-text-muted)", fontSize: "0.75rem" }}>Change Since Start</div>
+                    <div
+                      style={{
+                        fontSize: "1.125rem",
+                        fontWeight: "bold",
+                        color: buyAllHistoryStats.current - buyAllHistoryStats.oldest >= 0 ? "var(--color-success)" : "var(--color-error)",
+                      }}
+                    >
+                      {formatChange(buyAllHistoryStats.current - buyAllHistoryStats.oldest)}
+                    </div>
+                  </div>
+                  <div>
+                    <div style={{ color: "var(--color-text-muted)", fontSize: "0.75rem" }}>Average Buy-All P/A</div>
+                    <div style={{ color: "var(--color-text-primary)", fontSize: "1.125rem", fontWeight: "bold" }}>
+                      {formatProfitPerArea(buyAllHistoryStats.avg, exchange as Exchange)}
+                    </div>
+                  </div>
+                  <div>
+                    <div style={{ color: "var(--color-text-muted)", fontSize: "0.75rem" }}>Max Buy-All P/A</div>
+                    <div style={{ color: "var(--color-success)", fontSize: "1.125rem", fontWeight: "bold" }}>
+                      {formatProfitPerArea(buyAllHistoryStats.max, exchange as Exchange)}
+                    </div>
+                  </div>
+                  <div>
+                    <div style={{ color: "var(--color-text-muted)", fontSize: "0.75rem" }}>Min Buy-All P/A</div>
+                    <div style={{ color: "var(--color-error)", fontSize: "1.125rem", fontWeight: "bold" }}>
+                      {formatProfitPerArea(buyAllHistoryStats.min, exchange as Exchange)}
+                    </div>
+                  </div>
+                </div>
+              )}
+              {buyAllHistoryData.length > 0 ? (
+                <Plot
+                  data={[
+                    {
+                      x: buyAllHistoryData.map((h) => h.timestamp),
+                      y: buyAllHistoryData.map((h) => h.buyAllProfitPA),
+                      type: "scatter",
+                      mode: "lines+markers",
+                      marker: { color: "rgb(100, 180, 255)", size: 6 },
+                      line: { color: "rgb(100, 180, 255)", width: 2 },
+                      name: "Buy-All Profit P/A",
+                    },
+                  ]}
+                  layout={{
+                    paper_bgcolor: "rgb(16, 20, 25)",
+                    plot_bgcolor: "rgb(16, 20, 25)",
+                    font: { color: "rgb(230, 232, 235)" },
+                    xaxis: {
+                      title: "Timestamp",
+                      gridcolor: "rgb(42, 63, 95)",
+                      color: "rgb(230, 232, 235)",
+                    },
+                    yaxis: {
+                      title: "Buy-All Profit per Area (P/A)",
+                      gridcolor: "rgb(42, 63, 95)",
+                      color: "rgb(230, 232, 235)",
+                    },
+                    margin: { l: 60, r: 40, t: 40, b: 80 },
+                    hovermode: "closest",
+                  }}
+                  config={{ responsive: true }}
+                  style={{ width: "100%", height: "400px" }}
+                />
+              ) : (
+                <p style={{ color: "var(--color-text-muted)", fontSize: "0.875rem" }}>No buy-all profit data available for this ticker.</p>
+              )}
             </div>
 
             {/* History Table */}
