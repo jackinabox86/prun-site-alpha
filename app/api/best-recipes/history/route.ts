@@ -122,22 +122,22 @@ export async function GET(request: Request) {
       getTimestampMillis(b.timestamp) - getTimestampMillis(a.timestamp)
     ).slice(0, limit);
 
-    // Fetch all snapshots in parallel
-    const snapshotPromises = snapshots.map(async (snapshot) => {
-      const snapshotUrl = `${GCS_BUCKET}/historical/${configName}/${snapshot.timestamp}.json`;
+    // Fetch snapshots with bounded concurrency (avoids saturating the HTTP connection pool)
+    const CONCURRENCY = 25;
+    const results: (Awaited<ReturnType<typeof fetchSnapshot>> )[] = [];
 
+    async function fetchSnapshot(snapshot: IndexEntry) {
+      const snapshotUrl = `${GCS_BUCKET}/historical/${configName}/${snapshot.timestamp}.json`;
       try {
-        const snapshotResponse = await fetch(snapshotUrl, { cache: "no-store" });
+        // Snapshots are immutable once written — cache aggressively at the Next.js layer
+        const snapshotResponse = await fetch(snapshotUrl, { next: { revalidate: 86400 } });
         if (!snapshotResponse.ok) {
           console.warn(`Failed to fetch snapshot ${snapshot.timestamp}: ${snapshotResponse.status}`);
           return null;
         }
-
         const snapshotData: BestRecipeResult[] = await snapshotResponse.json();
         const tickerData = snapshotData.find(item => item.ticker === ticker);
-
         if (!tickerData) return null;
-
         return {
           timestamp: snapshot.timestamp,
           recipeId: tickerData.recipeId,
@@ -150,10 +150,13 @@ export async function GET(request: Request) {
         console.warn(`Error processing snapshot ${snapshot.timestamp}:`, err.message);
         return null;
       }
-    });
+    }
 
-    // Fetch all in parallel
-    const results = await Promise.all(snapshotPromises);
+    for (let i = 0; i < snapshots.length; i += CONCURRENCY) {
+      const batch = snapshots.slice(i, i + CONCURRENCY);
+      const batchResults = await Promise.all(batch.map(fetchSnapshot));
+      results.push(...batchResults);
+    }
 
     // Filter out nulls and sort by timestamp ascending
     const validSnapshots = results
