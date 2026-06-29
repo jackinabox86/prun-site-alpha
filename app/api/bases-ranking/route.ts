@@ -109,7 +109,7 @@ export async function GET() {
 
     const fioMap = fioRes?.ok
       ? parseCsvRows(await fioRes.text())
-      : new Map<string, { companyName: string; createdEpochMs: number | null }>();
+      : new Map<string, FioUserRecord>();
 
     const fioDataDate = fioRes?.ok
       ? (fioRes.headers.get("Last-Modified") ?? null)
