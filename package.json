@@ -22,6 +22,7 @@
     "generate-manifest": "tsx scripts/generate-historical-manifest.ts",
     "classify-production-volume": "tsx scripts/classify-production-volume.ts",
     "fetch-refined-prices-monthly": "tsx scripts/fetch-refined-prices-monthly.ts",
+    "fetch-fio-users": "tsx scripts/fetch-fio-user-data.ts",
     "test-production-mode": "tsx scripts/test-production-mode.ts",
     "start": "next start"
   },
