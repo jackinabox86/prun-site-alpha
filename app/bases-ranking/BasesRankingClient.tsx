@@ -10,13 +10,15 @@ const COLUMN_LABELS: Record<SortField, string> = {
   rank: "#",
   username: "Username",
   companyName: "Company",
+  companyCode: "Code",
   corporation: "Corp",
   bases: "Bases",
-  daysActive: "Days Active",
+  daysActive: "Days",
   daysPerBase: "Days / Base",
 };
 
-const STRING_FIELDS = new Set<SortField>(["username", "companyName", "corporation"]);
+const STRING_FIELDS = new Set<SortField>(["username", "companyName", "companyCode", "corporation"]);
+const RIGHT_ALIGN_FIELDS = new Set<SortField>(["bases", "daysActive", "daysPerBase"]);
 
 function nullableCmp(a: number | null, b: number | null, dir: SortDir) {
   if (a === null && b === null) return 0;
@@ -96,12 +98,17 @@ export default function BasesRankingClient() {
   }, [filtered, sortField, sortDir]);
 
   function arrow(f: SortField) {
-    if (f !== sortField) return " ↕";
+    if (f !== sortField) return null;
     return sortDir === "asc" ? " ↑" : " ↓";
   }
 
   const mono: React.CSSProperties = { fontFamily: "var(--font-mono)", fontSize: "0.875rem" };
-  const thStyle: React.CSSProperties = { cursor: "pointer", userSelect: "none", whiteSpace: "nowrap" };
+  const thStyle = (f: SortField): React.CSSProperties => ({
+    cursor: "pointer",
+    userSelect: "none",
+    whiteSpace: "nowrap",
+    textAlign: RIGHT_ALIGN_FIELDS.has(f) ? "center" : "left",
+  });
 
   return (
     <div style={{ maxWidth: 1100, margin: "0 auto" }}>
@@ -144,7 +151,7 @@ export default function BasesRankingClient() {
             <thead>
               <tr>
                 {(Object.keys(COLUMN_LABELS) as SortField[]).map((f) => (
-                  <th key={f} style={thStyle} onClick={() => handleSort(f)}>
+                  <th key={f} style={thStyle(f)} onClick={() => handleSort(f)}>
                     {COLUMN_LABELS[f]}{arrow(f)}
                   </th>
                 ))}
@@ -156,16 +163,19 @@ export default function BasesRankingClient() {
                   <td style={{ color: "var(--color-text-muted)" }}>{row.rank}</td>
                   <td style={{ color: "var(--color-info)" }}>{row.username}</td>
                   <td style={{ color: "var(--color-text-secondary)" }}>{row.companyName}</td>
-                  <td style={{ color: "var(--color-accent-tertiary)" }}>
-                    {row.corporation ?? <span style={{ color: "var(--color-text-muted)" }}>—</span>}
+                  <td style={{ color: "var(--color-text-muted)" }}>
+                    {row.companyCode ?? <span style={{ color: "var(--color-text-muted)", opacity: 0.4 }}>—</span>}
                   </td>
-                  <td style={{ textAlign: "right" }}>{row.bases}</td>
-                  <td style={{ textAlign: "right", color: "var(--color-text-secondary)" }}>
+                  <td style={{ color: "var(--color-accent-tertiary)" }}>
+                    {row.corporation ?? <span style={{ color: "var(--color-text-muted)", opacity: 0.4 }}>—</span>}
+                  </td>
+                  <td style={{ textAlign: "center" }}>{row.bases}</td>
+                  <td style={{ textAlign: "center", color: "var(--color-text-secondary)" }}>
                     {row.daysActive !== null
                       ? row.daysActive.toLocaleString()
                       : <span style={{ color: "var(--color-text-muted)" }}>—</span>}
                   </td>
-                  <td style={{ textAlign: "right" }}>
+                  <td style={{ textAlign: "center" }}>
                     {row.daysPerBase !== null ? (
                       <span style={{
                         color: row.daysPerBase < 30 ? "var(--color-success)"
@@ -181,7 +191,7 @@ export default function BasesRankingClient() {
               ))}
               {sorted.length === 0 && (
                 <tr>
-                  <td colSpan={7} style={{ textAlign: "center", color: "var(--color-text-muted)", padding: "2rem" }}>
+                  <td colSpan={8} style={{ textAlign: "center", color: "var(--color-text-muted)", padding: "2rem" }}>
                     No results.
                   </td>
                 </tr>

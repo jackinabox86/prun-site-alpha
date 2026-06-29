@@ -33,6 +33,7 @@ function sleep(ms: number) {
 interface FnarUserDetail {
   UserName?: string;
   CompanyName?: string;
+  CompanyCode?: string;
   // Creation date — the API may use any of these field names
   Created?: string | number;
   CreatedEpochMs?: number;
@@ -76,7 +77,7 @@ async function main() {
   const allUsers: string[] = await listRes.json();
   console.log(`Got ${allUsers.length} usernames. Fetching details at 2 req/s…`);
 
-  const rows: string[] = ["username,company_name,created_epoch_ms"];
+  const rows: string[] = ["username,company_name,company_code,created_epoch_ms"];
   let success = 0;
   let missing = 0;
   let failed = 0;
@@ -108,12 +109,14 @@ async function main() {
 
       const detail: FnarUserDetail = await res.json();
       const companyName = detail.CompanyName ?? username;
+      const companyCode = detail.CompanyCode ?? "";
       const createdMs = parseCreatedEpochMs(detail);
 
       rows.push(
         [
           escapeCsv(username),
           escapeCsv(companyName),
+          escapeCsv(companyCode),
           createdMs !== null ? String(createdMs) : "",
         ].join(",")
       );

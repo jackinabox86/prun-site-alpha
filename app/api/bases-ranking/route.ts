@@ -23,6 +23,7 @@ export interface BasesRankingRow {
   rank: number;
   username: string;
   companyName: string;
+  companyCode: string | null;
   corporation: string | null;
   bases: number;
   daysActive: number | null;
@@ -36,37 +37,50 @@ export interface BasesRankingResponse {
   error?: string;
 }
 
-function parseCsvRows(csv: string): Map<string, { companyName: string; createdEpochMs: number | null }> {
-  const map = new Map<string, { companyName: string; createdEpochMs: number | null }>();
+interface FioUserRecord {
+  companyName: string;
+  companyCode: string | null;
+  createdEpochMs: number | null;
+}
+
+function parseCsvRows(csv: string): Map<string, FioUserRecord> {
+  const map = new Map<string, FioUserRecord>();
   const lines = csv.split("\n");
-  // skip header
+  // CSV columns: username, company_name, company_code, created_epoch_ms
+  // Any field may be quoted.
   for (let i = 1; i < lines.length; i++) {
     const line = lines[i].trim();
     if (!line) continue;
-    // Simple CSV parse — fields are: username, company_name, created_epoch_ms
-    // company_name may be quoted
-    let username: string, companyName: string, createdStr: string;
-    if (line.startsWith('"')) {
-      // quoted first field
-      const closeQuote = line.indexOf('"', 1);
-      username = line.slice(1, closeQuote);
-      const rest = line.slice(closeQuote + 2); // skip closing quote + comma
-      const nextComma = rest.lastIndexOf(",");
-      companyName = rest.slice(0, nextComma);
-      createdStr = rest.slice(nextComma + 1);
-    } else {
-      const parts = line.split(",");
-      username = parts[0];
-      createdStr = parts[parts.length - 1];
-      companyName = parts.slice(1, parts.length - 1).join(",");
+
+    // Minimal RFC 4180 parser for this fixed 4-column format
+    const fields: string[] = [];
+    let pos = 0;
+    while (pos < line.length) {
+      if (line[pos] === '"') {
+        // quoted field
+        let val = "";
+        pos++; // skip opening quote
+        while (pos < line.length) {
+          if (line[pos] === '"' && line[pos + 1] === '"') { val += '"'; pos += 2; }
+          else if (line[pos] === '"') { pos++; break; }
+          else { val += line[pos++]; }
+        }
+        fields.push(val);
+        if (line[pos] === ",") pos++;
+      } else {
+        const end = line.indexOf(",", pos);
+        if (end === -1) { fields.push(line.slice(pos)); break; }
+        fields.push(line.slice(pos, end));
+        pos = end + 1;
+      }
     }
-    // Unquote company_name if quoted
-    if (companyName.startsWith('"') && companyName.endsWith('"')) {
-      companyName = companyName.slice(1, -1).replace(/""/g, '"');
-    }
+
+    if (fields.length < 2) continue;
+    const [username, companyName, companyCode, createdStr] = fields;
     const epochMs = createdStr ? parseInt(createdStr, 10) : NaN;
     map.set(username.toLowerCase(), {
       companyName: companyName || username,
+      companyCode: companyCode || null,
       createdEpochMs: isNaN(epochMs) ? null : epochMs,
     });
   }
@@ -95,7 +109,7 @@ export async function GET() {
 
     const fioMap = fioRes?.ok
       ? parseCsvRows(await fioRes.text())
-      : new Map<string, { companyName: string; createdEpochMs: number | null }>();
+      : new Map<string, FioUserRecord>();
 
     const fioDataDate = fioRes?.ok
       ? (fioRes.headers.get("Last-Modified") ?? null)
@@ -112,20 +126,26 @@ export async function GET() {
       const username = company.Username;
       const fio = fioMap.get(username.toLowerCase());
       const companyName = fio?.companyName ?? username;
+      const companyCode = fio?.companyCode ?? null;
       let daysActive: number | null = null;
       if (fio?.createdEpochMs != null) {
         const d = Math.floor((nowMs - fio.createdEpochMs) / (1000 * 60 * 60 * 24));
         if (d >= 0) daysActive = d;
       }
+      const daysPerBase = daysActive !== null ? daysActive / baseEntry.bases : null;
+
+      // Exclude suspiciously fast builders: >5 bases with ≤0.5 days per base
+      if (baseEntry.bases > 5 && daysPerBase !== null && daysPerBase <= 0.5) continue;
 
       rows.push({
         rank: 0,
         username,
         companyName,
+        companyCode,
         corporation: company.Corporation ?? null,
         bases: baseEntry.bases,
         daysActive,
-        daysPerBase: daysActive !== null ? daysActive / baseEntry.bases : null,
+        daysPerBase,
       });
     }
 
