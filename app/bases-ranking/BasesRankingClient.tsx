@@ -18,9 +18,21 @@ const COLUMN_LABELS: Record<SortField, string> = {
 
 const STRING_FIELDS = new Set<SortField>(["username", "companyName", "corporation"]);
 
+function nullableCmp(
+  a: number | null,
+  b: number | null,
+  dir: SortDir
+): number {
+  if (a === null && b === null) return 0;
+  if (a === null) return 1;
+  if (b === null) return -1;
+  return dir === "asc" ? a - b : b - a;
+}
+
 export default function BasesRankingClient() {
   const [rows, setRows] = useState<BasesRankingRow[]>([]);
   const [snapshotDate, setSnapshotDate] = useState("");
+  const [fnarAvailable, setFnarAvailable] = useState(true);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [sortField, setSortField] = useState<SortField>("rank");
@@ -39,6 +51,7 @@ export default function BasesRankingClient() {
         } else {
           setRows(data.rows ?? []);
           setSnapshotDate(data.snapshotDate ?? "");
+          setFnarAvailable(data.fnarAvailable ?? false);
         }
       })
       .catch(() => setError("Failed to load data."))
@@ -72,15 +85,22 @@ export default function BasesRankingClient() {
 
   const sorted = useMemo(() => {
     return [...filtered].sort((a, b) => {
-      const av = a[sortField];
-      const bv = b[sortField];
-      let cmp: number;
       if (STRING_FIELDS.has(sortField)) {
-        cmp = String(av ?? "").localeCompare(String(bv ?? ""));
-      } else {
-        cmp = (av as number) - (bv as number);
+        const av = String(a[sortField] ?? "");
+        const bv = String(b[sortField] ?? "");
+        const cmp = av.localeCompare(bv);
+        return sortDir === "asc" ? cmp : -cmp;
       }
-      return sortDir === "asc" ? cmp : -cmp;
+      if (sortField === "daysActive" || sortField === "daysPerBase") {
+        return nullableCmp(
+          a[sortField] as number | null,
+          b[sortField] as number | null,
+          sortDir
+        );
+      }
+      const av = a[sortField] as number;
+      const bv = b[sortField] as number;
+      return sortDir === "asc" ? av - bv : bv - av;
     });
   }, [filtered, sortField, sortDir]);
 
@@ -115,11 +135,28 @@ export default function BasesRankingClient() {
             fontFamily: "var(--font-mono)",
             fontSize: "0.75rem",
             color: "var(--color-text-muted)",
-            marginBottom: "1.5rem",
+            marginBottom: "1rem",
           }}
         >
           Snapshot: {snapshotDate} &mdash; sorted by days per base (lower is more efficient)
         </p>
+      )}
+
+      {!fnarAvailable && !loading && (
+        <div
+          className="terminal-box"
+          style={{
+            marginBottom: "1rem",
+            padding: "0.75rem 1rem",
+            color: "var(--color-warning)",
+            borderColor: "var(--color-warning)",
+            fontFamily: "var(--font-mono)",
+            fontSize: "0.8rem",
+          }}
+        >
+          FIO API unavailable — company names and account age data could not be loaded.
+          Days&nbsp;Active and Days/Base columns will show —.
+        </div>
       )}
 
       <div className="terminal-box" style={{ marginBottom: "1.5rem", padding: "1rem" }}>
@@ -219,20 +256,32 @@ export default function BasesRankingClient() {
                   <td style={{ color: "var(--color-accent-tertiary)" }}>
                     {row.corporation ?? <span style={{ color: "var(--color-text-muted)" }}>—</span>}
                   </td>
-                  <td style={{ textAlign: "right" }}>{row.bases}</td>
-                  <td style={{ textAlign: "right" }}>{row.daysActive.toLocaleString()}</td>
-                  <td
-                    style={{
-                      textAlign: "right",
-                      color: row.daysPerBase < 30
-                        ? "var(--color-success)"
-                        : row.daysPerBase < 60
-                        ? "var(--color-warning)"
-                        : "var(--color-text-secondary)",
-                      fontWeight: row.daysPerBase < 30 ? 600 : undefined,
-                    }}
-                  >
-                    {row.daysPerBase.toFixed(1)}
+                  <td style={{ textAlign: "right" }}>
+                    {row.bases}
+                  </td>
+                  <td style={{ textAlign: "right", color: "var(--color-text-secondary)" }}>
+                    {row.daysActive !== null
+                      ? row.daysActive.toLocaleString()
+                      : <span style={{ color: "var(--color-text-muted)" }}>—</span>}
+                  </td>
+                  <td style={{ textAlign: "right" }}>
+                    {row.daysPerBase !== null ? (
+                      <span
+                        style={{
+                          color:
+                            row.daysPerBase < 30
+                              ? "var(--color-success)"
+                              : row.daysPerBase < 60
+                              ? "var(--color-warning)"
+                              : "var(--color-text-secondary)",
+                          fontWeight: row.daysPerBase < 30 ? 600 : undefined,
+                        }}
+                      >
+                        {row.daysPerBase.toFixed(1)}
+                      </span>
+                    ) : (
+                      <span style={{ color: "var(--color-text-muted)" }}>—</span>
+                    )}
                   </td>
                 </tr>
               ))}
