@@ -149,16 +149,27 @@ export async function GET() {
       });
     }
 
-    rows.sort((a, b) => {
+    // Deduplicate by username — multiple hashes in knownCompanies can map to
+    // the same username; keep whichever entry has the most bases.
+    const byUsername = new Map<string, BasesRankingRow>();
+    for (const row of rows) {
+      const existing = byUsername.get(row.username.toLowerCase());
+      if (!existing || row.bases > existing.bases) {
+        byUsername.set(row.username.toLowerCase(), row);
+      }
+    }
+    const deduped = Array.from(byUsername.values());
+
+    deduped.sort((a, b) => {
       if (a.daysPerBase === null && b.daysPerBase === null) return 0;
       if (a.daysPerBase === null) return 1;
       if (b.daysPerBase === null) return -1;
       return a.daysPerBase - b.daysPerBase;
     });
-    rows.forEach((r, i) => { r.rank = i + 1; });
+    deduped.forEach((r, i) => { r.rank = i + 1; });
 
     return NextResponse.json({
-      rows,
+      rows: deduped,
       snapshotDate: "May 2026",
       fioDataDate,
     } satisfies BasesRankingResponse);
