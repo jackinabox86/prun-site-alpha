@@ -136,6 +136,7 @@ export async function GET() {
 
       // Exclude suspiciously fast builders: >5 bases with ≤0.5 days per base
       if (baseEntry.bases > 5 && daysPerBase !== null && daysPerBase <= 0.5) continue;
+      if (companyCode?.toUpperCase() === "PTID") continue;
 
       rows.push({
         rank: 0,
