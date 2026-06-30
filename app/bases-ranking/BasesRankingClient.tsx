@@ -163,10 +163,10 @@ export default function BasesRankingClient() {
                   <td style={{ color: "var(--color-text-muted)" }}>{row.rank}</td>
                   <td style={{ color: "var(--color-info)" }}>{row.username}</td>
                   <td style={{ color: "var(--color-text-secondary)" }}>{row.companyName}</td>
-                  <td style={{ color: "var(--color-text-muted)" }}>
+                  <td style={{ color: "var(--color-accent-tertiary)" }}>
                     {row.companyCode ?? <span style={{ color: "var(--color-text-muted)", opacity: 0.4 }}>—</span>}
                   </td>
-                  <td style={{ color: "var(--color-accent-tertiary)" }}>
+                  <td style={{ color: "var(--color-text-muted)" }}>
                     {row.corporation ?? <span style={{ color: "var(--color-text-muted)", opacity: 0.4 }}>—</span>}
                   </td>
                   <td style={{ textAlign: "center" }}>{row.bases}</td>
