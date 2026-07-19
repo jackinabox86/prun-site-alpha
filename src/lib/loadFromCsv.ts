@@ -100,11 +100,6 @@ export async function loadAllFromCsv(
   return { recipeMap, pricesMap, bestMap, __rawBestRows: bestRows };
 }
 
-function toNum(v: unknown): number | null {
-  const n = Number(v);
-  return Number.isFinite(n) && n > 0 ? n : null;
-}
-
 function coerce(v: unknown): string | number | null {
   if (v === "" || v == null) return null;
   const n = Number(v);

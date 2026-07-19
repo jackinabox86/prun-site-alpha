@@ -112,21 +112,6 @@ export function clearScenarioCache() {
   ALL_SCENARIOS_MEMO.clear();
 }
 
-/**
- * Shallow clone for cache returns
- * NOTE: Cached objects should be treated as immutable. Do not modify returned objects.
- * Deep structures (madeInputDetails) are shared references - mutations affect cache.
- */
-function shallowClone<T>(v: T): T {
-  if (Array.isArray(v)) {
-    return [...v] as T;
-  }
-  if (v && typeof v === 'object') {
-    return { ...v };
-  }
-  return v;
-}
-
 const norm = (s: string) => s.replace(/\s+/g, " ").trim();
 
 /**
@@ -508,6 +493,16 @@ function buildAllOptionsForTicker(
         }
       }
 
+      if (branched.length === 0) {
+        // Every scenario died on this input: no buy price and no make option.
+        // Without a diagnostic the recipe silently yields zero options and the
+        // report misreports it as a profitability failure.
+        console.warn(
+          `[engine] ${materialTicker}: input ${input.ticker} has no buy price and no make option` +
+          `${isForcedMake ? " (forceMake set)" : ""}${isForcedBuy ? " (forceBuy set)" : ""}` +
+          ` — recipe produces no scenarios`
+        );
+      }
       scenarios = branched;
     }
 
@@ -852,6 +847,16 @@ function bestOptionForTicker(
         }
       }
 
+      if (branched.length === 0) {
+        // Every scenario died on this input: no buy price and no make option.
+        // Without a diagnostic the recipe silently yields zero options and the
+        // report misreports it as a profitability failure.
+        console.warn(
+          `[engine] ${materialTicker}: input ${input.ticker} has no buy price and no make option` +
+          `${isForcedMake ? " (forceMake set)" : ""}${isForcedBuy ? " (forceBuy set)" : ""}` +
+          ` — recipe produces no scenarios`
+        );
+      }
       scenarios = branched;
     }
 
@@ -1274,6 +1279,16 @@ export function findAllMakeOptions(
         }
       }
 
+      if (branched.length === 0) {
+        // Every scenario died on this input: no buy price and no make option.
+        // Without a diagnostic the recipe silently yields zero options and the
+        // report misreports it as a profitability failure.
+        console.warn(
+          `[engine] ${materialTicker}: input ${input.ticker} has no buy price and no make option` +
+          `${isForcedMake ? " (forceMake set)" : ""}${isForcedBuy ? " (forceBuy set)" : ""}` +
+          ` — recipe produces no scenarios`
+        );
+      }
       scenarios = branched;
     }
 

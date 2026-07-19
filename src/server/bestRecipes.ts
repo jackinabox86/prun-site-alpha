@@ -3,7 +3,6 @@ import { loadAllFromCsv } from "@/lib/loadFromCsv";
 import { findAllMakeOptions, buildScenarioRows, clearScenarioCache } from "@/core/engine";
 import { findPrice } from "@/core/price";
 import { scenarioDisplayName } from "@/core/scenario";
-import { CSV_URLS } from "@/lib/config";
 import type { RecipeSheet, RecipeRow, BestMap, PriceMode, Exchange, PriceType } from "@/types";
 
 export interface BestRecipeResult {
@@ -78,6 +77,10 @@ function getCostColumnNames(exchange: Exchange, priceType: PriceType) {
 /**
  * Calculate buy-all profit per area for a ticker
  * This is a simple calculation where all inputs are bought (no MAKE scenarios)
+ * Returns null when it can't be computed (no recipes, or no recipe whose
+ * inputs are all purchasable).
+ * NOTE: a price of 0 is treated as "no price" throughout (findPrice returns
+ * the raw cell, and 0-valued cells mean the exchange has no market data).
  */
 function calculateBuyAllProfitPA(
   ticker: string,
@@ -89,7 +92,7 @@ function calculateBuyAllProfitPA(
 ): number | null {
   const headers = recipeMap.headers;
   const rows = recipeMap.map[ticker] || [];
-  if (!rows.length) return 0;
+  if (!rows.length) return null;
 
   const costCols = getCostColumnNames(exchange, sellPriceType);
   for (const col of [costCols.wfCst, costCols.deprec]) {
@@ -251,7 +254,9 @@ function getTickersInDependencyOrder(recipeSheet: RecipeSheet): string[] {
  * Refresh best recipe IDs for all tickers in dependency order
  * This is the core logic from the Apps Script refreshBestRecipeIDs function
  * @param exchange - Exchange to analyze (default: "ANT")
- * @param buyPriceType - Price type for buying inputs (default: "ask")
+ * @param buyPriceType - Price type used ONLY for the buy-all P/A comparison
+ *   (calculateBuyAllProfitPA); the scenario engine itself always buys inputs
+ *   at ask (see getInputPriceType in engine.ts)
  * @param sellPriceType - Price type for selling outputs (default: "bid")
  * @param preloadedRecipeData - Optional pre-loaded recipe and price data (for extraction mode)
  */

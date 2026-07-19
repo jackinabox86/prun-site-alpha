@@ -21,6 +21,10 @@ function defaultDeserialize<T>(str: string, defaultValue: T): T | null {
   if (typeof defaultValue === "boolean") {
     return (str === "true") as T;
   }
+  if (typeof defaultValue === "number") {
+    const n = Number(str);
+    return Number.isFinite(n) ? (n as T) : null;
+  }
   return str as T;
 }
 
@@ -65,10 +69,10 @@ export function usePersistedSettings<T>(
     return defaultValue;
   });
 
-  // Track if we've checked URL params on mount
-  const [urlParamsChecked, setUrlParamsChecked] = useState(false);
-
-  // On mount, read from URL params if provided
+  // On mount, read from URL params if provided. The URL value applies to this
+  // session only — it does NOT overwrite the user's stored setting, so opening
+  // a shared link doesn't permanently change their preferences. The setting is
+  // persisted only when the user changes it themselves (setPersistedValue).
   useEffect(() => {
     if (urlParamName && typeof window !== "undefined") {
       const params = new URLSearchParams(window.location.search);
@@ -77,12 +81,10 @@ export function usePersistedSettings<T>(
         const deserialized = deserialize(urlValue, defaultValue);
         if (deserialized !== null) {
           setValue(deserialized);
-          // Save to localStorage
-          safeSetLocalStorage(settingKey, deserialized);
         }
       }
     }
-    setUrlParamsChecked(true);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // Custom setter that persists to localStorage and optionally URL

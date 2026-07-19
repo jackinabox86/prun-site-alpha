@@ -28,7 +28,9 @@ export async function GET(req: Request) {
     const extractionMode = url.searchParams.get("extractionMode") === "true";
 
     const report = await buildReport({ ticker, exchange, priceType, forceMake, forceBuy, forceBidPrice, forceAskPrice, forceRecipe, excludeRecipe, extractionMode });
-    const status = (report as any)?.ok === false ? 500 : 200;
+    // buildReport signals in-band failures via `error` (bad ticker, missing
+    // prices, constraint validation) — surface those as 422, not 200
+    const status = (report as any)?.error ? 422 : 200;
 
     // Add explicit cache-busting headers to prevent any response caching
     return NextResponse.json(report, {
