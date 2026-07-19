@@ -54,11 +54,15 @@ class CachedBestRecipes {
       return this.getCachedData(cacheKey);
     }
 
-    // Start new initialization
+    // Start new initialization; always release the in-flight slot so a failed
+    // load can be retried on the next request instead of rethrowing forever
     const initPromise = this.initialize(priceSource, exchange, sellAt, mode);
     this.initPromises.set(cacheKey, initPromise);
-    await initPromise;
-    this.initPromises.delete(cacheKey);
+    try {
+      await initPromise;
+    } finally {
+      this.initPromises.delete(cacheKey);
+    }
 
     return this.getCachedData(cacheKey);
   }

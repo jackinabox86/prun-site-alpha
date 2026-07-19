@@ -36,8 +36,8 @@ export async function buildReport(opts: {
 }) {
   const { ticker, exchange, priceType, priceSource = "local", forceMake, forceBuy, forceBidPrice, forceAskPrice, forceRecipe, excludeRecipe, extractionMode = false } = opts;
 
-  // Clear scenario cache at the start of each request to prevent extraction mode contamination
-  // The engine caches results by ticker/exchange/priceType but doesn't include extractionMode in the key
+  // Memo entries are keyed by data-map identity, so stale entries from prior
+  // requests can never be reused; clearing here just bounds memory growth.
   clearScenarioCache();
 
   // Parse force constraints into sets

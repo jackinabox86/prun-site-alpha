@@ -43,7 +43,27 @@ function getCostColumnNames(exchange: Exchange, priceType: PriceType) {
 const BEST_MEMO = new Map<string, MakeOption>();
 const ALL_SCENARIOS_MEMO = new Map<string, MakeOption[]>();
 
+// Identity ids for the data maps a scenario was computed from. Requests build
+// their own recipe/price/best maps (clones, extraction merges, price overrides),
+// so keying memo entries by map identity prevents concurrent requests with
+// different economics from sharing cached results.
+let nextMapId = 1;
+const MAP_IDS = new WeakMap<object, number>();
+const mapId = (o: unknown): number => {
+  if (o === null || typeof o !== "object") return 0;
+  let id = MAP_IDS.get(o as object);
+  if (id === undefined) {
+    id = nextMapId++;
+    MAP_IDS.set(o as object, id);
+  }
+  return id;
+};
+
 const memoKey = (
+  recipeMap: RecipeMap,
+  priceMap: PricesMap,
+  bestMap: BestMap,
+  honorRecipeIdFilter: boolean,
   exchange: Exchange,
   priceType: PriceType,
   ticker: string,
@@ -65,7 +85,7 @@ const memoKey = (
   const excludeRecipeStr = excludeRecipe && excludeRecipe.size > 0
     ? Array.from(excludeRecipe).sort().join(',')
     : '';
-  return `${exchange}::${priceType}::${ticker}::${forceMakeStr}::${forceBuyStr}::${forceRecipeStr}::${excludeRecipeStr}`;
+  return `${mapId(recipeMap)}:${mapId(priceMap)}:${mapId(bestMap)}:${honorRecipeIdFilter ? 1 : 0}::${exchange}::${priceType}::${ticker}::${forceMakeStr}::${forceBuyStr}::${forceRecipeStr}::${excludeRecipeStr}`;
 };
 
 /** Clear all caches - call this between different analyses if needed */
@@ -303,7 +323,9 @@ function buildAllOptionsForTicker(
   for (const row of rowsToUse) {
     const recipeId = idx.recipeId !== -1 ? String(row[idx.recipeId] ?? "") : null;
     const building = idx.building !== -1 ? String(row[idx.building] ?? "") : null;
-    const runsPerDay = Math.max(1, Number(row[idx.runs] ?? 0) || 1);
+    // Preserve fractional runs/day (many recipes run < 1/day); only default when missing/invalid
+    const runsPerDayVal = Number(row[idx.runs] ?? 0);
+    const runsPerDay = runsPerDayVal > 0 ? runsPerDayVal : 1;
     const area = Math.max(1, Number(row[idx.area] ?? 0) || 1);
     const areaPerOutCell = Number(row[idx.areaPerOut] ?? 0);
     const areaPerOutput = areaPerOutCell > 0 ? areaPerOutCell : null;
@@ -563,7 +585,7 @@ function bestOptionForTicker(
   forceRecipe?: Set<string>,
   excludeRecipe?: Set<string>
 ): MakeOption | null {
-  const mkey = memoKey(exchange, priceType, materialTicker, forceMake, forceBuy, forceRecipe, excludeRecipe);
+  const mkey = memoKey(recipeMap, priceMap, bestMap, honorRecipeIdFilter, exchange, priceType, materialTicker, forceMake, forceBuy, forceRecipe, excludeRecipe);
   if (BEST_MEMO.has(mkey)) return BEST_MEMO.get(mkey)!;
 
   // guard against cycles
@@ -642,7 +664,9 @@ function bestOptionForTicker(
     const building =
       idx.building !== -1 ? String(row[idx.building] ?? "") : null;
 
-    const runsPerDay = Math.max(1, Number(row[idx.runs] ?? 0) || 1);
+    // Preserve fractional runs/day (many recipes run < 1/day); only default when missing/invalid
+    const runsPerDayVal = Number(row[idx.runs] ?? 0);
+    const runsPerDay = runsPerDayVal > 0 ? runsPerDayVal : 1;
     const area = Math.max(1, Number(row[idx.area] ?? 0) || 1);
     const areaPerOutCell = Number(row[idx.areaPerOut] ?? 0);
     const areaPerOutput = areaPerOutCell > 0 ? areaPerOutCell : null;
@@ -918,7 +942,7 @@ export function findAllMakeOptions(
   if (depth > 0) {
     if (exploreAllChildScenarios) {
       // Check full exploration cache
-      const cacheKey = memoKey(exchange, priceType, materialTicker, forceMake, forceBuy, forceRecipe, excludeRecipe);
+      const cacheKey = memoKey(recipeMap, priceMap, bestMap, honorRecipeIdFilter, exchange, priceType, materialTicker, forceMake, forceBuy, forceRecipe, excludeRecipe);
       if (ALL_SCENARIOS_MEMO.has(cacheKey)) {
         return ALL_SCENARIOS_MEMO.get(cacheKey)!;
       }
@@ -1292,7 +1316,7 @@ export function findAllMakeOptions(
 
   // Cache AFTER all rows processed, OUTSIDE the loop
   if (depth > 0 && results.length > 0 && exploreAllChildScenarios) {
-    const cacheKey = memoKey(exchange, priceType, materialTicker, forceMake, forceBuy, forceRecipe, excludeRecipe);
+    const cacheKey = memoKey(recipeMap, priceMap, bestMap, honorRecipeIdFilter, exchange, priceType, materialTicker, forceMake, forceBuy, forceRecipe, excludeRecipe);
     ALL_SCENARIOS_MEMO.set(cacheKey, results);
   }
 

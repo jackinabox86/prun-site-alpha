@@ -2,8 +2,11 @@ import { parse } from "csv-parse/sync";
 import { readFileSync, existsSync } from "fs";
 import { join } from "path";
 
-// In-memory cache for serverless functions (persists across invocations in same container)
-const csvCache = new Map<string, Array<Record<string, any>>>();
+// In-memory cache for serverless functions (persists across invocations in same container).
+// Entries expire after CSV_CACHE_TTL_MS so long-lived containers pick up the
+// hourly-refreshed GCS data instead of serving the first download forever.
+const CSV_CACHE_TTL_MS = 5 * 60 * 1000;
+const csvCache = new Map<string, { rows: Array<Record<string, any>>; fetchedAt: number }>();
 
 class HttpError extends Error {
   constructor(public status: number, message: string) {
@@ -44,8 +47,12 @@ export async function fetchCsv(url: string): Promise<Array<Record<string, any>>>
   }
 
   // Check cache first
-  if (csvCache.has(url)) {
-    return csvCache.get(url)!;
+  const cached = csvCache.get(url);
+  if (cached) {
+    if (Date.now() - cached.fetchedAt < CSV_CACHE_TTL_MS) {
+      return cached.rows;
+    }
+    csvCache.delete(url);
   }
 
   let text: string;
@@ -68,7 +75,7 @@ export async function fetchCsv(url: string): Promise<Array<Record<string, any>>>
   const result = data.map(r => Object.fromEntries(headers.map((h, i) => [h, r[i]])));
 
   // Cache the result
-  csvCache.set(url, result);
+  csvCache.set(url, { rows: result, fetchedAt: Date.now() });
 
   return result;
 }

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useRef } from "react";
 import { scenarioDisplayName } from "@/core/scenario";
 import { tickerFilterGroups } from "@/lib/tickerFilters";
 import type { Exchange } from "@/types";
@@ -175,7 +175,14 @@ export default function BestRecipesClient() {
     return DEFAULT_VOLUME_LEVELS;
   });
 
+  // Guards so a slow response for a previous exchange/sellAt/extractionMode
+  // selection can't overwrite the table after the user switches settings
+  const requestIdRef = useRef(0);
+  const hasLoadedRef = useRef(false);
+
   const loadData = async () => {
+    const requestId = ++requestIdRef.current;
+    hasLoadedRef.current = true;
     setLoading(true);
     setError(null);
     try {
@@ -209,8 +216,10 @@ export default function BestRecipesClient() {
       if (!json.success) {
         throw new Error(json.error || "Unknown error");
       }
+      if (requestId !== requestIdRef.current) return; // stale response
       setData(json.data || []);
     } catch (e: any) {
+      if (requestId !== requestIdRef.current) return; // stale response
       if (e.name === "AbortError") {
         setError("Request timed out after 5 minutes. The calculation may be too complex.");
       } else {
@@ -218,9 +227,20 @@ export default function BestRecipesClient() {
       }
       setData([]);
     } finally {
-      setLoading(false);
+      if (requestId === requestIdRef.current) {
+        setLoading(false);
+      }
     }
   };
+
+  // Refetch when settings change so the table is never labeled with one
+  // exchange/mode while showing another's numbers. Skipped until the user
+  // has generated data once.
+  useEffect(() => {
+    if (!hasLoadedRef.current) return;
+    loadData();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [exchange, sellAt, extractionMode]);
 
   const handleSort = (column: keyof BestRecipeResult) => {
     if (sortColumn === column) {
