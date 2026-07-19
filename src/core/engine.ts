@@ -37,6 +37,24 @@ function getCostColumnNames(exchange: Exchange, priceType: PriceType) {
   };
 }
 
+/**
+ * Throw if the recipe sheet lacks the cost columns for this exchange/price type.
+ * A missing column would otherwise be read at index -1 → cost 0, silently
+ * overstating every profit figure.
+ */
+function requireCostColumns(
+  headers: string[],
+  costCols: { wfCst: string; deprec: string; allBuildCst: string }
+) {
+  for (const col of [costCols.wfCst, costCols.deprec, costCols.allBuildCst]) {
+    if (!headers.includes(col)) {
+      throw new Error(
+        `Recipe data is missing cost column "${col}". Available headers do not include the workforce/depreciation/build-cost columns for this exchange and price type.`
+      );
+    }
+  }
+}
+
 /**──────────────────────────────────────────────────────────────────────────────
  * Memoization for child scenarios
  *─────────────────────────────────────────────────────────────────────────────*/
@@ -262,6 +280,7 @@ function buildAllOptionsForTicker(
   if (!rows.length) return [];
 
   const costCols = getCostColumnNames(exchange, priceType);
+  requireCostColumns(headers, costCols);
   const idx = {
     building: headers.indexOf("Building"),
     recipeId: headers.indexOf("RecipeID"),
@@ -598,6 +617,7 @@ function bestOptionForTicker(
   if (!rows.length) return null;
 
   const costCols = getCostColumnNames(exchange, priceType);
+  requireCostColumns(headers, costCols);
   const idx = {
     building: headers.indexOf("Building"),
     recipeId: headers.indexOf("RecipeID"),
@@ -942,7 +962,9 @@ export function findAllMakeOptions(
   if (depth > 0) {
     if (exploreAllChildScenarios) {
       // Check full exploration cache
-      const cacheKey = memoKey(recipeMap, priceMap, bestMap, honorRecipeIdFilter, exchange, priceType, materialTicker, forceMake, forceBuy, forceRecipe, excludeRecipe);
+      // Depth is part of the key: pruning rules differ by depth, so scenario
+      // sets generated at one depth must not be served at another
+      const cacheKey = `${memoKey(recipeMap, priceMap, bestMap, honorRecipeIdFilter, exchange, priceType, materialTicker, forceMake, forceBuy, forceRecipe, excludeRecipe)}::d${depth}`;
       if (ALL_SCENARIOS_MEMO.has(cacheKey)) {
         return ALL_SCENARIOS_MEMO.get(cacheKey)!;
       }
@@ -992,6 +1014,7 @@ export function findAllMakeOptions(
   const rows = recipeMap.map[materialTicker] || [];
 
   const costCols = getCostColumnNames(exchange, priceType);
+  requireCostColumns(headers, costCols);
   const buildingIndex = headers.indexOf("Building");
   const recipeIdIndex = headers.indexOf("RecipeID");
   const workforceCostIndex = headers.indexOf(costCols.wfCst);
@@ -1316,7 +1339,7 @@ export function findAllMakeOptions(
 
   // Cache AFTER all rows processed, OUTSIDE the loop
   if (depth > 0 && results.length > 0 && exploreAllChildScenarios) {
-    const cacheKey = memoKey(recipeMap, priceMap, bestMap, honorRecipeIdFilter, exchange, priceType, materialTicker, forceMake, forceBuy, forceRecipe, excludeRecipe);
+    const cacheKey = `${memoKey(recipeMap, priceMap, bestMap, honorRecipeIdFilter, exchange, priceType, materialTicker, forceMake, forceBuy, forceRecipe, excludeRecipe)}::d${depth}`;
     ALL_SCENARIOS_MEMO.set(cacheKey, results);
   }
 

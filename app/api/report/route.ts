@@ -15,7 +15,6 @@ export async function GET(req: Request) {
     // Support new exchange + priceType parameters
     const exchange = (url.searchParams.get("exchange") ?? "ANT") as Exchange;
     const priceType = (url.searchParams.get("priceType") ?? "bid") as PriceType;
-    const priceSource = (url.searchParams.get("priceSource") ?? "local") as "local" | "gcs";
 
     // Extract force make/buy constraints
     const forceMake = url.searchParams.get("forceMake") || undefined;
@@ -28,7 +27,7 @@ export async function GET(req: Request) {
     // Extract extraction mode flag (ANT only)
     const extractionMode = url.searchParams.get("extractionMode") === "true";
 
-    const report = await buildReport({ ticker, exchange, priceType, priceSource, forceMake, forceBuy, forceBidPrice, forceAskPrice, forceRecipe, excludeRecipe, extractionMode });
+    const report = await buildReport({ ticker, exchange, priceType, forceMake, forceBuy, forceBidPrice, forceAskPrice, forceRecipe, excludeRecipe, extractionMode });
     const status = (report as any)?.ok === false ? 500 : 200;
 
     // Add explicit cache-busting headers to prevent any response caching

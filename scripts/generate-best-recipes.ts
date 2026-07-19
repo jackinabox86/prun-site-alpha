@@ -197,7 +197,6 @@ async function generateBestRecipes() {
 
             // Generate best recipes with merged data
             data = await refreshBestRecipeIDs(
-              "gcs",
               config.exchange,
               config.buyPriceType,
               config.sellPriceType,
@@ -205,7 +204,7 @@ async function generateBestRecipes() {
             );
           } else {
             // Standard mode: Use GCS prices for generation (aligns with production deployment)
-            data = await refreshBestRecipeIDs("gcs", config.exchange, config.buyPriceType, config.sellPriceType);
+            data = await refreshBestRecipeIDs(config.exchange, config.buyPriceType, config.sellPriceType);
           }
 
           // Append volume classification data

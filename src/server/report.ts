@@ -4,7 +4,7 @@ import { findAllMakeOptions, buildScenarioRows, clearScenarioCache } from "@/cor
 import { computeRoiNarrow, computeRoiBroad } from "@/core/roi";
 import { computeInputPayback } from "@/core/inputPayback";
 import { cachedBestRecipes } from "@/server/cachedBestRecipes";
-import { LOCAL_DATA_SOURCES, GCS_DATA_SOURCES, GCS_STATIC_BASE } from "@/lib/config";
+import { GCS_DATA_SOURCES, GCS_STATIC_BASE } from "@/lib/config";
 import { scenarioDisplayName } from "@/core/scenario";
 import type { PriceMode, Exchange, PriceType } from "@/types";
 
@@ -25,7 +25,6 @@ export async function buildReport(opts: {
   ticker: string;
   exchange: Exchange;
   priceType: PriceType;
-  priceSource?: "local" | "gcs";
   forceMake?: string;
   forceBuy?: string;
   forceBidPrice?: string;
@@ -34,7 +33,7 @@ export async function buildReport(opts: {
   excludeRecipe?: string;
   extractionMode?: boolean;
 }) {
-  const { ticker, exchange, priceType, priceSource = "local", forceMake, forceBuy, forceBidPrice, forceAskPrice, forceRecipe, excludeRecipe, extractionMode = false } = opts;
+  const { ticker, exchange, priceType, forceMake, forceBuy, forceBidPrice, forceAskPrice, forceRecipe, excludeRecipe, extractionMode = false } = opts;
 
   // Memo entries are keyed by data-map identity, so stale entries from prior
   // requests can never be reused; clearing here just bounds memory growth.
@@ -89,10 +88,9 @@ export async function buildReport(opts: {
   // Load extraction-mode best recipes if extractionMode is enabled
   const bestRecipesExchange = exchange === "UNV" ? "ANT" : exchange;
   const bestRecipesMode = extractionMode ? 'extraction' : 'standard';
-  const { bestMap } = await cachedBestRecipes.getBestRecipes(priceSource, bestRecipesExchange, 'bid', bestRecipesMode);
+  const { bestMap } = await cachedBestRecipes.getBestRecipes(bestRecipesExchange, 'bid', bestRecipesMode);
 
-  // Determine which data sources to use based on priceSource
-  const dataSources = priceSource === "gcs" ? GCS_DATA_SOURCES : LOCAL_DATA_SOURCES;
+  const dataSources = GCS_DATA_SOURCES;
 
   // Load recipes and prices from the appropriate source
   const { recipeMap, pricesMap } = await loadAllFromCsv(
@@ -115,9 +113,7 @@ export async function buildReport(opts: {
   // If extraction mode is enabled for ANT, merge expanded recipes into recipeMap for runtime analysis
   // The bestMap already includes extraction scenarios from the extraction best recipes file
   if (extractionMode && exchange === "ANT") {
-    const expandedRecipeUrl = priceSource === "gcs"
-      ? `${GCS_STATIC_BASE}/ANT-expandedrecipes-dynamic.csv`
-      : "public/data/ANT-expandedrecipes-dynamic.csv";
+    const expandedRecipeUrl = `${GCS_STATIC_BASE}/ANT-expandedrecipes-dynamic.csv`;
 
     try {
       const expandedData = await loadAllFromCsv(

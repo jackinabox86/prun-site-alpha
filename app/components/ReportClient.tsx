@@ -37,7 +37,6 @@ export default function ReportClient() {
     "bid",
     { urlParamName: "priceType", updateUrl: true }
   );
-  const [priceSource, setPriceSource] = useState<"local" | "gcs">("gcs");
   const [urlParamsChecked, setUrlParamsChecked] = useState(false);
   const [forceMake, setForceMake] = useState<string>("");
   const [forceBuy, setForceBuy] = useState<string>("");
@@ -147,7 +146,6 @@ export default function ReportClient() {
         ticker: tickerInput.trim().toUpperCase(),
         exchange,
         priceType,
-        priceSource,
         extractionMode: extractionMode ? "true" : "false",
       };
 
