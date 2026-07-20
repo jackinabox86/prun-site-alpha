@@ -1,14 +1,30 @@
 // src/server/report.ts
 import { loadAllFromCsv } from "@/lib/loadFromCsv";
-import { findAllMakeOptions, buildScenarioRows, clearScenarioCache } from "@/core/engine";
+import { findAllMakeOptions, buildScenarioRows, buildScenarioRowsAtCapacity, clearScenarioCache } from "@/core/engine";
 import { computeRoiNarrow, computeRoiBroad } from "@/core/roi";
-import { computeInputPayback } from "@/core/inputPayback";
 import { cachedBestRecipes } from "@/server/cachedBestRecipes";
-import { LOCAL_DATA_SOURCES, GCS_DATA_SOURCES, GCS_STATIC_BASE } from "@/lib/config";
+import { GCS_DATA_SOURCES, GCS_STATIC_BASE } from "@/lib/config";
 import { scenarioDisplayName } from "@/core/scenario";
-import type { PriceMode, Exchange, PriceType } from "@/types";
+import type { Exchange, PriceType } from "@/types";
 
 const honorRecipeIdFilter = false;  // Set to false to explore all recipe variants
+
+/**
+ * Deep-clone an option's scenario tree (option + madeInputDetails recursively).
+ * buildScenarioRows annotates the tree it walks (childRunsPerDayRequired,
+ * childDemandUnitsPerDay, totalProfitPA); serialized entries must be cloned
+ * first so those writes never land on memo-shared objects where the last
+ * caller would win.
+ */
+function cloneOptionTree<T extends { madeInputDetails?: any[] }>(option: T): T {
+  return {
+    ...option,
+    madeInputDetails: (option.madeInputDetails || []).map((item: any) => ({
+      ...item,
+      details: item.details ? cloneOptionTree(item.details) : item.details,
+    })),
+  };
+}
 
 type WithMetrics<T> = T & {
   roiNarrowDays?: number | null;
@@ -25,7 +41,6 @@ export async function buildReport(opts: {
   ticker: string;
   exchange: Exchange;
   priceType: PriceType;
-  priceSource?: "local" | "gcs";
   forceMake?: string;
   forceBuy?: string;
   forceBidPrice?: string;
@@ -34,10 +49,10 @@ export async function buildReport(opts: {
   excludeRecipe?: string;
   extractionMode?: boolean;
 }) {
-  const { ticker, exchange, priceType, priceSource = "local", forceMake, forceBuy, forceBidPrice, forceAskPrice, forceRecipe, excludeRecipe, extractionMode = false } = opts;
+  const { ticker, exchange, priceType, forceMake, forceBuy, forceBidPrice, forceAskPrice, forceRecipe, excludeRecipe, extractionMode = false } = opts;
 
-  // Clear scenario cache at the start of each request to prevent extraction mode contamination
-  // The engine caches results by ticker/exchange/priceType but doesn't include extractionMode in the key
+  // Memo entries are keyed by data-map identity, so stale entries from prior
+  // requests can never be reused; clearing here just bounds memory growth.
   clearScenarioCache();
 
   // Parse force constraints into sets
@@ -89,10 +104,9 @@ export async function buildReport(opts: {
   // Load extraction-mode best recipes if extractionMode is enabled
   const bestRecipesExchange = exchange === "UNV" ? "ANT" : exchange;
   const bestRecipesMode = extractionMode ? 'extraction' : 'standard';
-  const { bestMap } = await cachedBestRecipes.getBestRecipes(priceSource, bestRecipesExchange, 'bid', bestRecipesMode);
+  const { bestMap } = await cachedBestRecipes.getBestRecipes(bestRecipesExchange, 'bid', bestRecipesMode);
 
-  // Determine which data sources to use based on priceSource
-  const dataSources = priceSource === "gcs" ? GCS_DATA_SOURCES : LOCAL_DATA_SOURCES;
+  const dataSources = GCS_DATA_SOURCES;
 
   // Load recipes and prices from the appropriate source
   const { recipeMap, pricesMap } = await loadAllFromCsv(
@@ -100,65 +114,42 @@ export async function buildReport(opts: {
     { bestMap }
   );
 
-  // Deep clone recipeMap to prevent mutation of cached data when merging expanded recipes
-  // The csvCache returns the same object reference across requests, so we must clone before mutating
-  const clonedRecipeMap = {
-    headers: [...recipeMap.headers],
-    map: Object.fromEntries(
-      Object.entries(recipeMap.map).map(([ticker, recipes]) => [
-        ticker,
-        recipes.map(recipe => [...recipe])
-      ])
-    )
-  };
+  // loadAllFromCsv builds fresh maps on every call (only raw CSV rows are
+  // cached in csvFetch), so mutating this map below is safe — no deep clone needed
+  const workingRecipeMap = recipeMap;
 
   // If extraction mode is enabled for ANT, merge expanded recipes into recipeMap for runtime analysis
   // The bestMap already includes extraction scenarios from the extraction best recipes file
   if (extractionMode && exchange === "ANT") {
-    const expandedRecipeUrl = priceSource === "gcs"
-      ? `${GCS_STATIC_BASE}/ANT-expandedrecipes-dynamic.csv`
-      : "public/data/ANT-expandedrecipes-dynamic.csv";
+    const expandedRecipeUrl = `${GCS_STATIC_BASE}/ANT-expandedrecipes-dynamic.csv`;
 
     try {
       const expandedData = await loadAllFromCsv(
         { recipes: expandedRecipeUrl, prices: dataSources.prices },
         { bestMap } // Use the extraction-mode bestMap for consistency
       );
+      const expandedRecipeMap = expandedData.recipeMap;
 
-      // CRITICAL: Clone expandedData.recipeMap before mutating to prevent CSV cache corruption
-      // loadAllFromCsv returns cached data, so we must clone before splice operations
-      const clonedExpandedRecipeMap = {
-        headers: [...expandedData.recipeMap.headers],
-        map: Object.fromEntries(
-          Object.entries(expandedData.recipeMap.map).map(([ticker, recipes]) => [
-            ticker,
-            recipes.map(recipe => [...recipe])
-          ])
-        )
-      };
-
-      // Transform expanded recipes to match standard format
-      // Expanded recipes have an extra "Planet" column that needs to be removed
-      const planetIndex = clonedExpandedRecipeMap.headers.indexOf("Planet");
-
-      if (planetIndex !== -1) {
-        // Remove "Planet" from headers to match standard format
-        clonedExpandedRecipeMap.headers.splice(planetIndex, 1);
-
-        // Remove "Planet" column data from all recipe rows
-        for (const recipes of Object.values(clonedExpandedRecipeMap.map)) {
-          for (const recipe of recipes) {
-            recipe.splice(planetIndex, 1);
-          }
-        }
+      // Merge expanded recipes, remapping every row by header name so a
+      // column-order drift between the two generated CSVs (or the extra
+      // "Planet" column) can't silently misalign fields
+      const targetHeaders = workingRecipeMap.headers;
+      const sourceIndex = new Map(expandedRecipeMap.headers.map((h, i) => [h, i]));
+      const missing = targetHeaders.filter(h => !sourceIndex.has(h));
+      if (missing.length > 0) {
+        throw new Error(
+          `ANT expanded recipes CSV is missing expected column(s): ${missing.join(", ")}`
+        );
       }
-
-      // Merge the transformed expanded recipes into the cloned recipeMap
-      for (const [ticker, recipes] of Object.entries(clonedExpandedRecipeMap.map)) {
-        if (!clonedRecipeMap.map[ticker]) {
-          clonedRecipeMap.map[ticker] = [];
+      for (const [ticker, recipes] of Object.entries(expandedRecipeMap.map)) {
+        if (!workingRecipeMap.map[ticker]) {
+          workingRecipeMap.map[ticker] = [];
         }
-        clonedRecipeMap.map[ticker].push(...recipes);
+        for (const recipe of recipes) {
+          workingRecipeMap.map[ticker].push(
+            targetHeaders.map(h => recipe[sourceIndex.get(h)!])
+          );
+        }
       }
     } catch (error: any) {
       throw new Error(`Failed to load ANT expanded recipes: ${error.message || error}`);
@@ -293,8 +284,8 @@ export async function buildReport(opts: {
 
     // Build recipe ID to ticker map
     const recipeToTicker = new Map<string, string>();
-    for (const [ticker, rows] of Object.entries(clonedRecipeMap.map)) {
-      const recipeIdIdx = clonedRecipeMap.headers.indexOf("RecipeID");
+    for (const [ticker, rows] of Object.entries(workingRecipeMap.map)) {
+      const recipeIdIdx = workingRecipeMap.headers.indexOf("RecipeID");
       if (recipeIdIdx !== -1) {
         for (const row of rows) {
           const recipeId = String(row[recipeIdIdx] ?? "").toUpperCase();
@@ -344,8 +335,8 @@ export async function buildReport(opts: {
 
       for (const ticker of tickersWithRecipes) {
         // Get all recipe IDs for this ticker
-        const recipeIdIdx = clonedRecipeMap.headers.indexOf("RecipeID");
-        const tickerRecipes = clonedRecipeMap.map[ticker] || [];
+        const recipeIdIdx = workingRecipeMap.headers.indexOf("RecipeID");
+        const tickerRecipes = workingRecipeMap.map[ticker] || [];
         const allRecipeIdsForTicker = tickerRecipes
           .map(row => String(row[recipeIdIdx] ?? "").toUpperCase())
           .filter(id => id.length > 0);
@@ -390,7 +381,7 @@ export async function buildReport(opts: {
     }
   }
 
-  const options = findAllMakeOptions(ticker, clonedRecipeMap, pricesMap, exchange, priceType, bestMap, 0, true, honorRecipeIdFilter, forceMakeSet, forceBuySet, forceRecipeSet, excludeRecipeSet);
+  const options = findAllMakeOptions(ticker, workingRecipeMap, pricesMap, exchange, priceType, bestMap, 0, true, honorRecipeIdFilter, forceMakeSet, forceBuySet, forceRecipeSet, excludeRecipeSet);
   if (!options.length) {
     return {
       schemaVersion: 3,
@@ -402,7 +393,7 @@ export async function buildReport(opts: {
       bestScenario: "",
       best: null,
       top20: [],
-      error: `No profitable production scenarios found for ticker ${ticker} with ${exchange} ${priceType} pricing`,
+      error: `No production scenarios could be constructed for ticker ${ticker} with ${exchange} ${priceType} pricing. This usually means an input has neither a market price nor a producible recipe (or force constraints eliminated every option) — see server logs for the specific input.`,
     };
   }
 
@@ -410,7 +401,7 @@ export async function buildReport(opts: {
   const ranked = options
     .map(o => {
       const capacity = (o.output1Amount || 0) * (o.runsPerDay || 0);
-      const r = buildScenarioRows(o, 0, capacity, false); // used for PA/area math only
+      const r = buildScenarioRowsAtCapacity(o); // used for PA/area math only
       return { o, r, capacity };
     })
     .sort((a, b) => (b.r.subtreeProfitPerArea ?? 0) - (a.r.subtreeProfitPerArea ?? 0));
@@ -423,7 +414,6 @@ export async function buildReport(opts: {
   const baseProfitPerDay = best.o.baseProfitPerDay ?? 0;
   const totalBuildCost = best.r.subtreeBuildCost ?? 0;
   const roiBroad = computeRoiBroad(totalBuildCost, baseProfitPerDay);
-  const ip  = computeInputPayback(best.o, 7); // { days, windowDays }
 
   // Input buffer payback: narrow = self only, broad = entire tree
   const inputBuffer7Narrow = best.o.inputBuffer7 ?? 0;
@@ -431,8 +421,15 @@ export async function buildReport(opts: {
   const inputPaybackNarrow = baseProfitPerDay > 0 ? inputBuffer7Narrow / baseProfitPerDay : null;
   const inputPaybackBroad = baseProfitPerDay > 0 ? inputBuffer7Broad / baseProfitPerDay : null;
 
+  // Clone the tree and re-annotate the clone so serialized display values
+  // (childRunsPerDayRequired etc.) are self-consistent for THIS scenario
+  // rather than whatever the last buildScenarioRows caller wrote onto the
+  // memo-shared objects
+  const bestClone = cloneOptionTree(best.o);
+  buildScenarioRows(bestClone, 0, best.capacity, false);
+
   const bestRaw: WithMetrics<typeof best.o> = {
-    ...best.o,
+    ...bestClone,
     totalProfitPA: best.r.subtreeProfitPerArea ?? 0,
     totalAreaPerDay: best.r.subtreeAreaPerDay ?? 0,
     totalBuildCost: totalBuildCost,
@@ -445,7 +442,7 @@ export async function buildReport(opts: {
 
 
   // Top 20 summary: include ROI only (no rows here)
-  const top20: Array<WithMetrics<typeof ranked[number]["o"]>> = ranked.slice(0, 20).map(({ o, r }) => {
+  const top20: Array<WithMetrics<typeof ranked[number]["o"]>> = ranked.slice(0, 20).map(({ o, r, capacity }) => {
     const roi = computeRoiNarrow(o);
     const baseProfitPerDay = o.baseProfitPerDay ?? 0;
     const totalBuildCost = r.subtreeBuildCost ?? 0;
@@ -457,8 +454,11 @@ export async function buildReport(opts: {
     const inputPaybackNarrow = baseProfitPerDay > 0 ? inputBuffer7Narrow / baseProfitPerDay : null;
     const inputPaybackBroad = baseProfitPerDay > 0 ? inputBuffer7Broad / baseProfitPerDay : null;
 
+    const clone = cloneOptionTree(o);
+    buildScenarioRows(clone, 0, capacity, false);
+
     return {
-      ...o,
+      ...clone,
       totalProfitPA: r.subtreeProfitPerArea ?? 0,
       totalAreaPerDay: r.subtreeAreaPerDay ?? 0,
       totalBuildCost: totalBuildCost,
@@ -495,8 +495,11 @@ export async function buildReport(opts: {
     const inputPaybackNarrow = baseProfitPerDay > 0 ? inputBuffer7Narrow / baseProfitPerDay : null;
     const inputPaybackBroad = baseProfitPerDay > 0 ? inputBuffer7Broad / baseProfitPerDay : null;
 
+    const clone = cloneOptionTree(o);
+    buildScenarioRows(clone, 0, (o.output1Amount || 0) * (o.runsPerDay || 0), false);
+
     return {
-      ...o,
+      ...clone,
       totalProfitPA: r.subtreeProfitPerArea ?? 0,
       totalAreaPerDay: r.subtreeAreaPerDay ?? 0,
       totalBuildCost: totalBuildCost,

@@ -1,7 +1,12 @@
 import { NextResponse } from "next/server";
 import { readFileSync } from "fs";
 import { join } from "path";
+import { getOrCompute, HttpJsonError } from "../../best-recipes/lib/cache";
 import type { HistoricalPriceData, Exchange } from "../../../../src/types";
+
+// Fans out to every file in the GCS manifest — cache and dedupe (see
+// historical-analysis/route.ts)
+const CACHE_TTL_MS = 5 * 60 * 1000;
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -70,6 +75,28 @@ export async function GET(request: Request) {
       );
     }
 
+    const result = await getOrCompute(
+      `leaderboard:${days}:${limit}`,
+      CACHE_TTL_MS,
+      () => computeLeaderboard(days, limit)
+    );
+    return NextResponse.json(result);
+  } catch (error) {
+    if (error instanceof HttpJsonError) {
+      return NextResponse.json(error.body, { status: error.status });
+    }
+    console.error("Error in leaderboard API:", error);
+    return NextResponse.json(
+      {
+        error: "Internal server error",
+        message: error instanceof Error ? error.message : String(error),
+      },
+      { status: 500 }
+    );
+  }
+}
+
+async function computeLeaderboard(days: number, limit: number) {
     const cutoffDate = new Date();
     cutoffDate.setDate(cutoffDate.getDate() - days);
     const cutoffMs = cutoffDate.getTime();
@@ -104,13 +131,10 @@ export async function GET(request: Request) {
     }
 
     if (!manifest || !manifest.files) {
-      return NextResponse.json(
-        {
-          error: "Manifest file not found",
-          hint: "Run: npm run generate-manifest to create the manifest file",
-        },
-        { status: 503 }
-      );
+      throw new HttpJsonError(503, {
+        error: "Manifest file not found",
+        hint: "Run: npm run generate-manifest to create the manifest file",
+      });
     }
 
     const exchanges: Exchange[] = ["ANT", "CIS", "ICA", "NCC"];
@@ -206,7 +230,7 @@ export async function GET(request: Request) {
 
     console.log(`Leaderboard: complete, ${filesProcessed} files processed`);
 
-    return NextResponse.json({
+    return {
       days,
       limit,
       cutoffDate: cutoffDate.toISOString().split("T")[0],
@@ -214,15 +238,5 @@ export async function GET(request: Request) {
       filesProcessed,
       totalFiles: files.length,
       lastUpdated: Date.now(),
-    });
-  } catch (error) {
-    console.error("Error in leaderboard API:", error);
-    return NextResponse.json(
-      {
-        error: "Internal server error",
-        message: error instanceof Error ? error.message : String(error),
-      },
-      { status: 500 }
-    );
-  }
+    };
 }

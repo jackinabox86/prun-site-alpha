@@ -37,13 +37,105 @@ function getCostColumnNames(exchange: Exchange, priceType: PriceType) {
   };
 }
 
+/**
+ * Throw if the recipe sheet lacks the cost columns for this exchange/price type.
+ * A missing column would otherwise be read at index -1 → cost 0, silently
+ * overstating every profit figure.
+ */
+function requireCostColumns(
+  headers: string[],
+  costCols: { wfCst: string; deprec: string; allBuildCst: string }
+) {
+  for (const col of [costCols.wfCst, costCols.deprec, costCols.allBuildCst]) {
+    if (!headers.includes(col)) {
+      throw new Error(
+        `Recipe data is missing cost column "${col}". Available headers do not include the workforce/depreciation/build-cost columns for this exchange and price type.`
+      );
+    }
+  }
+}
+
+/**
+ * Column indices resolved once per headers array (WeakMap) instead of
+ * re-scanning with headers.indexOf per row per pass. Cost columns vary by
+ * exchange/priceType, so they cache in an inner map.
+ */
+type RecipeColumnIndices = {
+  building: number;
+  recipeId: number;
+  area: number;
+  runs: number;
+  areaPerOut: number;
+  inputMat: number[];
+  inputCnt: number[];
+  outputMat: number[];
+  outputCnt: number[];
+  cost: Map<string, { wf: number; dep: number; build: number }>;
+};
+
+const COLUMN_INDEX_CACHE = new WeakMap<string[], RecipeColumnIndices>();
+
+function getColumnIndices(headers: string[], exchange: Exchange, priceType: PriceType) {
+  let cached = COLUMN_INDEX_CACHE.get(headers);
+  if (!cached) {
+    cached = {
+      building: headers.indexOf("Building"),
+      recipeId: headers.indexOf("RecipeID"),
+      area: headers.indexOf("Area"),
+      runs: headers.indexOf("Runs P/D"),
+      areaPerOut: headers.indexOf("AreaPerOutput"),
+      inputMat: Array.from({ length: 10 }, (_, j) => headers.indexOf(`Input${j + 1}MAT`)),
+      inputCnt: Array.from({ length: 10 }, (_, j) => headers.indexOf(`Input${j + 1}CNT`)),
+      outputMat: Array.from({ length: 10 }, (_, j) => headers.indexOf(`Output${j + 1}MAT`)),
+      outputCnt: Array.from({ length: 10 }, (_, j) => headers.indexOf(`Output${j + 1}CNT`)),
+      cost: new Map(),
+    };
+    COLUMN_INDEX_CACHE.set(headers, cached);
+  }
+
+  const costKey = `${exchange}::${priceType}`;
+  let cost = cached.cost.get(costKey);
+  if (!cost) {
+    const costCols = getCostColumnNames(exchange, priceType);
+    requireCostColumns(headers, costCols);
+    cost = {
+      wf: headers.indexOf(costCols.wfCst),
+      dep: headers.indexOf(costCols.deprec),
+      build: headers.indexOf(costCols.allBuildCst),
+    };
+    cached.cost.set(costKey, cost);
+  }
+
+  return { ...cached, wf: cost.wf, dep: cost.dep, build: cost.build };
+}
+
 /**──────────────────────────────────────────────────────────────────────────────
  * Memoization for child scenarios
  *─────────────────────────────────────────────────────────────────────────────*/
 const BEST_MEMO = new Map<string, MakeOption>();
 const ALL_SCENARIOS_MEMO = new Map<string, MakeOption[]>();
 
+// Identity ids for the data maps a scenario was computed from. Requests build
+// their own recipe/price/best maps (clones, extraction merges, price overrides),
+// so keying memo entries by map identity prevents concurrent requests with
+// different economics from sharing cached results.
+let nextMapId = 1;
+const MAP_IDS = new WeakMap<object, number>();
+const mapId = (o: unknown): number => {
+  if (o === null || typeof o !== "object") return 0;
+  let id = MAP_IDS.get(o as object);
+  if (id === undefined) {
+    id = nextMapId++;
+    MAP_IDS.set(o as object, id);
+  }
+  return id;
+};
+
 const memoKey = (
+  recipeMap: RecipeMap,
+  priceMap: PricesMap,
+  bestMap: BestMap,
+  honorRecipeIdFilter: boolean,
   exchange: Exchange,
   priceType: PriceType,
   ticker: string,
@@ -65,7 +157,7 @@ const memoKey = (
   const excludeRecipeStr = excludeRecipe && excludeRecipe.size > 0
     ? Array.from(excludeRecipe).sort().join(',')
     : '';
-  return `${exchange}::${priceType}::${ticker}::${forceMakeStr}::${forceBuyStr}::${forceRecipeStr}::${excludeRecipeStr}`;
+  return `${mapId(recipeMap)}:${mapId(priceMap)}:${mapId(bestMap)}:${honorRecipeIdFilter ? 1 : 0}::${exchange}::${priceType}::${ticker}::${forceMakeStr}::${forceBuyStr}::${forceRecipeStr}::${excludeRecipeStr}`;
 };
 
 /** Clear all caches - call this between different analyses if needed */
@@ -75,18 +167,22 @@ export function clearScenarioCache() {
 }
 
 /**
- * Shallow clone for cache returns
- * NOTE: Cached objects should be treated as immutable. Do not modify returned objects.
- * Deep structures (madeInputDetails) are shared references - mutations affect cache.
+ * Memo for at-capacity scenario metrics. Option generation, diversity
+ * pruning, and report ranking all evaluate the same option at its own full
+ * capacity with identical results, so compute the full tree recursion once
+ * per option object. Keyed by object identity (WeakMap): options are built
+ * per request, so entries can't leak across requests, and cloned trees
+ * (serialization path) are distinct objects that correctly recompute.
  */
-function shallowClone<T>(v: T): T {
-  if (Array.isArray(v)) {
-    return [...v] as T;
-  }
-  if (v && typeof v === 'object') {
-    return { ...v };
-  }
-  return v;
+const AT_CAPACITY_ROWS = new WeakMap<MakeOption, ScenarioRowsResult>();
+
+export function buildScenarioRowsAtCapacity(option: MakeOption): ScenarioRowsResult {
+  const cached = AT_CAPACITY_ROWS.get(option);
+  if (cached) return cached;
+  const capacity = (option.output1Amount || 0) * (option.runsPerDay || 0);
+  const res = buildScenarioRows(option, 0, capacity, false);
+  AT_CAPACITY_ROWS.set(option, res);
+  return res;
 }
 
 const norm = (s: string) => s.replace(/\s+/g, " ").trim();
@@ -100,8 +196,7 @@ function pruneForDiversity(options: MakeOption[], topN: number): MakeOption[] {
   // Rank by P/A
   const ranked = options
     .map(opt => {
-      const capacity = (opt.output1Amount || 0) * (opt.runsPerDay || 0);
-      const res = buildScenarioRows(opt, 0, capacity, false);
+      const res = buildScenarioRowsAtCapacity(opt);
       return { opt, pa: res.subtreeProfitPerArea ?? -Infinity };
     })
     .sort((a, b) => b.pa - a.pa);
@@ -241,17 +336,7 @@ function buildAllOptionsForTicker(
   const rows = recipeMap.map[materialTicker] || [];
   if (!rows.length) return [];
 
-  const costCols = getCostColumnNames(exchange, priceType);
-  const idx = {
-    building: headers.indexOf("Building"),
-    recipeId: headers.indexOf("RecipeID"),
-    wf: headers.indexOf(costCols.wfCst),
-    dep: headers.indexOf(costCols.deprec),
-    area: headers.indexOf("Area"),
-    build: headers.indexOf(costCols.allBuildCst),
-    runs: headers.indexOf("Runs P/D"),
-    areaPerOut: headers.indexOf("AreaPerOutput"),
-  };
+  const idx = getColumnIndices(headers, exchange, priceType);
 
   const bestEntry = bestMap?.[materialTicker] ?? null;
   const bestId = bestEntry?.recipeId ?? null;
@@ -303,7 +388,9 @@ function buildAllOptionsForTicker(
   for (const row of rowsToUse) {
     const recipeId = idx.recipeId !== -1 ? String(row[idx.recipeId] ?? "") : null;
     const building = idx.building !== -1 ? String(row[idx.building] ?? "") : null;
-    const runsPerDay = Math.max(1, Number(row[idx.runs] ?? 0) || 1);
+    // Preserve fractional runs/day (many recipes run < 1/day); only default when missing/invalid
+    const runsPerDayVal = Number(row[idx.runs] ?? 0);
+    const runsPerDay = runsPerDayVal > 0 ? runsPerDayVal : 1;
     const area = Math.max(1, Number(row[idx.area] ?? 0) || 1);
     const areaPerOutCell = Number(row[idx.areaPerOut] ?? 0);
     const areaPerOutput = areaPerOutCell > 0 ? areaPerOutCell : null;
@@ -321,8 +408,8 @@ function buildAllOptionsForTicker(
     };
     const inputs: InputItem[] = [];
     for (let j = 0; j < 10; j++) {
-      const matIndex = headers.indexOf(`Input${j + 1}MAT`);
-      const cntIndex = headers.indexOf(`Input${j + 1}CNT`);
+      const matIndex = idx.inputMat[j];
+      const cntIndex = idx.inputCnt[j];
       if (matIndex !== -1 && row[matIndex]) {
         const inputTicker = String(row[matIndex]);
         const inputAmount = Number(row[cntIndex] ?? 0);
@@ -353,8 +440,8 @@ function buildAllOptionsForTicker(
     let output1Amount = 0;
     let output1HasPrice = false;
     for (let j = 0; j < 10; j++) {
-      const matIndex = headers.indexOf(`Output${j + 1}MAT`);
-      const cntIndex = headers.indexOf(`Output${j + 1}CNT`);
+      const matIndex = idx.outputMat[j];
+      const cntIndex = idx.outputCnt[j];
       if (matIndex !== -1 && row[matIndex]) {
         const outTicker = String(row[matIndex]);
         const outAmt = Number(row[cntIndex] ?? 0);
@@ -467,6 +554,16 @@ function buildAllOptionsForTicker(
         }
       }
 
+      if (branched.length === 0) {
+        // Every scenario died on this input: no buy price and no make option.
+        // Without a diagnostic the recipe silently yields zero options and the
+        // report misreports it as a profitability failure.
+        console.warn(
+          `[engine] ${materialTicker}: input ${input.ticker} has no buy price and no make option` +
+          `${isForcedMake ? " (forceMake set)" : ""}${isForcedBuy ? " (forceBuy set)" : ""}` +
+          ` — recipe produces no scenarios`
+        );
+      }
       scenarios = branched;
     }
 
@@ -528,8 +625,7 @@ function buildAllOptionsForTicker(
       };
 
       // Calculate P/A for this option
-      const dailyCapacity = (opt.output1Amount || 0) * (opt.runsPerDay || 0);
-      const res = buildScenarioRows(opt, 0, dailyCapacity, false);
+      const res = buildScenarioRowsAtCapacity(opt);
       (opt as any).totalProfitPA = res.subtreeProfitPerArea ?? 0;
 
       allOptions.push(opt);
@@ -563,7 +659,12 @@ function bestOptionForTicker(
   forceRecipe?: Set<string>,
   excludeRecipe?: Set<string>
 ): MakeOption | null {
-  const mkey = memoKey(exchange, priceType, materialTicker, forceMake, forceBuy, forceRecipe, excludeRecipe);
+  // The result depends on `seen`: the cycle guard silently drops MAKE branches
+  // for revisited tickers, so a result computed inside one ancestor chain must
+  // not be served to a lookup with a different chain (e.g. B truncated under
+  // seen={A} vs B evaluated fresh).
+  const seenKey = seen.size > 0 ? Array.from(seen).sort().join(",") : "";
+  const mkey = `${memoKey(recipeMap, priceMap, bestMap, honorRecipeIdFilter, exchange, priceType, materialTicker, forceMake, forceBuy, forceRecipe, excludeRecipe)}::seen:${seenKey}`;
   if (BEST_MEMO.has(mkey)) return BEST_MEMO.get(mkey)!;
 
   // guard against cycles
@@ -575,17 +676,7 @@ function bestOptionForTicker(
   const rows = recipeMap.map[materialTicker] || [];
   if (!rows.length) return null;
 
-  const costCols = getCostColumnNames(exchange, priceType);
-  const idx = {
-    building: headers.indexOf("Building"),
-    recipeId: headers.indexOf("RecipeID"),
-    wf: headers.indexOf(costCols.wfCst),
-    dep: headers.indexOf(costCols.deprec),
-    area: headers.indexOf("Area"),
-    build: headers.indexOf(costCols.allBuildCst),
-    runs: headers.indexOf("Runs P/D"),
-    areaPerOut: headers.indexOf("AreaPerOutput"),
-  };
+  const idx = getColumnIndices(headers, exchange, priceType);
 
   const bestEntry = bestMap?.[materialTicker] ?? null;
   const bestId = bestEntry?.recipeId ?? null;
@@ -642,7 +733,9 @@ function bestOptionForTicker(
     const building =
       idx.building !== -1 ? String(row[idx.building] ?? "") : null;
 
-    const runsPerDay = Math.max(1, Number(row[idx.runs] ?? 0) || 1);
+    // Preserve fractional runs/day (many recipes run < 1/day); only default when missing/invalid
+    const runsPerDayVal = Number(row[idx.runs] ?? 0);
+    const runsPerDay = runsPerDayVal > 0 ? runsPerDayVal : 1;
     const area = Math.max(1, Number(row[idx.area] ?? 0) || 1);
     const areaPerOutCell = Number(row[idx.areaPerOut] ?? 0);
     const areaPerOutput = areaPerOutCell > 0 ? areaPerOutCell : null;
@@ -661,8 +754,8 @@ function bestOptionForTicker(
     };
     const inputs: InputItem[] = [];
     for (let j = 0; j < 10; j++) {
-      const matIndex = headers.indexOf(`Input${j + 1}MAT`);
-      const cntIndex = headers.indexOf(`Input${j + 1}CNT`);
+      const matIndex = idx.inputMat[j];
+      const cntIndex = idx.inputCnt[j];
       if (matIndex !== -1 && row[matIndex]) {
         const inputTicker = String(row[matIndex]);
         const inputAmount = Number(row[cntIndex] ?? 0);
@@ -693,8 +786,8 @@ function bestOptionForTicker(
     let output1Amount = 0;
     let output1HasPrice = false;
     for (let j = 0; j < 10; j++) {
-      const matIndex = headers.indexOf(`Output${j + 1}MAT`);
-      const cntIndex = headers.indexOf(`Output${j + 1}CNT`);
+      const matIndex = idx.outputMat[j];
+      const cntIndex = idx.outputCnt[j];
       if (matIndex !== -1 && row[matIndex]) {
         const outTicker = String(row[matIndex]);
         const outAmt = Number(row[cntIndex] ?? 0);
@@ -808,6 +901,16 @@ function bestOptionForTicker(
         }
       }
 
+      if (branched.length === 0) {
+        // Every scenario died on this input: no buy price and no make option.
+        // Without a diagnostic the recipe silently yields zero options and the
+        // report misreports it as a profitability failure.
+        console.warn(
+          `[engine] ${materialTicker}: input ${input.ticker} has no buy price and no make option` +
+          `${isForcedMake ? " (forceMake set)" : ""}${isForcedBuy ? " (forceBuy set)" : ""}` +
+          ` — recipe produces no scenarios`
+        );
+      }
       scenarios = branched;
     }
 
@@ -870,8 +973,7 @@ function bestOptionForTicker(
       };
 
       // Evaluate P/A at this ticker's capacity
-      const dailyCapacity = (opt.output1Amount || 0) * (opt.runsPerDay || 0);
-      const res = buildScenarioRows(opt, 0, dailyCapacity, false);
+      const res = buildScenarioRowsAtCapacity(opt);
       const pa = res.subtreeProfitPerArea ?? -Infinity;
 
       // Always track best-by-PA as fallback
@@ -918,7 +1020,9 @@ export function findAllMakeOptions(
   if (depth > 0) {
     if (exploreAllChildScenarios) {
       // Check full exploration cache
-      const cacheKey = memoKey(exchange, priceType, materialTicker, forceMake, forceBuy, forceRecipe, excludeRecipe);
+      // Depth is part of the key: pruning rules differ by depth, so scenario
+      // sets generated at one depth must not be served at another
+      const cacheKey = `${memoKey(recipeMap, priceMap, bestMap, honorRecipeIdFilter, exchange, priceType, materialTicker, forceMake, forceBuy, forceRecipe, excludeRecipe)}::d${depth}`;
       if (ALL_SCENARIOS_MEMO.has(cacheKey)) {
         return ALL_SCENARIOS_MEMO.get(cacheKey)!;
       }
@@ -967,15 +1071,15 @@ export function findAllMakeOptions(
   const headers = recipeMap.headers;
   const rows = recipeMap.map[materialTicker] || [];
 
-  const costCols = getCostColumnNames(exchange, priceType);
-  const buildingIndex = headers.indexOf("Building");
-  const recipeIdIndex = headers.indexOf("RecipeID");
-  const workforceCostIndex = headers.indexOf(costCols.wfCst);
-  const depreciationCostIndex = headers.indexOf(costCols.deprec);
-  const areaIndex = headers.indexOf("Area");
-  const buildCostIndex = headers.indexOf(costCols.allBuildCst);
-  const runsPerDayIndex = headers.indexOf("Runs P/D");
-  const areaPerOutputIndex = headers.indexOf("AreaPerOutput");
+  const rootIdx = getColumnIndices(headers, exchange, priceType);
+  const buildingIndex = rootIdx.building;
+  const recipeIdIndex = rootIdx.recipeId;
+  const workforceCostIndex = rootIdx.wf;
+  const depreciationCostIndex = rootIdx.dep;
+  const areaIndex = rootIdx.area;
+  const buildCostIndex = rootIdx.build;
+  const runsPerDayIndex = rootIdx.runs;
+  const areaPerOutputIndex = rootIdx.areaPerOut;
 
   // If depth > 0 and exploreAllChildScenarios, respect bestMap recipeId filter (if enabled)
   let rowsToProcess = rows;
@@ -1062,8 +1166,8 @@ export function findAllMakeOptions(
     }> = [];
 
     for (let j = 0; j < 10; j++) {
-      const matIndex = headers.indexOf(`Input${j + 1}MAT`);
-      const cntIndex = headers.indexOf(`Input${j + 1}CNT`);
+      const matIndex = rootIdx.inputMat[j];
+      const cntIndex = rootIdx.inputCnt[j];
       if (matIndex !== -1 && row[matIndex]) {
         const inputTicker = String(row[matIndex]);
         const inputAmount = Number(row[cntIndex] ?? 0);
@@ -1111,8 +1215,8 @@ export function findAllMakeOptions(
     let output1HasPrice = false;
 
     for (let j = 0; j < 10; j++) {
-      const matIndex = headers.indexOf(`Output${j + 1}MAT`);
-      const cntIndex = headers.indexOf(`Output${j + 1}CNT`);
+      const matIndex = rootIdx.outputMat[j];
+      const cntIndex = rootIdx.outputCnt[j];
       if (matIndex !== -1 && row[matIndex]) {
         const outputTicker = String(row[matIndex]);
         const outputAmount = Number(row[cntIndex] ?? 0);
@@ -1227,6 +1331,16 @@ export function findAllMakeOptions(
         }
       }
 
+      if (branched.length === 0) {
+        // Every scenario died on this input: no buy price and no make option.
+        // Without a diagnostic the recipe silently yields zero options and the
+        // report misreports it as a profitability failure.
+        console.warn(
+          `[engine] ${materialTicker}: input ${input.ticker} has no buy price and no make option` +
+          `${isForcedMake ? " (forceMake set)" : ""}${isForcedBuy ? " (forceBuy set)" : ""}` +
+          ` — recipe produces no scenarios`
+        );
+      }
       scenarios = branched;
     }
 
@@ -1292,7 +1406,7 @@ export function findAllMakeOptions(
 
   // Cache AFTER all rows processed, OUTSIDE the loop
   if (depth > 0 && results.length > 0 && exploreAllChildScenarios) {
-    const cacheKey = memoKey(exchange, priceType, materialTicker, forceMake, forceBuy, forceRecipe, excludeRecipe);
+    const cacheKey = `${memoKey(recipeMap, priceMap, bestMap, honorRecipeIdFilter, exchange, priceType, materialTicker, forceMake, forceBuy, forceRecipe, excludeRecipe)}::d${depth}`;
     ALL_SCENARIOS_MEMO.set(cacheKey, results);
   }
 
