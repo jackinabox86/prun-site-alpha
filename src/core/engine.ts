@@ -599,7 +599,12 @@ function bestOptionForTicker(
   forceRecipe?: Set<string>,
   excludeRecipe?: Set<string>
 ): MakeOption | null {
-  const mkey = memoKey(recipeMap, priceMap, bestMap, honorRecipeIdFilter, exchange, priceType, materialTicker, forceMake, forceBuy, forceRecipe, excludeRecipe);
+  // The result depends on `seen`: the cycle guard silently drops MAKE branches
+  // for revisited tickers, so a result computed inside one ancestor chain must
+  // not be served to a lookup with a different chain (e.g. B truncated under
+  // seen={A} vs B evaluated fresh).
+  const seenKey = seen.size > 0 ? Array.from(seen).sort().join(",") : "";
+  const mkey = `${memoKey(recipeMap, priceMap, bestMap, honorRecipeIdFilter, exchange, priceType, materialTicker, forceMake, forceBuy, forceRecipe, excludeRecipe)}::seen:${seenKey}`;
   if (BEST_MEMO.has(mkey)) return BEST_MEMO.get(mkey)!;
 
   // guard against cycles
