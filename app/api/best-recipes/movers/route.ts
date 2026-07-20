@@ -20,7 +20,9 @@ interface MoverResult {
   currentProfitPA: number;
   previousProfitPA: number | null;
   absoluteChange: number;
-  percentChange: number;
+  // null when the ticker has no previous snapshot to compare against (isNew)
+  percentChange: number | null;
+  isNew: boolean;
   currentBuyAllProfitPA: number | null;
   previousBuyAllProfitPA: number | null;
   buyAllAbsoluteChange: number | null;
@@ -223,6 +225,7 @@ export async function GET(request: Request) {
           previousProfitPA: previousItem.profitPA,
           absoluteChange,
           percentChange,
+          isNew: false,
           currentBuyAllProfitPA: currentItem.buyAllProfitPA,
           previousBuyAllProfitPA: previousItem.buyAllProfitPA,
           buyAllAbsoluteChange,
@@ -234,17 +237,19 @@ export async function GET(request: Request) {
           previousBuilding: previousItem.building,
         });
       } else {
-        // New ticker - not in previous snapshot
+        // New ticker - not in previous snapshot, so there is no real percent
+        // change to report; flag it as new instead of fabricating a figure
         movers.push({
           ticker: currentItem.ticker,
           currentProfitPA: currentItem.profitPA,
           previousProfitPA: null,
           absoluteChange: currentItem.profitPA,
-          percentChange: 100, // Treat as 100% increase for new tickers
+          percentChange: null,
+          isNew: true,
           currentBuyAllProfitPA: currentItem.buyAllProfitPA,
           previousBuyAllProfitPA: null,
           buyAllAbsoluteChange: currentItem.buyAllProfitPA,
-          buyAllPercentChange: 100,
+          buyAllPercentChange: null,
           recipeChanged: false,
           currentRecipeId: currentItem.recipeId,
           previousRecipeId: null,
@@ -254,12 +259,15 @@ export async function GET(request: Request) {
       }
     }
 
-    // Sort movers by percentage change (default) or absolute change
+    // Sort movers by percentage change (default) or absolute change.
+    // New tickers have no percent change — rank them below all real movers.
+    const percentMagnitude = (m: MoverResult) =>
+      m.percentChange === null ? -1 : Math.abs(m.percentChange);
     movers.sort((a, b) => {
       if (sortBy === "absolute") {
         return Math.abs(b.absoluteChange) - Math.abs(a.absoluteChange);
       }
-      return Math.abs(b.percentChange) - Math.abs(a.percentChange);
+      return percentMagnitude(b) - percentMagnitude(a);
     });
 
     // Apply limit

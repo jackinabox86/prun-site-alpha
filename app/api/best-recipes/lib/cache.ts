@@ -4,10 +4,14 @@ interface CacheEntry<T> {
   ttl: number;
 }
 
+const CLEANUP_INTERVAL_MS = 5 * 60 * 1000;
+
 class SimpleCache {
   private cache = new Map<string, CacheEntry<any>>();
+  private lastCleanup = Date.now();
 
   get<T>(key: string): T | null {
+    this.maybeCleanup();
     const entry = this.cache.get(key);
     if (!entry) return null;
 
@@ -21,6 +25,7 @@ class SimpleCache {
   }
 
   set<T>(key: string, data: T, ttlMs: number): void {
+    this.maybeCleanup();
     this.cache.set(key, {
       data,
       timestamp: Date.now(),
@@ -32,9 +37,13 @@ class SimpleCache {
     this.cache.clear();
   }
 
-  // Cleanup old entries periodically
-  cleanup(): void {
+  // Lazily sweep expired entries at most once per interval. A module-level
+  // setInterval would keep event-loop handles alive (and stack up under
+  // dev hot-reload); piggybacking on get/set needs no timer at all.
+  private maybeCleanup(): void {
     const now = Date.now();
+    if (now - this.lastCleanup < CLEANUP_INTERVAL_MS) return;
+    this.lastCleanup = now;
     for (const [key, entry] of this.cache.entries()) {
       if (now - entry.timestamp > entry.ttl) {
         this.cache.delete(key);
@@ -80,7 +89,3 @@ export async function getOrCompute<T>(key: string, ttlMs: number, fn: () => Prom
   return promise;
 }
 
-// Run cleanup every 5 minutes
-if (typeof setInterval !== 'undefined') {
-  setInterval(() => apiCache.cleanup(), 5 * 60 * 1000);
-}

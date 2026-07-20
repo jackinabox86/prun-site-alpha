@@ -148,11 +148,16 @@ export default function BestRecipesClient() {
     "ANT",
     { urlParamName: "exchange", updateUrl: true }
   );
-  const [sellAt, setSellAt] = usePersistedSettings<string>(
+  const [sellAtRaw, setSellAt] = usePersistedSettings<string>(
     "prun:settings:priceType",
     "bid",
     { urlParamName: "sellAt", updateUrl: true }
   );
+  // The persisted key is shared with the main page, which also offers pp30.
+  // This page (and /api/best-recipes) doesn't support it, so coerce unknown
+  // values to bid — otherwise the API silently falls back to bid while no
+  // price-type button appears selected.
+  const sellAt = SELL_AT_OPTIONS.some((o) => o.value === sellAtRaw) ? sellAtRaw : "bid";
   const [extractionMode, setExtractionMode] = usePersistedSettings<boolean>(
     "prun:settings:extractionMode",
     false,

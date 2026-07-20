@@ -71,9 +71,13 @@ export default function ReportClient() {
   );
   const [showCopiedMessage, setShowCopiedMessage] = useState(false);
 
+  // Extraction mode is only supported on ANT — the toggle stays persisted for
+  // when the user returns to ANT, but must never be sent for other exchanges
+  const effectiveExtractionMode = exchange === "ANT" && extractionMode;
+
   useEffect(() => {
     const params = new URLSearchParams();
-    if (extractionMode) {
+    if (effectiveExtractionMode) {
       params.set("extractionMode", "true");
     }
     const url = params.toString() ? `/api/tickers?${params}` : "/api/tickers";
@@ -91,7 +95,7 @@ export default function ReportClient() {
     return () => {
       cancelled = true;
     };
-  }, [extractionMode]);
+  }, [effectiveExtractionMode]);
 
   // Read ticker and optional parameters from URL params on mount
   useEffect(() => {
@@ -155,7 +159,7 @@ export default function ReportClient() {
         ticker: tickerInput.trim().toUpperCase(),
         exchange,
         priceType,
-        extractionMode: extractionMode ? "true" : "false",
+        extractionMode: effectiveExtractionMode ? "true" : "false",
       };
 
       // Only include forceMake and forceBuy if they're not empty

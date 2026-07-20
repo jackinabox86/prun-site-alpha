@@ -13,7 +13,9 @@ interface MoverResult {
   currentProfitPA: number;
   previousProfitPA: number | null;
   absoluteChange: number;
-  percentChange: number;
+  // null for tickers with no previous snapshot (isNew)
+  percentChange: number | null;
+  isNew: boolean;
   currentBuyAllProfitPA: number | null;
   previousBuyAllProfitPA: number | null;
   buyAllAbsoluteChange: number | null;
@@ -503,10 +505,12 @@ export default function BestRecipesHistoryClient() {
                       style={{
                         textAlign: "right",
                         fontWeight: "bold",
-                        color: mover.percentChange >= 0 ? "var(--color-success)" : "var(--color-error)",
+                        color: mover.percentChange === null
+                          ? "var(--color-text-muted)"
+                          : mover.percentChange >= 0 ? "var(--color-success)" : "var(--color-error)",
                       }}
                     >
-                      {formatPercent(mover.percentChange)}
+                      {mover.percentChange !== null ? formatPercent(mover.percentChange) : "NEW"}
                     </td>
                     <td style={{ textAlign: "right", color: "var(--color-text-muted)" }}>
                       {mover.currentBuyAllProfitPA !== null

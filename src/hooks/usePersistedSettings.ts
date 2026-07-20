@@ -40,13 +40,17 @@ export function usePersistedSettings<T>(
     deserialize = defaultDeserialize,
   } = options;
 
-  // Initialize state with priority: URL params → localStorage → default
-  const [value, setValue] = useState<T>(() => {
-    // SSR safety
-    if (typeof window === "undefined") {
-      return defaultValue;
-    }
+  // Always start from the default so the client's first render matches the
+  // server-rendered HTML (reading localStorage/URL in the initializer causes
+  // React hydration mismatches). The real value is applied on mount below.
+  const [value, setValue] = useState<T>(defaultValue);
 
+  // On mount, apply the persisted value with priority: URL params →
+  // localStorage → default. The URL value applies to this session only — it
+  // does NOT overwrite the user's stored setting, so opening a shared link
+  // doesn't permanently change their preferences. The setting is persisted
+  // only when the user changes it themselves (setPersistedValue).
+  useEffect(() => {
     // 1. Check URL parameters (highest priority)
     if (urlParamName) {
       const params = new URLSearchParams(window.location.search);
@@ -54,7 +58,8 @@ export function usePersistedSettings<T>(
       if (urlValue !== null) {
         const deserialized = deserialize(urlValue, defaultValue);
         if (deserialized !== null) {
-          return deserialized;
+          setValue(deserialized);
+          return;
         }
       }
     }
@@ -62,27 +67,7 @@ export function usePersistedSettings<T>(
     // 2. Check localStorage
     const storedValue = safeGetLocalStorage<T>(settingKey, defaultValue);
     if (storedValue !== defaultValue) {
-      return storedValue;
-    }
-
-    // 3. Return default
-    return defaultValue;
-  });
-
-  // On mount, read from URL params if provided. The URL value applies to this
-  // session only — it does NOT overwrite the user's stored setting, so opening
-  // a shared link doesn't permanently change their preferences. The setting is
-  // persisted only when the user changes it themselves (setPersistedValue).
-  useEffect(() => {
-    if (urlParamName && typeof window !== "undefined") {
-      const params = new URLSearchParams(window.location.search);
-      const urlValue = params.get(urlParamName);
-      if (urlValue !== null) {
-        const deserialized = deserialize(urlValue, defaultValue);
-        if (deserialized !== null) {
-          setValue(deserialized);
-        }
-      }
+      setValue(storedValue);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);

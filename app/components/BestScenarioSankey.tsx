@@ -345,7 +345,8 @@ const BestScenarioSankey = memo(function BestScenarioSankey({
       }
     }
 
-    const isBuyNode = (idx: number) => (nodeLabels[idx] || "").startsWith("Buy ");
+    // Buy labels are HTML: `<b>&nbsp;Buy ${ticker}</b>` — match on the marked-up text
+    const isBuyNode = (idx: number) => (nodeLabels[idx] || "").includes("&nbsp;Buy ");
 
     // Calculate position of each node within its column for parent ordering
     const nodePositionInColumn = new Array<number>(N).fill(0);
