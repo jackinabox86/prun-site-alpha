@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback, useMemo } from "react";
+import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import { usePersistedSettings } from "../../src/hooks/usePersistedSettings";
 import type { PMMGRow, PMMGCorpRow, PMMGApiResponse } from "../api/pmmg/route";
 
@@ -101,14 +101,19 @@ export default function PMMGClient() {
   const [corpSortField, setCorpSortField] = useState<CorpSortField>("profitPerBase");
   const [corpSortAsc, setCorpSortAsc] = useState(false);
 
+  // Guard against out-of-order responses when switching months quickly
+  const requestIdRef = useRef(0);
+
   const fetchData = useCallback(
     async (month?: string) => {
+      const requestId = ++requestIdRef.current;
       setLoading(true);
       setError(null);
       try {
         const url = month ? `/api/pmmg?month=${encodeURIComponent(month)}` : "/api/pmmg";
         const res = await fetch(url);
         const json: PMMGApiResponse = await res.json();
+        if (requestId !== requestIdRef.current) return; // stale response
         if (json.error) {
           setError(json.error);
         } else {
@@ -118,9 +123,12 @@ export default function PMMGClient() {
           if (!month) setSelectedMonth(json.month);
         }
       } catch (err) {
+        if (requestId !== requestIdRef.current) return; // stale response
         setError(err instanceof Error ? err.message : "Failed to fetch");
       } finally {
-        setLoading(false);
+        if (requestId === requestIdRef.current) {
+          setLoading(false);
+        }
       }
     },
     [setSelectedMonth]

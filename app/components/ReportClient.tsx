@@ -78,10 +78,19 @@ export default function ReportClient() {
     }
     const url = params.toString() ? `/api/tickers?${params}` : "/api/tickers";
 
+    // Ignore stale responses if extractionMode is toggled again before this resolves
+    let cancelled = false;
     fetch(url, { cache: "no-store" })
       .then((r) => (r.ok ? r.json() : Promise.reject(new Error("Failed to load tickers"))))
-      .then((data: { tickers: string[] }) => setTickers(data.tickers ?? []))
-      .catch(() => setTickers([]));
+      .then((data: { tickers: string[] }) => {
+        if (!cancelled) setTickers(data.tickers ?? []);
+      })
+      .catch(() => {
+        if (!cancelled) setTickers([]);
+      });
+    return () => {
+      cancelled = true;
+    };
   }, [extractionMode]);
 
   // Read ticker and optional parameters from URL params on mount

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import dynamic from "next/dynamic";
 import type { Exchange } from "@/types";
 import { formatProfitPerArea } from "@/lib/formatting";
@@ -103,8 +103,14 @@ export default function BestRecipesHistoryClient() {
   const [historyData, setHistoryData] = useState<HistoricalSnapshot[]>([]);
   const [historyError, setHistoryError] = useState<string | null>(null);
 
+  // Request-id guards: these loaders re-fire on every setting change, and a
+  // slow earlier response must not overwrite the state of a later request
+  const moversRequestIdRef = useRef(0);
+  const historyRequestIdRef = useRef(0);
+
   // Load movers data
   const loadMovers = useCallback(async () => {
+    const requestId = ++moversRequestIdRef.current;
     setMoversLoading(true);
     setMoversError(null);
     try {
@@ -114,6 +120,7 @@ export default function BestRecipesHistoryClient() {
       });
 
       const json: MoversResponse = await res.json();
+      if (requestId !== moversRequestIdRef.current) return; // stale response
 
       if (!json.success) {
         setMoversError(json.error || "Failed to load movers data");
@@ -125,11 +132,14 @@ export default function BestRecipesHistoryClient() {
       setMoversData(json.movers || []);
       setComparisonTimestamps(json.comparisonTimestamps || null);
     } catch (err: any) {
+      if (requestId !== moversRequestIdRef.current) return; // stale response
       setMoversError(err.message || "Failed to load movers data");
       setMoversData([]);
       setComparisonTimestamps(null);
     } finally {
-      setMoversLoading(false);
+      if (requestId === moversRequestIdRef.current) {
+        setMoversLoading(false);
+      }
     }
   }, [period, exchange, sellAt]);
 
@@ -137,6 +147,7 @@ export default function BestRecipesHistoryClient() {
   const loadHistory = useCallback(async (ticker: string) => {
     if (!ticker) return;
 
+    const requestId = ++historyRequestIdRef.current;
     setHistoryLoading(true);
     setHistoryError(null);
     try {
@@ -146,6 +157,7 @@ export default function BestRecipesHistoryClient() {
       });
 
       const json: HistoryResponse = await res.json();
+      if (requestId !== historyRequestIdRef.current) return; // stale response
 
       if (!json.success) {
         setHistoryError(json.error || "Failed to load history data");
@@ -155,10 +167,13 @@ export default function BestRecipesHistoryClient() {
 
       setHistoryData(json.history || []);
     } catch (err: any) {
+      if (requestId !== historyRequestIdRef.current) return; // stale response
       setHistoryError(err.message || "Failed to load history data");
       setHistoryData([]);
     } finally {
-      setHistoryLoading(false);
+      if (requestId === historyRequestIdRef.current) {
+        setHistoryLoading(false);
+      }
     }
   }, [exchange, sellAt]);
 
