@@ -1,6 +1,6 @@
 // src/server/report.ts
 import { loadAllFromCsv } from "@/lib/loadFromCsv";
-import { findAllMakeOptions, buildScenarioRows, clearScenarioCache } from "@/core/engine";
+import { findAllMakeOptions, buildScenarioRows, buildScenarioRowsAtCapacity, clearScenarioCache } from "@/core/engine";
 import { computeRoiNarrow, computeRoiBroad } from "@/core/roi";
 import { cachedBestRecipes } from "@/server/cachedBestRecipes";
 import { GCS_DATA_SOURCES, GCS_STATIC_BASE } from "@/lib/config";
@@ -401,7 +401,7 @@ export async function buildReport(opts: {
   const ranked = options
     .map(o => {
       const capacity = (o.output1Amount || 0) * (o.runsPerDay || 0);
-      const r = buildScenarioRows(o, 0, capacity, false); // used for PA/area math only
+      const r = buildScenarioRowsAtCapacity(o); // used for PA/area math only
       return { o, r, capacity };
     })
     .sort((a, b) => (b.r.subtreeProfitPerArea ?? 0) - (a.r.subtreeProfitPerArea ?? 0));

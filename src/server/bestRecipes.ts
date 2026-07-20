@@ -1,6 +1,6 @@
 // src/server/bestRecipes.ts
 import { loadAllFromCsv } from "@/lib/loadFromCsv";
-import { findAllMakeOptions, buildScenarioRows, clearScenarioCache } from "@/core/engine";
+import { findAllMakeOptions, buildScenarioRowsAtCapacity, clearScenarioCache } from "@/core/engine";
 import { findPrice } from "@/core/price";
 import { scenarioDisplayName } from "@/core/scenario";
 import type { RecipeSheet, RecipeRow, BestMap, PriceMode, Exchange, PriceType } from "@/types";
@@ -332,8 +332,7 @@ export async function refreshBestRecipeIDs(
 
       // Compute P/A for each option
       options.forEach((option) => {
-        const dailyCapacity = (option.output1Amount || 0) * (option.runsPerDay || 0);
-        const result = buildScenarioRows(option, 0, dailyCapacity, false);
+        const result = buildScenarioRowsAtCapacity(option);
         option.totalProfitPA = result.subtreeProfitPerArea || 0;
       });
 
