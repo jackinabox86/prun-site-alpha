@@ -46,13 +46,15 @@ const LINK_FADE_END = 0.25;
 const LINK_OPACITY = 0.16;
 const ROUTE_OPACITY = 0.5;
 
-// Base markers: a faint yellow ring, plus one dot per base when a system
-// holds more than one.
+// Base markers: a faint yellow ring with one dot per base in the system.
 const BASE_COLOR = "#ffd84a";
 const GATEWAY_COLOR = "#4ff0ff";
 const GATEWAY_OPACITY = 0.55;
 const NO_GATEWAYS: GatewayLink[] = [];
 const BASE_RING_SIZE = 57.5;
+// Hovering a base lights its route to the exchange along the jump lines.
+const HIGHLIGHT_COLOR = "#fff3b0";
+const HIGHLIGHT_GATEWAY_COLOR = "#b8fbff";
 const MAX_BASE_DOTS = 12;
 
 const FLY_MS = 900;
@@ -62,9 +64,12 @@ const EXCHANGE_STORAGE_KEY = "starMap.exchange";
 const GATEWAYS_STORAGE_KEY = "starMap.gateways";
 /** Older builds kept the burn paste in its own box; it now lives in the bases box. */
 const BURN_STORAGE_KEY = "starMap.burn";
-const SHIP_STORAGE_KEY = "starMap.ship";
+/** New key so the fleet becomes the default even where a single hold was saved. */
+const SHIP_STORAGE_KEY = "starMap.shipHold";
 const MIN_DAYS_STORAGE_KEY = "starMap.minDays";
 const FLEET_STORAGE_KEY = "starMap.fleet";
+/** System names whose bases route on jump lines only. */
+const NO_GATEWAY_STORAGE_KEY = "starMap.noGateway";
 /** Ship hold option that plans with the counts in the fleet box. */
 const FLEET_OPTION = "fleet";
 const DEFAULT_MIN_DAYS = 7;
@@ -139,7 +144,7 @@ const baseFragmentShader = /* glsl */ `
     float d = length(c) * 2.0;
     if (d > 1.0) discard;
     float a = smoothstep(0.07, 0.0, abs(d - 0.82)) * 0.4;
-    if (vCount > 1.5) {
+    if (vCount > 0.5) {
       for (int k = 0; k < ${MAX_BASE_DOTS}; k++) {
         if (float(k) >= vCount) break;
         float ang = 6.2831853 * float(k) / vCount - 1.5707963;
@@ -194,6 +199,8 @@ interface SceneApi {
   setBases: (counts: Map<number, number>) => void;
   setEmpire: (empire: Empire | null) => void;
   setGateways: (edges: [number, number][]) => void;
+  /** Each base system's path to its exchange, lit while the base is hovered. */
+  setBasePaths: (paths: Map<number, number[]>) => void;
 }
 
 interface Bases {
@@ -228,13 +235,14 @@ export default function StarMapClient() {
   const [queryError, setQueryError] = useState<string | null>(null);
   const [basesText, updateBasesText] = useStoredText(BASES_STORAGE_KEY);
   const [exchangeCode, setExchangeCode] = useStoredText(EXCHANGE_STORAGE_KEY);
-  const [shipId, setShipId] = useStoredText(SHIP_STORAGE_KEY, SHIP_SIZES[0].id);
+  const [shipId, setShipId] = useStoredText(SHIP_STORAGE_KEY, FLEET_OPTION);
   const [minDaysText, setMinDaysText] = useStoredText(MIN_DAYS_STORAGE_KEY, String(DEFAULT_MIN_DAYS));
   const [fleetText, setFleetText] = useStoredText(FLEET_STORAGE_KEY);
   const [materialSizes, setMaterialSizes] = useState<Map<string, MaterialSize>>(() => new Map());
   const [gatewayData, setGatewayData] = useState<GatewayData>({ links: [], source: "none" });
   const [gatewaysOffText, setGatewaysOffText] = useStoredText(GATEWAYS_STORAGE_KEY);
   const useGateways = gatewaysOffText !== "off";
+  const [noGatewayText, setNoGatewayText] = useStoredText(NO_GATEWAY_STORAGE_KEY);
   const [empireOn, setEmpireOn] = useState(false);
   const [plannerOpen, setPlannerOpen] = useState(false);
   const [selectedRoute, setSelectedRoute] = useState<number | null>(null);
@@ -317,13 +325,27 @@ export default function StarMapClient() {
     return { bySystem, pinned, unresolved };
   }, [resolve, listText, burn]);
 
+  // Bases opted out of gateways, kept by system name so the list survives edits to the bases box.
+  const noGateways = useMemo(() => {
+    const names = new Set(splitList(noGatewayText));
+    return new Set((systems ?? []).flatMap((s, i) => (names.has(s.name) ? [i] : [])));
+  }, [systems, noGatewayText]);
+  const toggleGateway = (system: number) => {
+    if (!systems) return;
+    const names = new Set(splitList(noGatewayText));
+    const name = systems[system].name;
+    if (names.has(name)) names.delete(name);
+    else names.add(name);
+    setNoGatewayText([...names].join("\n"));
+  };
+
   const homeExchange = findExchange(exchangeCode);
   const empire = useMemo(
     () =>
       systems && bases.bySystem.size > 0
-        ? computeEmpire(systems, [...bases.bySystem.keys()], (base) => bases.pinned.get(base) ?? homeExchange, gateways)
+        ? computeEmpire(systems, [...bases.bySystem.keys()], (base) => bases.pinned.get(base) ?? homeExchange, gateways, noGateways)
         : null,
-    [systems, bases, homeExchange, gateways],
+    [systems, bases, homeExchange, gateways, noGateways],
   );
 
   const useFleet = shipId === FLEET_OPTION;
@@ -342,9 +364,10 @@ export default function StarMapClient() {
         [...exchangeOf.keys()],
         (base) => exchangeOf.get(base) ?? null,
         gateways.filter((g) => g.maxShipVolume >= volume),
+        noGateways,
       );
     return planRoutes(systems, empire, loadsByBase(burn.bases, resolve).stops, useFleet ? fleet : ship, minDays, empireFor);
-  }, [systems, resolve, empire, burn, useFleet, fleet, ship, minDays, gateways]);
+  }, [systems, resolve, empire, burn, useFleet, fleet, ship, minDays, gateways, noGateways]);
   const setFleetCount = (id: string, n: number) => {
     const next = new Map(fleet);
     next.set(id, n);
@@ -483,6 +506,43 @@ export default function StarMapClient() {
     const baseMarkers = new THREE.Points(new THREE.BufferGeometry(), baseMaterial);
     scene.add(baseMarkers);
 
+    // The hovered base's route, drawn bright over everything else.
+    const highlightMaterial = new THREE.LineBasicMaterial({
+      vertexColors: true,
+      transparent: true,
+      depthWrite: false,
+      depthTest: false,
+      blending: THREE.AdditiveBlending,
+    });
+    const highlight = new THREE.LineSegments(new THREE.BufferGeometry(), highlightMaterial);
+    highlight.renderOrder = 1;
+    scene.add(highlight);
+    let basePaths = new Map<number, number[]>();
+    const lineColor = new THREE.Color(HIGHLIGHT_COLOR);
+    const gateColor = new THREE.Color(HIGHLIGHT_GATEWAY_COLOR);
+    const showHighlight = (index: number) => {
+      const path = basePaths.get(index) ?? [];
+      const edges: [number, number][] = [];
+      for (let k = 1; k < path.length; k++) edges.push([path[k - 1], path[k]]);
+      const edgeColors = new Float32Array(edges.length * 6);
+      edges.forEach(([a, b], k) => {
+        const c = systems[a].neighbors.includes(b) ? lineColor : gateColor;
+        c.toArray(edgeColors, k * 6);
+        c.toArray(edgeColors, k * 6 + 3);
+      });
+      const geometry = new THREE.BufferGeometry();
+      geometry.setAttribute("position", new THREE.BufferAttribute(segmentPositions(positions, edges), 3));
+      geometry.setAttribute("color", new THREE.BufferAttribute(edgeColors, 3));
+      highlight.geometry.dispose();
+      highlight.geometry = geometry;
+    };
+
+    // System names beside base systems, shown once zoomed in.
+    const labelLayer = document.createElement("div");
+    labelLayer.style.cssText = "position:absolute;inset:0;overflow:hidden;pointer-events:none";
+    container.appendChild(labelLayer);
+    let labels: { index: number; el: HTMLDivElement }[] = [];
+
     // Faint, non-interactive background dust far outside the map.
     const dustCount = 1800;
     const dustPositions = new Float32Array(dustCount * 3);
@@ -605,6 +665,7 @@ export default function StarMapClient() {
       if (best !== hoveredIndex) {
         hoveredIndex = best;
         starMaterial.uniforms.uHovered.value = best;
+        showHighlight(best);
         renderer.domElement.style.cursor = best >= 0 ? "pointer" : "grab";
         invalidate();
       }
@@ -651,6 +712,14 @@ export default function StarMapClient() {
         geometry.setAttribute("count", new THREE.BufferAttribute(cnt, 1));
         baseMarkers.geometry.dispose();
         baseMarkers.geometry = geometry;
+        labelLayer.replaceChildren();
+        labels = [...counts.keys()].map((index) => {
+          const el = document.createElement("div");
+          el.textContent = systems[index].name;
+          el.style.cssText = `position:absolute;left:0;top:0;display:none;color:${BASE_COLOR};font:11px var(--font-mono);white-space:nowrap;text-shadow:0 0 3px #000,0 0 6px #000`;
+          labelLayer.appendChild(el);
+          return { index, el };
+        });
         invalidate();
       },
       setEmpire: (empire) => {
@@ -678,6 +747,11 @@ export default function StarMapClient() {
         allGatewayEdges = edges;
         if (!empireShown) showGatewayEdges(edges);
       },
+      setBasePaths: (paths) => {
+        basePaths = paths;
+        showHighlight(hoveredIndex);
+        invalidate();
+      },
     };
 
     let frame = 0;
@@ -704,6 +778,19 @@ export default function StarMapClient() {
       const fade = THREE.MathUtils.clamp((LINK_FADE_START - distance) / (LINK_FADE_START - LINK_FADE_END), 0, 1);
       linkMaterial.opacity = fade * LINK_OPACITY;
       links.visible = fade > 0 && !empireShown;
+      const labelsOn = distance < LINK_FADE_START;
+      const w = container.clientWidth;
+      const h = container.clientHeight;
+      for (const { index, el } of labels) {
+        projected.fromArray(positions, index * 3).applyMatrix4(camera.matrixWorldInverse);
+        const ahead = projected.z < 0;
+        projected.fromArray(positions, index * 3).project(camera);
+        const x = ((projected.x + 1) / 2) * w;
+        const y = ((1 - projected.y) / 2) * h;
+        const show = labelsOn && ahead && visible[index] > 0.5 && x > -200 && x < w && y > -20 && y < h + 20;
+        el.style.display = show ? "block" : "none";
+        if (show) el.style.transform = `translate(${(x + 12).toFixed(1)}px, ${(y - 7).toFixed(1)}px)`;
+      }
       renderer.render(scene, camera);
     };
     animate();
@@ -729,6 +816,9 @@ export default function StarMapClient() {
       gatewayMaterial.dispose();
       baseMarkers.geometry.dispose();
       baseMaterial.dispose();
+      highlight.geometry.dispose();
+      highlightMaterial.dispose();
+      labelLayer.remove();
       dustGeometry.dispose();
       dustMaterial.dispose();
       renderer.dispose();
@@ -749,6 +839,9 @@ export default function StarMapClient() {
   useEffect(() => {
     sceneApi.current?.setEmpire(empireActive ? shownEmpire : null);
   }, [systems, shownEmpire, empireActive]);
+  useEffect(() => {
+    sceneApi.current?.setBasePaths(new Map((empire?.routes ?? []).map((r) => [r.base, r.path])));
+  }, [systems, empire]);
 
   const onZoomSubmit = (e: FormEvent) => {
     e.preventDefault();
@@ -764,6 +857,7 @@ export default function StarMapClient() {
 
   const hovered = hover && systems ? systems[hover.index] : null;
   const hoveredBases = hover ? bases.bySystem.get(hover.index) : undefined;
+  const hoveredRoute = hover ? empire?.routes.find((r) => r.base === hover.index) : undefined;
   const baseCount = [...bases.bySystem.values()].reduce((n, labels) => n + labels.length, 0);
 
   return (
@@ -808,6 +902,12 @@ export default function StarMapClient() {
           {hoveredBases && (
             <div style={{ color: BASE_COLOR, fontSize: 11 }}>
               {hoveredBases.length === 1 ? "Base" : `${hoveredBases.length} bases`}: {hoveredBases.map((id) => planetNames.get(id) ?? id).join(", ")}
+            </div>
+          )}
+          {hoveredRoute && systems && (
+            <div style={{ color: HIGHLIGHT_COLOR, fontSize: 11 }}>
+              Route to {systems[hoveredRoute.exchange].exchange?.code}: {hoveredRoute.jumps} jump{hoveredRoute.jumps === 1 ? "" : "s"}
+              {hoveredRoute.gatewayLimit !== null && <span style={{ color: GATEWAY_COLOR }}> via gateway</span>}
             </div>
           )}
         </div>
@@ -891,6 +991,16 @@ export default function StarMapClient() {
                   {r.gatewayLimit !== null && <span style={{ color: GATEWAY_COLOR }}> via gateway</span>}
                   {bases.pinned.has(r.base) && " (pinned)"}
                 </span>
+                {gateways.length > 0 && (r.gatewayLimit !== null || noGateways.has(r.base)) && (
+                  <button
+                    type="button"
+                    onClick={() => toggleGateway(r.base)}
+                    title={noGateways.has(r.base) ? "Let this base use gateways again" : "Route this base on jump lines only"}
+                    style={{ ...linkButtonStyle, color: noGateways.has(r.base) ? GATEWAY_COLOR : "#6f80a3" }}
+                  >
+                    {noGateways.has(r.base) ? "use gateway" : "skip gateway"}
+                  </button>
+                )}
               </div>
             ))}
           </div>
@@ -911,12 +1021,12 @@ export default function StarMapClient() {
               <label style={{ flex: 1, color: "#8fa3c7" }}>
                 Ship hold
                 <select value={useFleet ? FLEET_OPTION : ship.id} onChange={(e) => setShipId(e.target.value)} style={{ ...inputStyle, display: "block", width: "100%" }}>
+                  <option value={FLEET_OPTION}>My fleet (fewest ships)</option>
                   {SHIP_SIZES.map((x) => (
                     <option key={x.id} value={x.id}>
                       {x.label}
                     </option>
                   ))}
-                  <option value={FLEET_OPTION}>My fleet (fewest ships)</option>
                 </select>
               </label>
               <label style={{ width: 96, color: "#8fa3c7" }}>
@@ -1048,6 +1158,17 @@ function FleetSummary({ plan, fleetSize }: { plan: PlannedRoute[]; fleetSize: nu
 }
 
 const fmt = (n: number) => (n >= 100 ? n.toFixed(0) : n.toFixed(1));
+
+const linkButtonStyle: CSSProperties = {
+  marginLeft: 6,
+  padding: 0,
+  background: "none",
+  border: "none",
+  fontFamily: "var(--font-mono)",
+  fontSize: 11,
+  textDecoration: "underline",
+  cursor: "pointer",
+};
 
 const routeCardStyle: CSSProperties = {
   display: "block",

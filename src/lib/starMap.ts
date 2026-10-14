@@ -325,13 +325,15 @@ export function findExchange(text: string): Exchange | null {
 /**
  * For each base system: the exchange with the fewest jumps (ties broken by
  * straight-line distance) and the shortest jump route to it. A gateway counts
- * as one jump. `exchangeFor` pins a base system to one exchange instead.
+ * as one jump. `exchangeFor` pins a base system to one exchange instead;
+ * bases in `noGateways` route on jump lines only.
  */
 export function computeEmpire(
   systems: StarSystem[],
   baseSystems: number[],
   exchangeFor?: (base: number) => Exchange | null,
   gateways: GatewayLink[] = [],
+  noGateways: ReadonlySet<number> = new Set(),
 ): Empire {
   const pairKey = (i: number, j: number) => (i < j ? `${i}-${j}` : `${j}-${i}`);
   const gates = new Map<number, number[]>();
@@ -344,6 +346,12 @@ export function computeEmpire(
   }
   const exchanges = systems.flatMap((s, i) => (s.exchange ? [i] : []));
   const fromExchange = new Map(exchanges.map((x) => [x, jumpsFrom(systems, x, gates)]));
+  let linesOnly: Map<number, ReturnType<typeof jumpsFrom>> | null = null;
+  const tableFor = (base: number) => {
+    if (gates.size === 0 || !noGateways.has(base)) return fromExchange;
+    linesOnly ??= new Map(exchanges.map((x) => [x, jumpsFrom(systems, x, new Map())]));
+    return linesOnly;
+  };
   const routes: EmpireRoute[] = [];
   const shown = new Set<number>();
   const edgeKeys = new Set<string>();
@@ -353,9 +361,10 @@ export function computeEmpire(
     shown.add(base);
     let best: { x: number; jumps: number; d2: number } | null = null;
     const pinned = exchangeFor?.(base);
+    const table = tableFor(base);
     for (const x of exchanges) {
       if (pinned && systems[x].exchange !== pinned) continue;
-      const jumps = fromExchange.get(x)!.dist[base];
+      const jumps = table.get(x)!.dist[base];
       if (jumps < 0) continue;
       const a = systems[base];
       const b = systems[x];
@@ -364,7 +373,7 @@ export function computeEmpire(
     }
     if (!best) continue;
     // Following predecessors from the base walks back to the exchange.
-    const { prev } = fromExchange.get(best.x)!;
+    const { prev } = table.get(best.x)!;
     const path = [base];
     let gatewayLimit: number | null = null;
     for (let i = base; i !== best.x; i = prev[i]) {
