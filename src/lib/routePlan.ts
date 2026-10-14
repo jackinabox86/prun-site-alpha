@@ -5,9 +5,10 @@
 // volume come from FIO /material/allmaterials. A route is a milk run from an
 // exchange: it leaves with every stop's inputs and picks up outputs as it goes,
 // the same load model refined-prun's ROUTEBURN uses. There are no flight times
-// here, so jumps stand in for lap length.
+// here, so jumps stand in for lap length; a gateway counts as one jump, and a
+// ship may only take a gateway its volume fits.
 
-import type { Empire, Resolver, StarSystem } from "./starMap";
+import type { Empire, EmpireRoute, Resolver, StarSystem } from "./starMap";
 
 export const DEFAULT_MATERIAL_DATA_URL = "/data/material-sizes.json";
 
@@ -154,9 +155,14 @@ export interface PlannedRoute {
   lapJumps: number;
   /** A single stop the ship cannot carry the minimum days for. */
   overloaded: boolean;
+  /** Smallest gateway ship volume limit on the lap; null when it uses no gateway. */
+  gatewayLimit: number | null;
+  /** The ship is too big for a gateway on the lap. */
+  gatewayBlocked: boolean;
   /** Systems on the lap, for highlighting. */
   systems: number[];
   edges: [number, number][];
+  gatewayEdges: [number, number][];
 }
 
 type Hold = { weight: number; volume: number };
@@ -267,6 +273,10 @@ function mergeStops(ordered: SystemLoad[]) {
  * Which base starts each route changes the result a lot, so a fleet is planned
  * with several start orders and the best plan wins: the fewest bases left
  * without a ship, then the fewest on overloaded routes, then the fewest ships.
+ *
+ * `empireFor` gives the paths a ship of a given volume can fly: gateways cap
+ * ship volume, so a big ship may have to take the jump lines instead. Each
+ * base keeps the exchange `empire` gave it.
  */
 export function planRoutes(
   systems: StarSystem[],
@@ -274,8 +284,9 @@ export function planRoutes(
   allStops: SystemLoad[],
   ships: ShipSize | Fleet,
   minDays: number,
+  empireFor: (shipVolume: number) => Empire = () => empire,
 ): PlannedRoute[] {
-  if (!(ships instanceof Map)) return planOnce(systems, empire, allStops, ships, minDays, "farthest");
+  if (!(ships instanceof Map)) return planOnce(systems, empire, empireFor, allStops, ships, minDays, "farthest");
   const score = (plan: PlannedRoute[]) => {
     const bases = (r: PlannedRoute) => r.stops.reduce((n, s) => n + s.planets.length, 0);
     let unserved = 0;
@@ -287,7 +298,7 @@ export function planRoutes(
       else {
         used++;
         jumps += r.lapJumps;
-        if (r.overloaded) short += bases(r);
+        if (r.overloaded || r.gatewayBlocked) short += bases(r);
       }
     }
     return [unserved, short, used, jumps];
@@ -299,7 +310,7 @@ export function planRoutes(
   let best: PlannedRoute[] | null = null;
   let bestScore: number[] = [];
   for (const startOrder of START_ORDERS) {
-    const plan = planOnce(systems, empire, allStops, ships, minDays, startOrder);
+    const plan = planOnce(systems, empire, empireFor, allStops, ships, minDays, startOrder);
     const s = score(plan);
     if (!best || better(s, bestScore)) {
       best = plan;
@@ -318,33 +329,58 @@ export function planRoutes(
  */
 const START_ORDERS = ["farthest", "farthest-fit", "heaviest-fit"] as const;
 
+const edgeKey = ([a, b]: [number, number]) => (a < b ? `${a}-${b}` : `${b}-${a}`);
+
+/** One empire's routes, indexed for planning. */
+interface Paths {
+  routeOf: Map<number, EmpireRoute>;
+  gatewayKeys: Set<string>;
+}
+
+function indexPaths(empire: Empire): Paths {
+  return { routeOf: new Map(empire.routes.map((r) => [r.base, r])), gatewayKeys: new Set(empire.gatewayEdges.map(edgeKey)) };
+}
+
 function planOnce(
   systems: StarSystem[],
   empire: Empire,
+  empireFor: (shipVolume: number) => Empire,
   allStops: SystemLoad[],
   ships: ShipSize | Fleet,
   minDays: number,
   startOrder: (typeof START_ORDERS)[number],
 ): PlannedRoute[] {
   const left = ships instanceof Map ? new Map(ships) : null;
-  const routeOf = new Map(empire.routes.map((r) => [r.base, r]));
+  const main = indexPaths(empire);
+  const pathsByVolume = new Map<number, Paths>();
+  const pathsFor = (hold: Hold) => {
+    let paths = pathsByVolume.get(hold.volume);
+    if (!paths) {
+      paths = indexPaths(empireFor(hold.volume));
+      pathsByVolume.set(hold.volume, paths);
+    }
+    return paths;
+  };
+
   const byExchange = new Map<number, number[]>();
   allStops.forEach((stop, i) => {
-    const r = routeOf.get(stop.system);
+    const r = main.routeOf.get(stop.system);
     if (!r) return;
     const list = byExchange.get(r.exchange) ?? [];
     list.push(i);
     byExchange.set(r.exchange, list);
   });
 
-  const jumpsOf = (i: number) => routeOf.get(allStops[i].system)!.jumps;
-  const order = (list: number[]) =>
+  const jumpsIn = (paths: Paths) => (i: number) => (paths.routeOf.get(allStops[i].system) ?? main.routeOf.get(allStops[i].system)!).jumps;
+  const mainJumps = jumpsIn(main);
+  const orderBy = (jumpsOf: (i: number) => number) => (list: number[]) =>
     [...list].sort((a, b) => jumpsOf(a) - jumpsOf(b) || allStops[a].system - allStops[b].system).map((i) => allStops[i]);
+  const mainOrder = orderBy(mainJumps);
 
   const planned: PlannedRoute[] = [];
   for (const [exchange, members] of byExchange) {
     const open = new Set(members);
-    const farthestFirst = [...members].sort((a, b) => jumpsOf(b) - jumpsOf(a) || allStops[b].load.inT - allStops[a].load.inT);
+    const farthestFirst = [...members].sort((a, b) => mainJumps(b) - mainJumps(a) || allStops[b].load.inT - allStops[a].load.inT);
     const owned = SHIP_SIZES.filter((s) => (left?.get(s.id) ?? 0) > 0).sort((a, b) => capacity(a) - capacity(b));
     const neededHold = (i: number) => {
       const fit = owned.find((s) => coverDays([allStops[i]], s).days >= minDays);
@@ -360,33 +396,53 @@ function planOnce(
       if (!open.has(start)) continue;
       if (left && SHIP_SIZES.every((s) => (left.get(s.id) ?? 0) <= 0)) {
         // The fleet is used up: everything still open is listed once, unserved.
-        const { stops, load } = mergeStops(order([...open]));
+        const { stops, load } = mergeStops(mainOrder([...open]));
         open.clear();
-        planned.push({ exchange, ship: null, stops, load, coverDays: 0, binding: "weight", lapJumps: 0, overloaded: true, systems: stops.map((x) => x.system), edges: [] });
+        planned.push({
+          exchange,
+          ship: null,
+          stops,
+          load,
+          coverDays: 0,
+          binding: "weight",
+          lapJumps: 0,
+          overloaded: true,
+          gatewayLimit: null,
+          gatewayBlocked: false,
+          systems: stops.map((x) => x.system),
+          edges: [],
+          gatewayEdges: [],
+        });
         break;
       }
       open.delete(start);
-      // The trunk is the start's path to the exchange. Other stops sit on it or
-      // on a short side trip off it; measuring from the trunk alone keeps side
-      // trips from chaining outward.
-      const trunk = routeOf.get(allStops[start].system)!.path;
-      const { dist, prev } = bfs(systems, trunk, MAX_DETOUR_JUMPS);
-      const distOf = (i: number) => dist.get(allStops[i].system);
-      const candidates = [...open]
-        .filter((i) => distOf(i) !== undefined)
-        .sort((a, b) => distOf(a)! - distOf(b)! || allStops[b].load.inT - allStops[a].load.inT);
 
+      // The trunk is the start's path to the exchange, as this hold can fly it.
+      // Other stops sit on it or on a short side trip off it; measuring from the
+      // trunk alone keeps side trips from chaining outward.
       const grow = (hold: Hold) => {
+        const paths = pathsFor(hold);
+        const routeOf = (i: number) => paths.routeOf.get(allStops[i].system) ?? main.routeOf.get(allStops[i].system)!;
+        const order = orderBy(jumpsIn(paths));
+        const trunk = routeOf(start).path;
+        const { dist, prev } = bfs(systems, trunk, MAX_DETOUR_JUMPS);
+        const distOf = (i: number) => dist.get(allStops[i].system);
+        const candidates = [...open]
+          .filter((i) => distOf(i) !== undefined)
+          .sort((a, b) => distOf(a)! - distOf(b)! || allStops[b].load.inT - allStops[a].load.inT);
         const chosen = [start];
-        if (coverDays(order(chosen), hold).days < minDays) return { chosen, overloaded: true };
-        for (const c of candidates) {
-          if (coverDays(order([...chosen, c]), hold).days >= minDays) chosen.push(c);
+        const overloaded = coverDays(order(chosen), hold).days < minDays;
+        if (!overloaded) {
+          for (const c of candidates) {
+            if (coverDays(order([...chosen, c]), hold).days >= minDays) chosen.push(c);
+          }
         }
-        return { chosen, overloaded: false };
+        return { chosen, overloaded, paths, routeOf, order, trunk, dist, prev };
       };
+      type Lap = ReturnType<typeof grow>;
 
       let ship: ShipSize;
-      let lap: { chosen: number[]; overloaded: boolean };
+      let lap: Lap;
       if (!left) {
         ship = ships as ShipSize;
         lap = grow(ship);
@@ -398,11 +454,16 @@ function planOnce(
           const best = fitting.reduce((a, b) =>
             b.lap.chosen.length > a.lap.chosen.length || (b.lap.chosen.length === a.lap.chosen.length && capacity(b.ship) < capacity(a.ship)) ? b : a,
           );
-          lap = best.lap;
-          const stops = order(lap.chosen);
-          ship = [...available].sort((a, b) => capacity(a) - capacity(b)).find((s) => coverDays(stops, s).days >= minDays) ?? best.ship;
+          // The smallest free ship that still carries these bases; it keeps the
+          // lap it grows itself, which holds the same bases or more.
+          const smaller = [...available]
+            .sort((a, b) => capacity(a) - capacity(b))
+            .map((s) => tries.find((t) => t.ship === s)!)
+            .find((t) => t.lap.chosen.length >= best.lap.chosen.length && !t.lap.overloaded);
+          ship = (smaller ?? best).ship;
+          lap = (smaller ?? best).lap;
         } else {
-          const best = tries.reduce((a, b) => (coverDays(order([start]), b.ship).days > coverDays(order([start]), a.ship).days ? b : a));
+          const best = tries.reduce((a, b) => (coverDays([allStops[start]], b.ship).days > coverDays([allStops[start]], a.ship).days ? b : a));
           ship = best.ship;
           lap = best.lap;
         }
@@ -410,6 +471,7 @@ function planOnce(
       }
       lap.chosen.forEach((i) => open.delete(i));
 
+      const { trunk, dist, prev } = lap;
       const onLap = new Set(trunk);
       const sideEdges: [number, number][] = [];
       let detourJumps = 0;
@@ -421,16 +483,19 @@ function planOnce(
         }
       }
 
-      const ordered = order(lap.chosen);
+      const ordered = lap.order(lap.chosen);
+      const limits = lap.chosen.map((i) => lap.routeOf(i).gatewayLimit).filter((l): l is number => l !== null);
+      const gatewayLimit = limits.length > 0 ? Math.min(...limits) : null;
       const { days, binding } = coverDays(ordered, ship);
       const { stops, load } = mergeStops(ordered);
       const edgeKeys = new Set<string>();
       const edges: [number, number][] = [];
-      const addEdge = ([a, b]: [number, number]) => {
-        const key = a < b ? `${a}-${b}` : `${b}-${a}`;
+      const gatewayEdges: [number, number][] = [];
+      const addEdge = (edge: [number, number]) => {
+        const key = edgeKey(edge);
         if (edgeKeys.has(key)) return;
         edgeKeys.add(key);
-        edges.push([a, b]);
+        (lap.paths.gatewayKeys.has(key) ? gatewayEdges : edges).push(edge);
       };
       // Stops on the start's path share its edges; the rest hang off side trips.
       for (let i = 0; i + 1 < trunk.length; i++) addEdge([trunk[i], trunk[i + 1]]);
@@ -442,10 +507,13 @@ function planOnce(
         load,
         coverDays: days,
         binding,
-        lapJumps: 2 * Math.max(...lap.chosen.map(jumpsOf)) + 2 * detourJumps,
+        lapJumps: 2 * Math.max(...lap.chosen.map((i) => lap.routeOf(i).jumps)) + 2 * detourJumps,
         overloaded: lap.overloaded,
+        gatewayLimit,
+        gatewayBlocked: gatewayLimit !== null && ship.volume > gatewayLimit,
         systems: [...onLap],
         edges,
+        gatewayEdges,
       });
     }
   }

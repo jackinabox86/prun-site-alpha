@@ -7,11 +7,14 @@ import {
   EXCHANGES,
   computeEmpire,
   findExchange,
+  loadGateways,
   loadPlanetNames,
   loadStarSystems,
   makeResolver,
   splitList,
   type Empire,
+  type GatewayData,
+  type GatewayLink,
   type Exchange,
   type StarSystem,
 } from "@/lib/starMap";
@@ -46,6 +49,9 @@ const ROUTE_OPACITY = 0.5;
 // Base markers: a faint yellow ring, plus one dot per base when a system
 // holds more than one.
 const BASE_COLOR = "#ffd84a";
+const GATEWAY_COLOR = "#4ff0ff";
+const GATEWAY_OPACITY = 0.55;
+const NO_GATEWAYS: GatewayLink[] = [];
 const BASE_RING_SIZE = 57.5;
 const MAX_BASE_DOTS = 12;
 
@@ -53,6 +59,7 @@ const FLY_MS = 900;
 const FLY_DISTANCE = 260;
 const BASES_STORAGE_KEY = "starMap.bases";
 const EXCHANGE_STORAGE_KEY = "starMap.exchange";
+const GATEWAYS_STORAGE_KEY = "starMap.gateways";
 /** Older builds kept the burn paste in its own box; it now lives in the bases box. */
 const BURN_STORAGE_KEY = "starMap.burn";
 const SHIP_STORAGE_KEY = "starMap.ship";
@@ -186,6 +193,7 @@ interface SceneApi {
   flyToSystem: (index: number) => void;
   setBases: (counts: Map<number, number>) => void;
   setEmpire: (empire: Empire | null) => void;
+  setGateways: (edges: [number, number][]) => void;
 }
 
 interface Bases {
@@ -224,6 +232,9 @@ export default function StarMapClient() {
   const [minDaysText, setMinDaysText] = useStoredText(MIN_DAYS_STORAGE_KEY, String(DEFAULT_MIN_DAYS));
   const [fleetText, setFleetText] = useStoredText(FLEET_STORAGE_KEY);
   const [materialSizes, setMaterialSizes] = useState<Map<string, MaterialSize>>(() => new Map());
+  const [gatewayData, setGatewayData] = useState<GatewayData>({ links: [], source: "none" });
+  const [gatewaysOffText, setGatewaysOffText] = useStoredText(GATEWAYS_STORAGE_KEY);
+  const useGateways = gatewaysOffText !== "off";
   const [empireOn, setEmpireOn] = useState(false);
   const [plannerOpen, setPlannerOpen] = useState(false);
   const [selectedRoute, setSelectedRoute] = useState<number | null>(null);
@@ -242,6 +253,16 @@ export default function StarMapClient() {
       cancelled = true;
     };
   }, []);
+
+  useEffect(() => {
+    if (!systems) return;
+    let cancelled = false;
+    loadGateways(systems).then((data) => !cancelled && setGatewayData(data));
+    return () => {
+      cancelled = true;
+    };
+  }, [systems]);
+  const gateways = useGateways ? gatewayData.links : NO_GATEWAYS;
 
   const resolve = useMemo(() => (systems ? makeResolver(systems, planetNames) : null), [systems, planetNames]);
 
@@ -300,9 +321,9 @@ export default function StarMapClient() {
   const empire = useMemo(
     () =>
       systems && bases.bySystem.size > 0
-        ? computeEmpire(systems, [...bases.bySystem.keys()], (base) => bases.pinned.get(base) ?? homeExchange)
+        ? computeEmpire(systems, [...bases.bySystem.keys()], (base) => bases.pinned.get(base) ?? homeExchange, gateways)
         : null,
-    [systems, bases, homeExchange],
+    [systems, bases, homeExchange, gateways],
   );
 
   const useFleet = shipId === FLEET_OPTION;
@@ -312,8 +333,18 @@ export default function StarMapClient() {
   const minDays = Math.max(0, parseFloat(minDaysText) || 0);
   const plan = useMemo<PlannedRoute[]>(() => {
     if (!systems || !resolve || !empire || burn.bases.length === 0) return [];
-    return planRoutes(systems, empire, loadsByBase(burn.bases, resolve).stops, useFleet ? fleet : ship, minDays);
-  }, [systems, resolve, empire, burn, useFleet, fleet, ship, minDays]);
+    // A ship only takes gateways its volume fits, so bigger ships may fly the
+    // jump lines instead; each base keeps the exchange the empire view gave it.
+    const exchangeOf = new Map(empire.routes.map((r) => [r.base, systems[r.exchange].exchange]));
+    const empireFor = (volume: number) =>
+      computeEmpire(
+        systems,
+        [...exchangeOf.keys()],
+        (base) => exchangeOf.get(base) ?? null,
+        gateways.filter((g) => g.maxShipVolume >= volume),
+      );
+    return planRoutes(systems, empire, loadsByBase(burn.bases, resolve).stops, useFleet ? fleet : ship, minDays, empireFor);
+  }, [systems, resolve, empire, burn, useFleet, fleet, ship, minDays, gateways]);
   const setFleetCount = (id: string, n: number) => {
     const next = new Map(fleet);
     next.set(id, n);
@@ -326,7 +357,12 @@ export default function StarMapClient() {
     const route = selectedRoute === null ? undefined : plan[selectedRoute];
     if (!empire || !route) return empire;
     const stops = new Set(route.stops.map((s) => s.system));
-    return { routes: empire.routes.filter((r) => stops.has(r.base)), systems: new Set(route.systems), edges: route.edges };
+    return {
+      routes: empire.routes.filter((r) => stops.has(r.base)),
+      systems: new Set(route.systems),
+      edges: route.edges,
+      gatewayEdges: route.gatewayEdges,
+    };
   }, [empire, plan, selectedRoute]);
   const empireActive = empireOn && shownEmpire !== null;
 
@@ -414,6 +450,26 @@ export default function StarMapClient() {
     const routes = new THREE.LineSegments(new THREE.BufferGeometry(), routeMaterial);
     routes.visible = false;
     scene.add(routes);
+
+    // Gateway jumps: every working pair on the full map, only the empire's own
+    // in empire view.
+    const gatewayMaterial = new THREE.LineBasicMaterial({
+      color: GATEWAY_COLOR,
+      transparent: true,
+      opacity: GATEWAY_OPACITY,
+      depthWrite: false,
+      blending: THREE.AdditiveBlending,
+    });
+    const gatewayLines = new THREE.LineSegments(new THREE.BufferGeometry(), gatewayMaterial);
+    scene.add(gatewayLines);
+    let allGatewayEdges: [number, number][] = [];
+    const showGatewayEdges = (edges: [number, number][]) => {
+      const geometry = new THREE.BufferGeometry();
+      geometry.setAttribute("position", new THREE.BufferAttribute(segmentPositions(positions, edges), 3));
+      gatewayLines.geometry.dispose();
+      gatewayLines.geometry = geometry;
+      invalidate();
+    };
 
     // Base markers, replaced whenever the base list changes.
     const baseMaterial = new THREE.ShaderMaterial({
@@ -606,6 +662,7 @@ export default function StarMapClient() {
         routes.geometry.dispose();
         routes.geometry = geometry;
         routes.visible = empire !== null;
+        showGatewayEdges(empire ? empire.gatewayEdges : allGatewayEdges);
         if (empire) {
           // Frame everything the empire view shows.
           const sphere = new THREE.Sphere().setFromPoints([...empire.systems].map((i) => new THREE.Vector3().fromArray(positions, i * 3)));
@@ -616,6 +673,10 @@ export default function StarMapClient() {
         empireShown = empire !== null;
         invalidate();
         pick();
+      },
+      setGateways: (edges) => {
+        allGatewayEdges = edges;
+        if (!empireShown) showGatewayEdges(edges);
       },
     };
 
@@ -664,6 +725,8 @@ export default function StarMapClient() {
       linkMaterial.dispose();
       routes.geometry.dispose();
       routeMaterial.dispose();
+      gatewayLines.geometry.dispose();
+      gatewayMaterial.dispose();
       baseMarkers.geometry.dispose();
       baseMaterial.dispose();
       dustGeometry.dispose();
@@ -674,6 +737,9 @@ export default function StarMapClient() {
   }, [systems]);
 
   // These run after the scene effect above, so the handle is ready.
+  useEffect(() => {
+    sceneApi.current?.setGateways(gateways.map((g) => [g.a, g.b]));
+  }, [gateways, systems]);
   // Empire view hides every other system, so hide their base rings too.
   useEffect(() => {
     const shown = [...bases.bySystem].filter(([i]) => !empireActive || shownEmpire?.systems.has(i));
@@ -789,6 +855,13 @@ export default function StarMapClient() {
             ))}
           </select>
         </label>
+        <label style={{ display: "flex", alignItems: "center", gap: 6, marginTop: 4, color: "#8fa3c7" }}>
+          <input type="checkbox" checked={useGateways} onChange={(e) => setGatewaysOffText(e.target.checked ? "" : "off")} />
+          Use gateways
+          <span style={{ color: "#6f80a3", fontSize: 11 }}>
+            {gatewayData.source === "none" ? "(none loaded)" : `(${gatewayData.links.length} working, ${gatewayData.source === "live" ? "live from FIO" : "saved snapshot"})`}
+          </span>
+        </label>
         <div style={{ color: "#6f80a3", fontSize: 11 }}>Pin one base with &quot;Base &gt; AI1&quot;. A pasted burn table also feeds the route planner.</div>
         <div style={{ color: "#6f80a3", marginTop: 4 }}>
           {baseCount > 0 && `${baseCount} base${baseCount === 1 ? "" : "s"} in ${bases.bySystem.size} system${bases.bySystem.size === 1 ? "" : "s"}`}
@@ -815,6 +888,7 @@ export default function StarMapClient() {
                 {systems[r.base].name} → <span style={{ color: systems[r.exchange].exchange?.color }}>{systems[r.exchange].exchange?.code}</span>{" "}
                 <span style={{ color: "#6f80a3" }}>
                   {r.jumps} jump{r.jumps === 1 ? "" : "s"}
+                  {r.gatewayLimit !== null && <span style={{ color: GATEWAY_COLOR }}> via gateway</span>}
                   {bases.pinned.has(r.base) && " (pinned)"}
                 </span>
               </div>
@@ -896,7 +970,7 @@ export default function StarMapClient() {
                     }}
                     style={{
                       ...routeCardStyle,
-                      borderColor: selected ? BASE_COLOR : r.overloaded ? "rgba(255, 138, 128, 0.5)" : "rgba(160, 185, 255, 0.2)",
+                      borderColor: selected ? BASE_COLOR : r.overloaded || r.gatewayBlocked ? "rgba(255, 138, 128, 0.5)" : "rgba(160, 185, 255, 0.2)",
                     }}
                   >
                     <div>
@@ -913,6 +987,13 @@ export default function StarMapClient() {
                     </div>
                     {r.overloaded && r.ship && <div style={{ color: "#ff8a80" }}>Under {minDays} days on its own: needs a bigger hold.</div>}
                     {!r.ship && <div style={{ color: "#ff8a80" }}>Every ship in the fleet is already on a route.</div>}
+                    {r.ship && r.gatewayLimit !== null && (
+                      <div style={{ color: r.gatewayBlocked ? "#ff8a80" : GATEWAY_COLOR }}>
+                        {r.gatewayBlocked
+                          ? `Hold is ${fmt(r.ship.volume)}m³; a gateway on this lap takes at most ${fmt(r.gatewayLimit)}m³.`
+                          : `Uses a gateway (max ${fmt(r.gatewayLimit)}m³ ships).`}
+                      </div>
+                    )}
                   </button>
                 );
               })}
@@ -931,6 +1012,12 @@ export default function StarMapClient() {
           <div>
             <span style={{ display: "inline-block", width: 7, height: 7, borderRadius: "50%", border: `1px solid ${BASE_COLOR}`, marginRight: 8 }} />
             Your bases
+          </div>
+        )}
+        {gateways.length > 0 && (
+          <div>
+            <span style={{ display: "inline-block", width: 12, height: 2, background: GATEWAY_COLOR, verticalAlign: "middle", marginRight: 5 }} />
+            Gateway
           </div>
         )}
         <div style={{ color: "#6f80a3", marginTop: 4 }}>
@@ -954,7 +1041,7 @@ function FleetSummary({ plan, fleetSize }: { plan: PlannedRoute[]; fleetSize: nu
     <div style={{ marginTop: 4 }}>
       {usedCount} of {fleetSize} ships on {routes} route{routes === 1 ? "" : "s"}
       {used.size > 0 && ` (${SHIP_SIZES.filter((s) => used.has(s.id)).map((s) => `${used.get(s.id)}× ${s.id}`).join(", ")})`}.
-      {unserved > 0 && <div style={{ color: "#ff8a80" }}>{unserved} bases have no ship: add ships.</div>}
+      {unserved > 0 && <div style={{ color: "#ff8a80" }}>{unserved === 1 ? "1 base has" : `${unserved} bases have`} no ship: add ships.</div>}
       {short > 0 && <div style={{ color: "#ff8a80" }}>{short} routes fall short of the minimum days even with the biggest ship left.</div>}
     </div>
   );

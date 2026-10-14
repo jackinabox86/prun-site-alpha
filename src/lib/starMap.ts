@@ -22,6 +22,16 @@ export function planetDataUrl(): string {
   return process.env.NEXT_PUBLIC_PLANET_DATA_URL || DEFAULT_PLANET_DATA_URL;
 }
 
+// Gateways, in the FIO api.fnar.net/gateway shape. The live endpoint allows
+// cross-origin reads, so the map asks it first and falls back to the committed
+// snapshot when it cannot be reached.
+export const LIVE_GATEWAY_DATA_URL = "https://api.fnar.net/gateway?include_upkeeps=false&include_phases=false&include_contractors=false";
+export const DEFAULT_GATEWAY_DATA_URL = "/data/gateways.json";
+
+export function gatewayDataUrl(): string {
+  return process.env.NEXT_PUBLIC_GATEWAY_DATA_URL || DEFAULT_GATEWAY_DATA_URL;
+}
+
 /** Shape of one entry in the raw systems response (fields we read). */
 interface RawStarSystem {
   SystemId?: string;
@@ -128,6 +138,80 @@ export async function loadPlanetNames(url: string = planetDataUrl()): Promise<Ma
   }
 }
 
+/** A working two-way gateway pair: one jump between two distant systems. */
+export interface GatewayLink {
+  a: number;
+  b: number;
+  name: string;
+  /** The smaller of the two gates' ship volume limits, in m³. */
+  maxShipVolume: number;
+}
+
+interface RawGateway {
+  GatewayId?: string;
+  Name?: string;
+  LocationNaturalId?: string;
+  OperationalState?: string;
+  LinkStatus?: string;
+  OutgoingLink?: string | null;
+  MaxShipVolume?: number;
+}
+
+/**
+ * Keeps only gateway pairs that can be used right now: both gates operational,
+ * their link established, and each gate pointing at the other.
+ */
+export function parseGateways(raw: unknown, systems: StarSystem[]): GatewayLink[] {
+  if (!Array.isArray(raw)) return [];
+  const systemByNaturalId = new Map(systems.map((s, i) => [s.naturalId.toUpperCase(), i]));
+  const systemOf = (planet?: string) => {
+    const m = /^([A-Z]{2}-\d{3})/i.exec(planet ?? "");
+    return m ? systemByNaturalId.get(m[1].toUpperCase()) : undefined;
+  };
+  const usable = (g?: RawGateway): g is RawGateway => g?.OperationalState === "OPERATIONAL" && g.LinkStatus === "ESTABLISHED";
+  const byId = new Map((raw as RawGateway[]).filter((g) => g?.GatewayId).map((g) => [g.GatewayId!, g]));
+  const links: GatewayLink[] = [];
+  const seen = new Set<string>();
+  for (const g of byId.values()) {
+    const other = g.OutgoingLink ? byId.get(g.OutgoingLink) : undefined;
+    if (!usable(g) || !usable(other) || other.OutgoingLink !== g.GatewayId) continue;
+    const key = [g.GatewayId, other.GatewayId].sort().join("|");
+    if (seen.has(key)) continue;
+    seen.add(key);
+    const a = systemOf(g.LocationNaturalId);
+    const b = systemOf(other.LocationNaturalId);
+    if (a === undefined || b === undefined || a === b) continue;
+    links.push({
+      a,
+      b,
+      name: g.Name || `${g.LocationNaturalId} - ${other.LocationNaturalId}`,
+      maxShipVolume: Math.min(g.MaxShipVolume ?? 0, other.MaxShipVolume ?? 0),
+    });
+  }
+  return links;
+}
+
+export interface GatewayData {
+  links: GatewayLink[];
+  source: "live" | "snapshot" | "none";
+}
+
+/** Gateways are optional: without them the map routes on jump lines only. */
+export async function loadGateways(systems: StarSystem[]): Promise<GatewayData> {
+  for (const [url, source] of [
+    [LIVE_GATEWAY_DATA_URL, "live"],
+    [gatewayDataUrl(), "snapshot"],
+  ] as const) {
+    try {
+      const res = await fetch(url);
+      if (res.ok) return { links: parseGateways(await res.json(), systems), source };
+    } catch {
+      // Try the next source.
+    }
+  }
+  return { links: [], source: "none" };
+}
+
 const PLANET_ID = /^([A-Z]{2}-\d{3})([a-z])$/i;
 const NAMED_SYSTEM_PLANET = /^(.+?)\s+([a-z])$/i;
 
@@ -190,14 +274,14 @@ export function splitList(text: string): string[] {
 }
 
 /** Breadth-first jump distances and predecessors from one system. */
-function jumpsFrom(systems: StarSystem[], start: number) {
+function jumpsFrom(systems: StarSystem[], start: number, gates: Map<number, number[]>) {
   const dist = new Array<number>(systems.length).fill(-1);
   const prev = new Array<number>(systems.length).fill(-1);
   dist[start] = 0;
   const queue = [start];
   for (let q = 0; q < queue.length; q++) {
     const i = queue[q];
-    for (const j of systems[i].neighbors) {
+    for (const j of [...systems[i].neighbors, ...(gates.get(i) ?? [])]) {
       if (dist[j] !== -1) continue;
       dist[j] = dist[i] + 1;
       prev[j] = i;
@@ -213,6 +297,8 @@ export interface EmpireRoute {
   jumps: number;
   /** System indices from the base to the exchange, inclusive. */
   path: number[];
+  /** Smallest ship volume limit of the gateways on the path; null when it uses none. */
+  gatewayLimit: number | null;
 }
 
 export interface Empire {
@@ -221,6 +307,8 @@ export interface Empire {
   systems: Set<number>;
   /** Jump edges on the routes, as system index pairs. */
   edges: [number, number][];
+  /** The edges that are gateway jumps. */
+  gatewayEdges: [number, number][];
 }
 
 /** Matches an exchange by code, name or system natural ID ("AI1", "Antares", "ZV-307"). */
@@ -236,21 +324,31 @@ export function findExchange(text: string): Exchange | null {
 
 /**
  * For each base system: the exchange with the fewest jumps (ties broken by
- * straight-line distance) and the shortest jump route to it. `exchangeFor`
- * pins a base system to one exchange instead; the star data has no gateways,
- * so a pin is how a player corrects routes that really run through one.
+ * straight-line distance) and the shortest jump route to it. A gateway counts
+ * as one jump. `exchangeFor` pins a base system to one exchange instead.
  */
 export function computeEmpire(
   systems: StarSystem[],
   baseSystems: number[],
   exchangeFor?: (base: number) => Exchange | null,
+  gateways: GatewayLink[] = [],
 ): Empire {
+  const pairKey = (i: number, j: number) => (i < j ? `${i}-${j}` : `${j}-${i}`);
+  const gates = new Map<number, number[]>();
+  const gateLimit = new Map<string, number>();
+  for (const g of gateways) {
+    gates.set(g.a, [...(gates.get(g.a) ?? []), g.b]);
+    gates.set(g.b, [...(gates.get(g.b) ?? []), g.a]);
+    const key = pairKey(g.a, g.b);
+    gateLimit.set(key, Math.max(gateLimit.get(key) ?? 0, g.maxShipVolume));
+  }
   const exchanges = systems.flatMap((s, i) => (s.exchange ? [i] : []));
-  const fromExchange = new Map(exchanges.map((x) => [x, jumpsFrom(systems, x)]));
+  const fromExchange = new Map(exchanges.map((x) => [x, jumpsFrom(systems, x, gates)]));
   const routes: EmpireRoute[] = [];
   const shown = new Set<number>();
   const edgeKeys = new Set<string>();
   const edges: [number, number][] = [];
+  const gatewayEdges: [number, number][] = [];
   for (const base of new Set(baseSystems)) {
     shown.add(base);
     let best: { x: number; jumps: number; d2: number } | null = null;
@@ -268,17 +366,22 @@ export function computeEmpire(
     // Following predecessors from the base walks back to the exchange.
     const { prev } = fromExchange.get(best.x)!;
     const path = [base];
+    let gatewayLimit: number | null = null;
     for (let i = base; i !== best.x; i = prev[i]) {
       const next = prev[i];
-      const key = i < next ? `${i}-${next}` : `${next}-${i}`;
+      const key = pairKey(i, next);
+      // A gateway pair whose systems are also one jump line apart is still
+      // reached by the jump line, which has no size limit.
+      const viaGate = gateLimit.has(key) && !systems[i].neighbors.includes(next);
+      if (viaGate) gatewayLimit = Math.min(gatewayLimit ?? Infinity, gateLimit.get(key)!);
       if (!edgeKeys.has(key)) {
         edgeKeys.add(key);
-        edges.push([i, next]);
+        (viaGate ? gatewayEdges : edges).push([i, next]);
       }
       path.push(next);
     }
     path.forEach((i) => shown.add(i));
-    routes.push({ base, exchange: best.x, jumps: best.jumps, path });
+    routes.push({ base, exchange: best.x, jumps: best.jumps, path, gatewayLimit });
   }
-  return { routes, systems: shown, edges };
+  return { routes, systems: shown, edges, gatewayEdges };
 }
