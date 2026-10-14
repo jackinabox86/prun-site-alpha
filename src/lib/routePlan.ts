@@ -7,6 +7,10 @@
 // the same load model refined-prun's ROUTEBURN uses. There are no flight times
 // here, so jumps stand in for lap length; a gateway counts as one jump, and a
 // ship may only take a gateway its volume fits.
+//
+// Milk runs: when one base on a lap makes what a later stop on the same lap
+// uses, the ship can hand it over instead of selling it at the exchange and
+// buying it back. That lightens the hold, so a ship may cover more bases.
 
 import type { Empire, EmpireRoute, Resolver, StarSystem } from "./starMap";
 
@@ -70,9 +74,19 @@ function addLoad(a: DailyLoad, b: DailyLoad) {
   a.outV += b.outV;
 }
 
+/** One material's net daily rate at a base, with its size per unit. */
+export interface Flow {
+  ticker: string;
+  /** Negative is consumed, positive is produced. */
+  rate: number;
+  weight: number;
+  volume: number;
+}
+
 export interface BurnBase {
   planet: string;
   load: DailyLoad;
+  flows: Flow[];
 }
 
 export interface ParsedBurn {
@@ -88,6 +102,7 @@ export interface ParsedBurn {
  */
 export function parseBurn(text: string, sizes: Map<string, MaterialSize>): ParsedBurn {
   const byPlanet = new Map<string, DailyLoad>();
+  const flowsOf = new Map<string, Flow[]>();
   const unknown = new Set<string>();
   for (const line of text.split(/\r?\n/)) {
     const cols = line.split("\t");
@@ -98,12 +113,15 @@ export function parseBurn(text: string, sizes: Map<string, MaterialSize>): Parse
     if (!planet || planet === "Overall" || !ticker || !Number.isFinite(rate)) continue;
     const load = byPlanet.get(planet) ?? emptyLoad();
     byPlanet.set(planet, load);
+    const flows = flowsOf.get(planet) ?? [];
+    flowsOf.set(planet, flows);
     if (rate === 0) continue;
     const size = sizes.get(ticker);
     if (!size) {
       unknown.add(ticker);
       continue;
     }
+    flows.push({ ticker, rate, weight: size.weight, volume: size.volume });
     if (rate < 0) {
       load.inT += -rate * size.weight;
       load.inV += -rate * size.volume;
@@ -113,7 +131,7 @@ export function parseBurn(text: string, sizes: Map<string, MaterialSize>): Parse
     }
   }
   return {
-    bases: [...byPlanet].map(([planet, load]) => ({ planet, load })),
+    bases: [...byPlanet].map(([planet, load]) => ({ planet, load, flows: flowsOf.get(planet) ?? [] })),
     unknownTickers: [...unknown].sort(),
   };
 }
@@ -123,6 +141,7 @@ export interface SystemLoad {
   system: number;
   planets: string[];
   load: DailyLoad;
+  flows: Flow[];
 }
 
 /**
@@ -134,7 +153,7 @@ export function loadsByBase(bases: BurnBase[], resolve: Resolver): { stops: Syst
   const unresolved: string[] = [];
   for (const base of bases) {
     const hit = resolve(base.planet);
-    if (hit) stops.push({ system: hit.system, planets: [base.planet], load: { ...base.load } });
+    if (hit) stops.push({ system: hit.system, planets: [base.planet], load: { ...base.load }, flows: base.flows });
     else unresolved.push(base.planet);
   }
   return { stops, unresolved };
@@ -144,7 +163,7 @@ export interface PlannedRoute {
   exchange: number;
   /** The hold this route is planned for; null when the fleet has no ship left for it. */
   ship: ShipSize | null;
-  /** Stops in visiting order, nearest the exchange first; bases in one system are merged. */
+  /** Stops in visiting order; bases in one system are merged. */
   stops: SystemLoad[];
   /** Daily totals over all stops. */
   load: DailyLoad;
@@ -163,6 +182,16 @@ export interface PlannedRoute {
   systems: number[];
   edges: [number, number][];
   gatewayEdges: [number, number][];
+  /** Materials handed from one base to a later stop on the lap (milk runs only). */
+  transfers: Transfer[];
+}
+
+export interface Transfer {
+  from: string;
+  to: string;
+  ticker: string;
+  /** Units per day. */
+  rate: number;
 }
 
 type Hold = { weight: number; volume: number };
@@ -192,6 +221,69 @@ export function coverDays(stops: SystemLoad[], ship: Hold) {
   const byWeight = peakT > 0 ? ship.weight / peakT : Infinity;
   const byVolume = peakV > 0 ? ship.volume / peakV : Infinity;
   return byWeight <= byVolume ? { days: byWeight, binding: "weight" as const } : { days: byVolume, binding: "volume" as const };
+}
+
+/**
+ * coverDays for a milk run: an output can feed any later stop on the lap, so
+ * the ship leaves the exchange with only what earlier stops cannot supply.
+ * Per material, what the ship must carry from the exchange is the largest
+ * running shortfall; earlier output is handed on first in, first out.
+ */
+export function milkCoverDays(stops: SystemLoad[], ship: Hold) {
+  const byTicker = new Map<string, { weight: number; volume: number; net: number[] }>();
+  stops.forEach((s, k) => {
+    for (const f of s.flows) {
+      let m = byTicker.get(f.ticker);
+      if (!m) {
+        m = { weight: f.weight, volume: f.volume, net: new Array<number>(stops.length).fill(0) };
+        byTicker.set(f.ticker, m);
+      }
+      m.net[k] += f.rate;
+    }
+  });
+  // Hold contents on leaving the exchange (index 0) and after each stop.
+  const t = new Array<number>(stops.length + 1).fill(0);
+  const v = new Array<number>(stops.length + 1).fill(0);
+  const transfers = new Map<string, Transfer>();
+  for (const [ticker, m] of byTicker) {
+    let running = 0;
+    let shortfall = 0;
+    for (const r of m.net) {
+      running -= r;
+      shortfall = Math.max(shortfall, running);
+    }
+    let load = shortfall;
+    t[0] += load * m.weight;
+    v[0] += load * m.volume;
+    const supply: { stop: number; rate: number }[] = [];
+    m.net.forEach((r, k) => {
+      load += r;
+      t[k + 1] += load * m.weight;
+      v[k + 1] += load * m.volume;
+      if (r > 0) supply.push({ stop: k, rate: r });
+      let need = -r;
+      while (need > 1e-9 && supply.length > 0) {
+        const from = supply[0];
+        const rate = Math.min(need, from.rate);
+        const key = `${from.stop}|${k}|${ticker}`;
+        const prior = transfers.get(key);
+        if (prior) prior.rate += rate;
+        else transfers.set(key, { from: stops[from.stop].planets.join(", "), to: stops[k].planets.join(", "), ticker, rate });
+        need -= rate;
+        from.rate -= rate;
+        if (from.rate <= 1e-9) supply.shift();
+      }
+    });
+  }
+  const peakT = Math.max(...t);
+  const peakV = Math.max(...v);
+  const byWeight = peakT > 0 ? ship.weight / peakT : Infinity;
+  const byVolume = peakV > 0 ? ship.volume / peakV : Infinity;
+  return {
+    days: Math.min(byWeight, byVolume),
+    binding: byWeight <= byVolume ? ("weight" as const) : ("volume" as const),
+    transfers: [...transfers.values()],
+  };
 }
 
 /** Stops more than this many jumps off a route's trunk start a separate route. */
@@ -249,8 +341,9 @@ function mergeStops(ordered: SystemLoad[]) {
     if (last?.system === s.system) {
       last.planets.push(...s.planets);
       addLoad(last.load, s.load);
+      last.flows.push(...s.flows);
     } else {
-      stops.push({ system: s.system, planets: [...s.planets], load: { ...s.load } });
+      stops.push({ system: s.system, planets: [...s.planets], load: { ...s.load }, flows: [...s.flows] });
     }
   }
   return { stops, load };
@@ -285,39 +378,43 @@ export function planRoutes(
   ships: ShipSize | Fleet,
   minDays: number,
   empireFor: (shipVolume: number) => Empire = () => empire,
+  milk = false,
 ): PlannedRoute[] {
-  if (!(ships instanceof Map)) return planOnce(systems, empire, empireFor, allStops, ships, minDays, "farthest");
-  const score = (plan: PlannedRoute[]) => {
-    const bases = (r: PlannedRoute) => r.stops.reduce((n, s) => n + s.planets.length, 0);
-    let unserved = 0;
-    let short = 0;
-    let used = 0;
-    let jumps = 0;
-    for (const r of plan) {
-      if (!r.ship) unserved += bases(r);
-      else {
-        used++;
-        jumps += r.lapJumps;
-        if (r.overloaded || r.gatewayBlocked) short += bases(r);
-      }
-    }
-    return [unserved, short, used, jumps];
-  };
-  const better = (a: number[], b: number[]) => {
-    for (let i = 0; i < a.length; i++) if (a[i] !== b[i]) return a[i] < b[i];
-    return false;
-  };
+  if (!(ships instanceof Map)) return planOnce(systems, empire, empireFor, allStops, ships, minDays, "farthest", milk);
   let best: PlannedRoute[] | null = null;
   let bestScore: number[] = [];
   for (const startOrder of START_ORDERS) {
-    const plan = planOnce(systems, empire, empireFor, allStops, ships, minDays, startOrder);
-    const s = score(plan);
-    if (!best || better(s, bestScore)) {
+    const plan = planOnce(systems, empire, empireFor, allStops, ships, minDays, startOrder, milk);
+    const s = planScore(plan);
+    if (!best || betterScore(s, bestScore)) {
       best = plan;
       bestScore = s;
     }
   }
   return best!;
+}
+
+/** Lower is better: bases with no ship, bases on short routes, ships, jumps. */
+export function planScore(plan: PlannedRoute[]): number[] {
+  const bases = (r: PlannedRoute) => r.stops.reduce((n, s) => n + s.planets.length, 0);
+  let unserved = 0;
+  let short = 0;
+  let used = 0;
+  let jumps = 0;
+  for (const r of plan) {
+    if (!r.ship) unserved += bases(r);
+    else {
+      used++;
+      jumps += r.lapJumps;
+      if (r.overloaded || r.gatewayBlocked) short += bases(r);
+    }
+  }
+  return [unserved, short, used, jumps];
+}
+
+export function betterScore(a: number[], b: number[]): boolean {
+  for (let i = 0; i < a.length; i++) if (a[i] !== b[i]) return a[i] < b[i];
+  return false;
 }
 
 /**
@@ -349,7 +446,18 @@ function planOnce(
   ships: ShipSize | Fleet,
   minDays: number,
   startOrder: (typeof START_ORDERS)[number],
+  milk: boolean,
 ): PlannedRoute[] {
+  // Without milk runs a lap visits the nearest stop first. A milk run also
+  // tries the farthest stop first, so far outputs can feed nearer stops on
+  // the way home, and keeps whichever order carries more days.
+  const cover = (ordered: SystemLoad[], hold: Hold) => {
+    if (!milk) return { ...coverDays(ordered, hold), ordered, transfers: [] as Transfer[] };
+    const reversed = [...ordered].reverse();
+    const out = milkCoverDays(ordered, hold);
+    const back = milkCoverDays(reversed, hold);
+    return back.days > out.days ? { ...back, ordered: reversed } : { ...out, ordered };
+  };
   const left = ships instanceof Map ? new Map(ships) : null;
   const main = indexPaths(empire);
   const pathsByVolume = new Map<number, Paths>();
@@ -412,6 +520,7 @@ function planOnce(
           systems: stops.map((x) => x.system),
           edges: [],
           gatewayEdges: [],
+          transfers: [],
         });
         break;
       }
@@ -431,10 +540,10 @@ function planOnce(
           .filter((i) => distOf(i) !== undefined)
           .sort((a, b) => distOf(a)! - distOf(b)! || allStops[b].load.inT - allStops[a].load.inT);
         const chosen = [start];
-        const overloaded = coverDays(order(chosen), hold).days < minDays;
+        const overloaded = cover(order(chosen), hold).days < minDays;
         if (!overloaded) {
           for (const c of candidates) {
-            if (coverDays(order([...chosen, c]), hold).days >= minDays) chosen.push(c);
+            if (cover(order([...chosen, c]), hold).days >= minDays) chosen.push(c);
           }
         }
         return { chosen, overloaded, paths, routeOf, order, trunk, dist, prev };
@@ -483,11 +592,11 @@ function planOnce(
         }
       }
 
-      const ordered = lap.order(lap.chosen);
+      const lapCover = cover(lap.order(lap.chosen), ship);
       const limits = lap.chosen.map((i) => lap.routeOf(i).gatewayLimit).filter((l): l is number => l !== null);
       const gatewayLimit = limits.length > 0 ? Math.min(...limits) : null;
-      const { days, binding } = coverDays(ordered, ship);
-      const { stops, load } = mergeStops(ordered);
+      const { days, binding, transfers } = lapCover;
+      const { stops, load } = mergeStops(lapCover.ordered);
       const edgeKeys = new Set<string>();
       const edges: [number, number][] = [];
       const gatewayEdges: [number, number][] = [];
@@ -514,6 +623,7 @@ function planOnce(
         systems: [...onLap],
         edges,
         gatewayEdges,
+        transfers,
       });
     }
   }

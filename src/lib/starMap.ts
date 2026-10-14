@@ -54,9 +54,9 @@ export interface Exchange {
 // The four commodity exchange systems, matched by NaturalId because names are
 // not unique enough ("New Benten", "Antares II", ...).
 export const EXCHANGES: Exchange[] = [
-  { code: "AI1", name: "Antares I", naturalId: "ZV-307", color: "#ff5a4f" },
-  { code: "CI1", name: "Benten", naturalId: "UV-351", color: "#3ea8ff" },
-  { code: "NC1", name: "Moria", naturalId: "OT-580", color: "#c27bff" },
+  { code: "AI1", name: "Antares I", naturalId: "ZV-307", color: "#ff9a2e" },
+  { code: "CI1", name: "Benten", naturalId: "UV-351", color: "#ff4646" },
+  { code: "NC1", name: "Moria", naturalId: "OT-580", color: "#3e8bff" },
   { code: "IC1", name: "Hortus", naturalId: "VH-331", color: "#3dff8e" },
 ];
 
