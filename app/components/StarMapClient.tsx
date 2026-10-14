@@ -55,6 +55,8 @@ const BURN_STORAGE_KEY = "starMap.burn";
 const SHIP_STORAGE_KEY = "starMap.ship";
 const MIN_DAYS_STORAGE_KEY = "starMap.minDays";
 const DEFAULT_MIN_DAYS = 7;
+const GL_UNAVAILABLE = "The browser blocked 3D graphics for this page. Reload it; if that fails, restart the browser.";
+const GL_LOST = "Lost the 3D graphics context. Waiting for the browser to restore it…";
 
 // Soft spectral tints for ordinary stars, kept pale so the saturated
 // exchange colors stay distinct from every ordinary star.
@@ -306,7 +308,15 @@ export default function StarMapClient() {
     const container = containerRef.current;
     if (!container || !systems || systems.length === 0) return;
 
-    const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+    // The browser can refuse a WebGL context (e.g. after a GPU reset). Show a
+    // message instead of letting the throw take down the whole page.
+    let renderer: THREE.WebGLRenderer;
+    try {
+      renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+    } catch {
+      setError(GL_UNAVAILABLE);
+      return;
+    }
     renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
     renderer.setClearColor(0x000000, 0);
     container.appendChild(renderer.domElement);
@@ -416,6 +426,22 @@ export default function StarMapClient() {
     controls.target.set(0, 0, 0);
     controls.update();
 
+    // Render only when something changed, so an idle map leaves the GPU alone.
+    let dirty = true;
+    const invalidate = () => {
+      dirty = true;
+    };
+    controls.addEventListener("change", invalidate);
+
+    // three.js asks the browser to restore a lost context; say so meanwhile.
+    const onContextLost = () => setError(GL_LOST);
+    const onContextRestored = () => {
+      setError(null);
+      invalidate();
+    };
+    renderer.domElement.addEventListener("webglcontextlost", onContextLost);
+    renderer.domElement.addEventListener("webglcontextrestored", onContextRestored);
+
     const resize = () => {
       const w = container.clientWidth;
       const h = container.clientHeight;
@@ -428,6 +454,7 @@ export default function StarMapClient() {
       starMaterial.uniforms.uScale.value = scale;
       dustMaterial.uniforms.uScale.value = scale;
       baseMaterial.uniforms.uScale.value = scale;
+      invalidate();
     };
     resize();
     const observer = new ResizeObserver(resize);
@@ -490,6 +517,7 @@ export default function StarMapClient() {
         hoveredIndex = best;
         starMaterial.uniforms.uHovered.value = best;
         renderer.domElement.style.cursor = best >= 0 ? "pointer" : "grab";
+        invalidate();
       }
       if (best >= 0 && pointer) {
         setHover({ index: best, left: pointer.x, top: pointer.y });
@@ -534,6 +562,7 @@ export default function StarMapClient() {
         geometry.setAttribute("count", new THREE.BufferAttribute(cnt, 1));
         baseMarkers.geometry.dispose();
         baseMarkers.geometry = geometry;
+        invalidate();
       },
       setEmpire: (empire) => {
         visible.fill(empire ? 0 : 1);
@@ -552,6 +581,7 @@ export default function StarMapClient() {
           flyTo(new THREE.Vector3(), homeDistance);
         }
         empireShown = empire !== null;
+        invalidate();
         pick();
       },
     };
@@ -570,7 +600,12 @@ export default function StarMapClient() {
       }
       // Damping keeps the camera moving after a drag ends, so keep the
       // hovered star in sync with what is under the pointer.
-      if ((controls.update() || moved) && pointer && !dragging) pick();
+      if (controls.update() || moved) {
+        dirty = true;
+        if (pointer && !dragging) pick();
+      }
+      if (!dirty) return;
+      dirty = false;
       const distance = camera.position.distanceTo(controls.target) / homeDistance;
       const fade = THREE.MathUtils.clamp((LINK_FADE_START - distance) / (LINK_FADE_START - LINK_FADE_END), 0, 1);
       linkMaterial.opacity = fade * LINK_OPACITY;
@@ -586,6 +621,9 @@ export default function StarMapClient() {
       el.removeEventListener("pointermove", onPointerMove);
       el.removeEventListener("pointerleave", onPointerLeave);
       controls.removeEventListener("start", cancelFlight);
+      controls.removeEventListener("change", invalidate);
+      el.removeEventListener("webglcontextlost", onContextLost);
+      el.removeEventListener("webglcontextrestored", onContextRestored);
       controls.dispose();
       starGeometry.dispose();
       starMaterial.dispose();
