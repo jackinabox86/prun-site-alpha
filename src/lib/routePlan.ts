@@ -117,33 +117,33 @@ export function parseBurn(text: string, sizes: Map<string, MaterialSize>): Parse
   };
 }
 
-/** A base's daily load, resolved to its star system. */
+/** One or more bases in one star system, with their combined daily load. */
 export interface SystemLoad {
   system: number;
   planets: string[];
   load: DailyLoad;
 }
 
-export function loadsBySystem(bases: BurnBase[], resolve: Resolver): { loads: Map<number, SystemLoad>; unresolved: string[] } {
-  const loads = new Map<number, SystemLoad>();
+/**
+ * Resolves each base to its star system. Every base stays its own stop, so
+ * bases that share a system can still go on different ships.
+ */
+export function loadsByBase(bases: BurnBase[], resolve: Resolver): { stops: SystemLoad[]; unresolved: string[] } {
+  const stops: SystemLoad[] = [];
   const unresolved: string[] = [];
   for (const base of bases) {
     const hit = resolve(base.planet);
-    if (!hit) {
-      unresolved.push(base.planet);
-      continue;
-    }
-    const entry = loads.get(hit.system) ?? { system: hit.system, planets: [], load: emptyLoad() };
-    loads.set(hit.system, entry);
-    entry.planets.push(base.planet);
-    addLoad(entry.load, base.load);
+    if (hit) stops.push({ system: hit.system, planets: [base.planet], load: { ...base.load } });
+    else unresolved.push(base.planet);
   }
-  return { loads, unresolved };
+  return { stops, unresolved };
 }
 
 export interface PlannedRoute {
   exchange: number;
-  /** Stops in visiting order, nearest the exchange first. */
+  /** The hold this route is planned for; null when the fleet has no ship left for it. */
+  ship: ShipSize | null;
+  /** Stops in visiting order, nearest the exchange first; bases in one system are merged. */
   stops: SystemLoad[];
   /** Daily totals over all stops. */
   load: DailyLoad;
@@ -159,12 +159,14 @@ export interface PlannedRoute {
   edges: [number, number][];
 }
 
+type Hold = { weight: number; volume: number };
+
 /**
  * Days of supply a hold carries for these stops in this order. The ship leaves
  * with every stop's inputs, drops each stop's inputs and picks up its outputs,
  * and the fullest moment anywhere on the lap sets the limit.
  */
-export function coverDays(stops: SystemLoad[], ship: { weight: number; volume: number }) {
+export function coverDays(stops: SystemLoad[], ship: Hold) {
   let inT = 0;
   let inV = 0;
   for (const s of stops) {
@@ -211,70 +213,217 @@ function bfs(systems: StarSystem[], sources: Iterable<number>, limit: number) {
   return { dist, prev };
 }
 
+/** Ship counts by SHIP_SIZES id. */
+export type Fleet = Map<string, number>;
+
+/** Parses the stored fleet text, "500/500:2,5k/5k:1". */
+export function parseFleet(text: string): Fleet {
+  const fleet: Fleet = new Map();
+  for (const part of text.split(",")) {
+    const [id, count] = part.split(":");
+    const n = parseInt(count, 10);
+    if (SHIP_SIZES.some((s) => s.id === id) && n > 0) fleet.set(id, n);
+  }
+  return fleet;
+}
+
+export function formatFleet(fleet: Fleet): string {
+  return [...fleet].map(([id, n]) => `${id}:${n}`).join(",");
+}
+
+const capacity = (s: Hold) => s.weight + s.volume;
+
+/** Joins consecutive stops in one system into a single stop, and totals the load. */
+function mergeStops(ordered: SystemLoad[]) {
+  const stops: SystemLoad[] = [];
+  const load = emptyLoad();
+  for (const s of ordered) {
+    addLoad(load, s.load);
+    const last = stops[stops.length - 1];
+    if (last?.system === s.system) {
+      last.planets.push(...s.planets);
+      addLoad(last.load, s.load);
+    } else {
+      stops.push({ system: s.system, planets: [...s.planets], load: { ...s.load } });
+    }
+  }
+  return { stops, load };
+}
+
 /**
- * Groups base systems into milk-run routes for one ship size. Each route starts
- * at the farthest unplanned system of its exchange and takes in the nearest
- * systems on or beside its path while the hold still carries `minDays` of
- * supply. A system that alone needs more than the hold is its own route,
- * flagged as overloaded.
+ * Groups bases into milk-run routes. Each route starts at the farthest
+ * unplanned base of its exchange and takes in the nearest bases on or beside
+ * its path while the hold still carries `minDays` of supply. Bases in the
+ * start's own system come first, but any of them can spill onto another route.
+ *
+ * `ships` is either one hold for every route, or a fleet. With a fleet, each
+ * route tries every size still available, keeps the one that takes in the most
+ * bases, and then moves down to the smallest size that still carries those
+ * bases for `minDays`. Taking in the most bases per ship is what keeps the ship
+ * count low. A base no available ship can carry for `minDays` gets the ship that
+ * comes closest and is flagged overloaded. Once the fleet runs out, the rest
+ * are listed as one route with no ship.
+ *
+ * Which base starts each route changes the result a lot, so a fleet is planned
+ * with several start orders and the best plan wins: the fewest bases left
+ * without a ship, then the fewest on overloaded routes, then the fewest ships.
  */
 export function planRoutes(
   systems: StarSystem[],
   empire: Empire,
-  loads: Map<number, SystemLoad>,
-  ship: { weight: number; volume: number },
+  allStops: SystemLoad[],
+  ships: ShipSize | Fleet,
   minDays: number,
 ): PlannedRoute[] {
+  if (!(ships instanceof Map)) return planOnce(systems, empire, allStops, ships, minDays, "farthest");
+  const score = (plan: PlannedRoute[]) => {
+    const bases = (r: PlannedRoute) => r.stops.reduce((n, s) => n + s.planets.length, 0);
+    let unserved = 0;
+    let short = 0;
+    let used = 0;
+    let jumps = 0;
+    for (const r of plan) {
+      if (!r.ship) unserved += bases(r);
+      else {
+        used++;
+        jumps += r.lapJumps;
+        if (r.overloaded) short += bases(r);
+      }
+    }
+    return [unserved, short, used, jumps];
+  };
+  const better = (a: number[], b: number[]) => {
+    for (let i = 0; i < a.length; i++) if (a[i] !== b[i]) return a[i] < b[i];
+    return false;
+  };
+  let best: PlannedRoute[] | null = null;
+  let bestScore: number[] = [];
+  for (const startOrder of START_ORDERS) {
+    const plan = planOnce(systems, empire, allStops, ships, minDays, startOrder);
+    const s = score(plan);
+    if (!best || better(s, bestScore)) {
+      best = plan;
+      bestScore = s;
+    }
+  }
+  return best!;
+}
+
+/**
+ * farthest: the farthest open base starts the next route.
+ * farthest-fit: the same, but bases no ship in the fleet can carry for minDays
+ *   go last, so they never take a ship from a route that would work.
+ * heaviest-fit: bases that need the biggest holds go first, so they get the big
+ *   ships before lighter routes use them up; unservable bases still go last.
+ */
+const START_ORDERS = ["farthest", "farthest-fit", "heaviest-fit"] as const;
+
+function planOnce(
+  systems: StarSystem[],
+  empire: Empire,
+  allStops: SystemLoad[],
+  ships: ShipSize | Fleet,
+  minDays: number,
+  startOrder: (typeof START_ORDERS)[number],
+): PlannedRoute[] {
+  const left = ships instanceof Map ? new Map(ships) : null;
   const routeOf = new Map(empire.routes.map((r) => [r.base, r]));
   const byExchange = new Map<number, number[]>();
-  for (const system of loads.keys()) {
-    const r = routeOf.get(system);
-    if (!r) continue;
+  allStops.forEach((stop, i) => {
+    const r = routeOf.get(stop.system);
+    if (!r) return;
     const list = byExchange.get(r.exchange) ?? [];
-    list.push(system);
+    list.push(i);
     byExchange.set(r.exchange, list);
-  }
+  });
+
+  const jumpsOf = (i: number) => routeOf.get(allStops[i].system)!.jumps;
+  const order = (list: number[]) =>
+    [...list].sort((a, b) => jumpsOf(a) - jumpsOf(b) || allStops[a].system - allStops[b].system).map((i) => allStops[i]);
 
   const planned: PlannedRoute[] = [];
   for (const [exchange, members] of byExchange) {
-    const jumpsOf = (s: number) => routeOf.get(s)!.jumps;
     const open = new Set(members);
-    const farthestFirst = [...members].sort((a, b) => jumpsOf(b) - jumpsOf(a) || loads.get(b)!.load.inT - loads.get(a)!.load.inT);
-    for (const start of farthestFirst) {
+    const farthestFirst = [...members].sort((a, b) => jumpsOf(b) - jumpsOf(a) || allStops[b].load.inT - allStops[a].load.inT);
+    const owned = SHIP_SIZES.filter((s) => (left?.get(s.id) ?? 0) > 0).sort((a, b) => capacity(a) - capacity(b));
+    const neededHold = (i: number) => {
+      const fit = owned.find((s) => coverDays([allStops[i]], s).days >= minDays);
+      return fit ? capacity(fit) : -1;
+    };
+    const starts =
+      startOrder === "heaviest-fit"
+        ? [...farthestFirst].sort((a, b) => neededHold(b) - neededHold(a))
+        : startOrder === "farthest-fit"
+          ? [...farthestFirst].sort((a, b) => Number(neededHold(a) < 0) - Number(neededHold(b) < 0))
+          : farthestFirst;
+    for (const start of starts) {
       if (!open.has(start)) continue;
+      if (left && SHIP_SIZES.every((s) => (left.get(s.id) ?? 0) <= 0)) {
+        // The fleet is used up: everything still open is listed once, unserved.
+        const { stops, load } = mergeStops(order([...open]));
+        open.clear();
+        planned.push({ exchange, ship: null, stops, load, coverDays: 0, binding: "weight", lapJumps: 0, overloaded: true, systems: stops.map((x) => x.system), edges: [] });
+        break;
+      }
       open.delete(start);
-      const chosen = [start];
       // The trunk is the start's path to the exchange. Other stops sit on it or
       // on a short side trip off it; measuring from the trunk alone keeps side
       // trips from chaining outward.
-      const trunk = routeOf.get(start)!.path;
-      const onLap = new Set(trunk);
+      const trunk = routeOf.get(allStops[start].system)!.path;
       const { dist, prev } = bfs(systems, trunk, MAX_DETOUR_JUMPS);
+      const distOf = (i: number) => dist.get(allStops[i].system);
+      const candidates = [...open]
+        .filter((i) => distOf(i) !== undefined)
+        .sort((a, b) => distOf(a)! - distOf(b)! || allStops[b].load.inT - allStops[a].load.inT);
+
+      const grow = (hold: Hold) => {
+        const chosen = [start];
+        if (coverDays(order(chosen), hold).days < minDays) return { chosen, overloaded: true };
+        for (const c of candidates) {
+          if (coverDays(order([...chosen, c]), hold).days >= minDays) chosen.push(c);
+        }
+        return { chosen, overloaded: false };
+      };
+
+      let ship: ShipSize;
+      let lap: { chosen: number[]; overloaded: boolean };
+      if (!left) {
+        ship = ships as ShipSize;
+        lap = grow(ship);
+      } else {
+        const available = SHIP_SIZES.filter((s) => (left.get(s.id) ?? 0) > 0);
+        const tries = available.map((s) => ({ ship: s, lap: grow(s) }));
+        const fitting = tries.filter((t) => !t.lap.overloaded);
+        if (fitting.length > 0) {
+          const best = fitting.reduce((a, b) =>
+            b.lap.chosen.length > a.lap.chosen.length || (b.lap.chosen.length === a.lap.chosen.length && capacity(b.ship) < capacity(a.ship)) ? b : a,
+          );
+          lap = best.lap;
+          const stops = order(lap.chosen);
+          ship = [...available].sort((a, b) => capacity(a) - capacity(b)).find((s) => coverDays(stops, s).days >= minDays) ?? best.ship;
+        } else {
+          const best = tries.reduce((a, b) => (coverDays(order([start]), b.ship).days > coverDays(order([start]), a.ship).days ? b : a));
+          ship = best.ship;
+          lap = best.lap;
+        }
+        left.set(ship.id, left.get(ship.id)! - 1);
+      }
+      lap.chosen.forEach((i) => open.delete(i));
+
+      const onLap = new Set(trunk);
       const sideEdges: [number, number][] = [];
       let detourJumps = 0;
-      const order = (list: number[]) => [...list].sort((a, b) => jumpsOf(a) - jumpsOf(b)).map((s) => loads.get(s)!);
-      const fit = (list: number[]) => coverDays(order(list), ship);
-      const overloaded = fit(chosen).days < minDays;
-
-      while (!overloaded) {
-        const candidates = [...open]
-          .filter((s) => dist.has(s))
-          .sort((a, b) => dist.get(a)! - dist.get(b)! || loads.get(b)!.load.inT - loads.get(a)!.load.inT);
-        const next = candidates.find((s) => fit([...chosen, s]).days >= minDays);
-        if (next === undefined) break;
-        open.delete(next);
-        chosen.push(next);
-        detourJumps += dist.get(next)!;
-        for (let i = next; dist.get(i)! > 0; i = prev.get(i)!) {
+      for (const system of new Set(lap.chosen.map((i) => allStops[i].system))) {
+        detourJumps += dist.get(system)!;
+        for (let i = system; dist.get(i)! > 0; i = prev.get(i)!) {
           if (!onLap.has(i)) sideEdges.push([i, prev.get(i)!]);
           onLap.add(i);
         }
       }
 
-      const stops = order(chosen);
-      const load = emptyLoad();
-      stops.forEach((s) => addLoad(load, s.load));
-      const { days, binding } = fit(chosen);
+      const ordered = order(lap.chosen);
+      const { days, binding } = coverDays(ordered, ship);
+      const { stops, load } = mergeStops(ordered);
       const edgeKeys = new Set<string>();
       const edges: [number, number][] = [];
       const addEdge = ([a, b]: [number, number]) => {
@@ -288,12 +437,13 @@ export function planRoutes(
       sideEdges.forEach(addEdge);
       planned.push({
         exchange,
+        ship,
         stops,
         load,
         coverDays: days,
         binding,
-        lapJumps: 2 * Math.max(...chosen.map(jumpsOf)) + 2 * detourJumps,
-        overloaded,
+        lapJumps: 2 * Math.max(...lap.chosen.map(jumpsOf)) + 2 * detourJumps,
+        overloaded: lap.overloaded,
         systems: [...onLap],
         edges,
       });

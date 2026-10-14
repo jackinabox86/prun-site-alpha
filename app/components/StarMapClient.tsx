@@ -17,9 +17,11 @@ import {
 } from "@/lib/starMap";
 import {
   SHIP_SIZES,
+  formatFleet,
   loadMaterialSizes,
-  loadsBySystem,
+  loadsByBase,
   parseBurn,
+  parseFleet,
   planRoutes,
   type MaterialSize,
   type PlannedRoute,
@@ -51,9 +53,13 @@ const FLY_MS = 900;
 const FLY_DISTANCE = 260;
 const BASES_STORAGE_KEY = "starMap.bases";
 const EXCHANGE_STORAGE_KEY = "starMap.exchange";
+/** Older builds kept the burn paste in its own box; it now lives in the bases box. */
 const BURN_STORAGE_KEY = "starMap.burn";
 const SHIP_STORAGE_KEY = "starMap.ship";
 const MIN_DAYS_STORAGE_KEY = "starMap.minDays";
+const FLEET_STORAGE_KEY = "starMap.fleet";
+/** Ship hold option that plans with the counts in the fleet box. */
+const FLEET_OPTION = "fleet";
 const DEFAULT_MIN_DAYS = 7;
 const GL_UNAVAILABLE = "The browser blocked 3D graphics for this page. Reload it; if that fails, restart the browser.";
 const GL_LOST = "Lost the 3D graphics context. Waiting for the browser to restore it…";
@@ -214,9 +220,9 @@ export default function StarMapClient() {
   const [queryError, setQueryError] = useState<string | null>(null);
   const [basesText, updateBasesText] = useStoredText(BASES_STORAGE_KEY);
   const [exchangeCode, setExchangeCode] = useStoredText(EXCHANGE_STORAGE_KEY);
-  const [burnText, setBurnText] = useStoredText(BURN_STORAGE_KEY);
   const [shipId, setShipId] = useStoredText(SHIP_STORAGE_KEY, SHIP_SIZES[0].id);
   const [minDaysText, setMinDaysText] = useStoredText(MIN_DAYS_STORAGE_KEY, String(DEFAULT_MIN_DAYS));
+  const [fleetText, setFleetText] = useStoredText(FLEET_STORAGE_KEY);
   const [materialSizes, setMaterialSizes] = useState<Map<string, MaterialSize>>(() => new Map());
   const [empireOn, setEmpireOn] = useState(false);
   const [plannerOpen, setPlannerOpen] = useState(false);
@@ -239,7 +245,26 @@ export default function StarMapClient() {
 
   const resolve = useMemo(() => (systems ? makeResolver(systems, planetNames) : null), [systems, planetNames]);
 
+  // One box takes planet names, a pasted burn table, or both: tab-separated
+  // lines are burn rows, every other line is a list of bases.
+  const { listText, burnText } = useMemo(() => {
+    const lines = basesText.split(/\r?\n/);
+    return {
+      listText: lines.filter((l) => !l.includes("\t")).join("\n"),
+      burnText: lines.filter((l) => l.includes("\t")).join("\n"),
+    };
+  }, [basesText]);
   const burn = useMemo(() => parseBurn(burnText, materialSizes), [burnText, materialSizes]);
+
+  // Moves a burn paste saved by an older build into the bases box, once.
+  useEffect(() => {
+    const oldBurn = window.localStorage.getItem(BURN_STORAGE_KEY);
+    if (!oldBurn) return;
+    window.localStorage.removeItem(BURN_STORAGE_KEY);
+    const current = window.localStorage.getItem(BASES_STORAGE_KEY) ?? "";
+    if (!current.includes("\t")) updateBasesText(current ? `${current}\n${oldBurn}` : oldBurn);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // Bases come from the bases box and from the planets in a pasted burn table.
   const bases = useMemo<Bases>(() => {
@@ -252,7 +277,7 @@ export default function StarMapClient() {
       if (!labels.includes(label)) labels.push(label);
       bySystem.set(system, labels);
     };
-    for (const entry of splitList(basesText)) {
+    for (const entry of splitList(listText)) {
       const [name, pin] = entry.split(">").map((t) => t.trim());
       const hit = resolve(name);
       const exchange = pin === undefined ? null : findExchange(pin);
@@ -269,7 +294,7 @@ export default function StarMapClient() {
       else unresolved.push(base.planet);
     }
     return { bySystem, pinned, unresolved };
-  }, [resolve, basesText, burn]);
+  }, [resolve, listText, burn]);
 
   const homeExchange = findExchange(exchangeCode);
   const empire = useMemo(
@@ -280,12 +305,20 @@ export default function StarMapClient() {
     [systems, bases, homeExchange],
   );
 
+  const useFleet = shipId === FLEET_OPTION;
   const ship = SHIP_SIZES.find((x) => x.id === shipId) ?? SHIP_SIZES[0];
+  const fleet = useMemo(() => parseFleet(fleetText), [fleetText]);
+  const fleetSize = [...fleet.values()].reduce((a, b) => a + b, 0);
   const minDays = Math.max(0, parseFloat(minDaysText) || 0);
   const plan = useMemo<PlannedRoute[]>(() => {
     if (!systems || !resolve || !empire || burn.bases.length === 0) return [];
-    return planRoutes(systems, empire, loadsBySystem(burn.bases, resolve).loads, ship, minDays);
-  }, [systems, resolve, empire, burn, ship, minDays]);
+    return planRoutes(systems, empire, loadsByBase(burn.bases, resolve).stops, useFleet ? fleet : ship, minDays);
+  }, [systems, resolve, empire, burn, useFleet, fleet, ship, minDays]);
+  const setFleetCount = (id: string, n: number) => {
+    const next = new Map(fleet);
+    next.set(id, n);
+    setFleetText(formatFleet(parseFleet(formatFleet(next))));
+  };
   useEffect(() => setSelectedRoute(null), [plan]);
 
   // A selected route narrows empire view to that one lap.
@@ -736,12 +769,12 @@ export default function StarMapClient() {
         {queryError && <div style={{ color: "#ff8a80", marginTop: 4 }}>{queryError}</div>}
 
         <label style={{ display: "block", marginTop: 10, color: "#8fa3c7" }}>
-          Your bases (planet names or IDs)
+          Your bases (planet names, or paste XIT BURN)
           <textarea
             value={basesText}
             onChange={(e) => updateBasesText(e.target.value)}
             rows={4}
-            placeholder={"Montem, Katoa\nUV-351c\nMalahat > AI1"}
+            placeholder={"Montem, Katoa\nUV-351c\nMalahat > AI1\n\nor paste the XIT BURN table"}
             style={{ ...inputStyle, display: "block", width: "100%", marginTop: 4, resize: "vertical" }}
           />
         </label>
@@ -756,7 +789,7 @@ export default function StarMapClient() {
             ))}
           </select>
         </label>
-        <div style={{ color: "#6f80a3", fontSize: 11 }}>Pin one base with &quot;Base &gt; AI1&quot;.</div>
+        <div style={{ color: "#6f80a3", fontSize: 11 }}>Pin one base with &quot;Base &gt; AI1&quot;. A pasted burn table also feeds the route planner.</div>
         <div style={{ color: "#6f80a3", marginTop: 4 }}>
           {baseCount > 0 && `${baseCount} base${baseCount === 1 ? "" : "s"} in ${bases.bySystem.size} system${bases.bySystem.size === 1 ? "" : "s"}`}
           {bases.unresolved.length > 0 && <div style={{ color: "#ff8a80" }}>Not found: {bases.unresolved.join(", ")}</div>}
@@ -796,29 +829,20 @@ export default function StarMapClient() {
         </button>
         {plannerOpen && (
           <>
-            <label style={{ display: "block", marginTop: 8, color: "#8fa3c7" }}>
-              RPrUn burn table (XIT BURN, copied)
-              <textarea
-                value={burnText}
-                onChange={(e) => setBurnText(e.target.value)}
-                rows={3}
-                placeholder={"Planet\tTicker\tInv\tBurn/day\tNeed\tDays\nMetis b\tDW\t58\t-56.5\t451\t1"}
-                style={{ ...inputStyle, display: "block", width: "100%", marginTop: 4, resize: "vertical" }}
-              />
-            </label>
-            <div style={{ color: "#6f80a3" }}>
-              {burn.bases.length > 0 && `${burn.bases.length} bases with burn data; they are added to your bases.`}
+            <div style={{ color: "#6f80a3", marginTop: 8 }}>
+              {burn.bases.length > 0 && `${burn.bases.length} bases with burn data from the bases box.`}
               {burn.unknownTickers.length > 0 && <div style={{ color: "#ff8a80" }}>No size for: {burn.unknownTickers.join(", ")}</div>}
             </div>
             <div style={{ display: "flex", gap: 6, marginTop: 6 }}>
               <label style={{ flex: 1, color: "#8fa3c7" }}>
                 Ship hold
-                <select value={ship.id} onChange={(e) => setShipId(e.target.value)} style={{ ...inputStyle, display: "block", width: "100%" }}>
+                <select value={useFleet ? FLEET_OPTION : ship.id} onChange={(e) => setShipId(e.target.value)} style={{ ...inputStyle, display: "block", width: "100%" }}>
                   {SHIP_SIZES.map((x) => (
                     <option key={x.id} value={x.id}>
                       {x.label}
                     </option>
                   ))}
+                  <option value={FLEET_OPTION}>My fleet (fewest ships)</option>
                 </select>
               </label>
               <label style={{ width: 96, color: "#8fa3c7" }}>
@@ -833,11 +857,31 @@ export default function StarMapClient() {
                 />
               </label>
             </div>
+            {useFleet && (
+              <div style={{ marginTop: 6 }}>
+                <div style={{ display: "flex", gap: 4 }}>
+                  {SHIP_SIZES.map((x) => (
+                    <label key={x.id} style={{ flex: 1, color: "#8fa3c7", fontSize: 11 }}>
+                      {x.id}
+                      <input
+                        type="number"
+                        min={0}
+                        step={1}
+                        value={fleet.get(x.id) ?? 0}
+                        onChange={(e) => setFleetCount(x.id, Math.max(0, parseInt(e.target.value, 10) || 0))}
+                        style={{ ...inputStyle, display: "block", width: "100%" }}
+                      />
+                    </label>
+                  ))}
+                </div>
+                {burn.bases.length > 0 && <FleetSummary plan={plan} fleetSize={fleetSize} />}
+              </div>
+            )}
             <div style={{ color: "#6f80a3", fontSize: 11, marginTop: 4 }}>
               Each hold leaves the exchange with every stop&apos;s inputs and picks up outputs on the way. Days = how long one hold supplies the
               route. No flight times, so laps are counted in jumps. Click a route to show it.
             </div>
-            {burn.bases.length === 0 && <div style={{ marginTop: 6 }}>Paste a burn table to plan routes.</div>}
+            {burn.bases.length === 0 && <div style={{ marginTop: 6 }}>Paste the XIT BURN table into the bases box to plan routes.</div>}
             {systems &&
               plan.map((r, i) => {
                 const selected = selectedRoute === i;
@@ -857,7 +901,8 @@ export default function StarMapClient() {
                   >
                     <div>
                       <span style={{ color: exchange?.color }}>{exchange?.code}</span>{" "}
-                      <span style={{ color: r.overloaded ? "#ff8a80" : BASE_COLOR }}>{r.coverDays.toFixed(1)} days</span>{" "}
+                      {useFleet && <span style={{ color: r.ship ? "#cfd8ee" : "#ff8a80" }}>{r.ship ? r.ship.id : "no ship left"} </span>}
+                      {r.ship && <span style={{ color: r.overloaded ? "#ff8a80" : BASE_COLOR }}>{r.coverDays.toFixed(1)} days</span>}{" "}
                       <span style={{ color: "#6f80a3" }}>
                         ({r.binding}) · ~{r.lapJumps} jumps/lap
                       </span>
@@ -866,7 +911,8 @@ export default function StarMapClient() {
                     <div style={{ color: "#6f80a3" }}>
                       per day in {fmt(r.load.inT)}t / {fmt(r.load.inV)}m³ · out {fmt(r.load.outT)}t / {fmt(r.load.outV)}m³
                     </div>
-                    {r.overloaded && <div style={{ color: "#ff8a80" }}>Under {minDays} days on its own: needs a bigger hold.</div>}
+                    {r.overloaded && r.ship && <div style={{ color: "#ff8a80" }}>Under {minDays} days on its own: needs a bigger hold.</div>}
+                    {!r.ship && <div style={{ color: "#ff8a80" }}>Every ship in the fleet is already on a route.</div>}
                   </button>
                 );
               })}
@@ -891,6 +937,25 @@ export default function StarMapClient() {
           {systems ? `${systems.length} systems · ` : ""}drag rotate · right-drag pan · scroll zoom
         </div>
       </div>
+    </div>
+  );
+}
+
+/** Ships used against the fleet, by size, and what is left over. */
+function FleetSummary({ plan, fleetSize }: { plan: PlannedRoute[]; fleetSize: number }) {
+  const used = new Map<string, number>();
+  for (const r of plan) if (r.ship) used.set(r.ship.id, (used.get(r.ship.id) ?? 0) + 1);
+  const usedCount = [...used.values()].reduce((a, b) => a + b, 0);
+  const baseCount = (routes: PlannedRoute[]) => routes.reduce((n, r) => n + r.stops.reduce((m, s) => m + s.planets.length, 0), 0);
+  const unserved = baseCount(plan.filter((r) => !r.ship));
+  const short = plan.filter((r) => r.ship && r.overloaded).length;
+  const routes = plan.filter((r) => r.ship).length;
+  return (
+    <div style={{ marginTop: 4 }}>
+      {usedCount} of {fleetSize} ships on {routes} route{routes === 1 ? "" : "s"}
+      {used.size > 0 && ` (${SHIP_SIZES.filter((s) => used.has(s.id)).map((s) => `${used.get(s.id)}× ${s.id}`).join(", ")})`}.
+      {unserved > 0 && <div style={{ color: "#ff8a80" }}>{unserved} bases have no ship: add ships.</div>}
+      {short > 0 && <div style={{ color: "#ff8a80" }}>{short} routes fall short of the minimum days even with the biggest ship left.</div>}
     </div>
   );
 }
