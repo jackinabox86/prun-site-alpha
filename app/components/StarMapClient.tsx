@@ -6,9 +6,12 @@ import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
 import { EXCHANGES, loadStarSystems, type StarSystem } from "@/lib/starMap";
 
 // World-unit diameters. Neighbouring systems are ~50-100 units apart.
-const STAR_SIZE = 30;
-const EXCHANGE_SIZE = 90;
-const MIN_POINT_PX = 5;
+const STAR_SIZE = 37.5;
+const EXCHANGE_SIZE = 112.5;
+const MIN_POINT_PX = 6.25;
+// The galaxy disk is thin (game Z spans ~130 units); exaggerate its height
+// so the depth reads clearly when orbiting. Deliberately not to scale.
+const VERTICAL_SCALE = 2;
 const HOVER_RADIUS_PX = 12;
 
 // Soft spectral tints for ordinary stars, kept pale so the saturated
@@ -41,15 +44,15 @@ const vertexShader = /* glsl */ `
   }
 `;
 
-// A bright core with a soft falloff halo; additive blending makes it glow.
+// A crisp bright core with a tight, light halo; additive blending makes it glow.
 const fragmentShader = /* glsl */ `
   uniform float uOpacity;
   varying vec3 vColor;
   void main() {
     float d = length(gl_PointCoord - 0.5) * 2.0;
     if (d > 1.0) discard;
-    float core = smoothstep(0.22, 0.0, d);
-    float halo = pow(1.0 - d, 3.0) * 0.5;
+    float core = smoothstep(0.3, 0.18, d);
+    float halo = pow(1.0 - d, 5.0) * 0.35;
     float a = (core + halo) * uOpacity;
     gl_FragColor = vec4(vColor * a, a);
   }
@@ -74,7 +77,7 @@ function makePointsMaterial(opacity: number): THREE.ShaderMaterial {
 // Game coordinates put the galaxy disk in the X/Y plane with Z thin. Rotate
 // so the disk lies on three.js's ground plane and orbiting feels natural.
 function toWorld(s: StarSystem, out: THREE.Vector3): THREE.Vector3 {
-  return out.set(s.x, s.z, -s.y);
+  return out.set(s.x, s.z * VERTICAL_SCALE, -s.y);
 }
 
 interface HoverInfo {
