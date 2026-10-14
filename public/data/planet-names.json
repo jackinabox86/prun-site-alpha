@@ -1,0 +1,798 @@
+[
+ {
+  "PlanetNaturalId": "QJ-684b",
+  "PlanetName": "Aceland"
+ },
+ {
+  "PlanetNaturalId": "CB-282b",
+  "PlanetName": "Ad Gloriam Carbonis"
+ },
+ {
+  "PlanetNaturalId": "OF-375c",
+  "PlanetName": "Adalina"
+ },
+ {
+  "PlanetNaturalId": "CG-044d",
+  "PlanetName": "Aeolus"
+ },
+ {
+  "PlanetNaturalId": "ZV-759d",
+  "PlanetName": "Agamemnon"
+ },
+ {
+  "PlanetNaturalId": "OF-586b",
+  "PlanetName": "Akkala"
+ },
+ {
+  "PlanetNaturalId": "RC-040d",
+  "PlanetName": "Alexandria"
+ },
+ {
+  "PlanetNaturalId": "UB-402e",
+  "PlanetName": "Alyazkcalb"
+ },
+ {
+  "PlanetNaturalId": "CH-771b",
+  "PlanetName": "Ambrosia"
+ },
+ {
+  "PlanetNaturalId": "ZK-768b",
+  "PlanetName": "Anchorpoint"
+ },
+ {
+  "PlanetNaturalId": "IA-603b",
+  "PlanetName": "Apothecary"
+ },
+ {
+  "PlanetNaturalId": "BN-299d",
+  "PlanetName": "Aranya"
+ },
+ {
+  "PlanetNaturalId": "LS-231b",
+  "PlanetName": "Aratora"
+ },
+ {
+  "PlanetNaturalId": "YI-683c",
+  "PlanetName": "Arcadia"
+ },
+ {
+  "PlanetNaturalId": "IA-335h",
+  "PlanetName": "Arelius"
+ },
+ {
+  "PlanetNaturalId": "KW-358c",
+  "PlanetName": "Arrakis"
+ },
+ {
+  "PlanetNaturalId": "UV-072c",
+  "PlanetName": "Asbestos Lead Asbestos"
+ },
+ {
+  "PlanetNaturalId": "PD-754d",
+  "PlanetName": "Ashland"
+ },
+ {
+  "PlanetNaturalId": "ZV-639d",
+  "PlanetName": "Ashyn"
+ },
+ {
+  "PlanetNaturalId": "ZV-307e",
+  "PlanetName": "Astraeus"
+ },
+ {
+  "PlanetNaturalId": "KI-446a",
+  "PlanetName": "Australia"
+ },
+ {
+  "PlanetNaturalId": "VH-331g",
+  "PlanetName": "Avalon"
+ },
+ {
+  "PlanetNaturalId": "XG-452b",
+  "PlanetName": "Bathys"
+ },
+ {
+  "PlanetNaturalId": "VH-331c",
+  "PlanetName": "Beanironia"
+ },
+ {
+  "PlanetNaturalId": "AJ-946b",
+  "PlanetName": "Benji World"
+ },
+ {
+  "PlanetNaturalId": "OF-375b",
+  "PlanetName": "Berthier"
+ },
+ {
+  "PlanetNaturalId": "UV-351d",
+  "PlanetName": "Biogenesis"
+ },
+ {
+  "PlanetNaturalId": "ZV-759j",
+  "PlanetName": "Black Mesa"
+ },
+ {
+  "PlanetNaturalId": "ZV-307b",
+  "PlanetName": "Bober"
+ },
+ {
+  "PlanetNaturalId": "LB-476c",
+  "PlanetName": "Boombastic"
+ },
+ {
+  "PlanetNaturalId": "FK-794b",
+  "PlanetName": "Boucher"
+ },
+ {
+  "PlanetNaturalId": "JS-601c",
+  "PlanetName": "Brokkraf"
+ },
+ {
+  "PlanetNaturalId": "HM-301b",
+  "PlanetName": "Cadia"
+ },
+ {
+  "PlanetNaturalId": "KW-358a",
+  "PlanetName": "Caladan"
+ },
+ {
+  "PlanetNaturalId": "SO-245d",
+  "PlanetName": "Candorgrad"
+ },
+ {
+  "PlanetNaturalId": "HM-910c",
+  "PlanetName": "Cantium"
+ },
+ {
+  "PlanetNaturalId": "QQ-082b",
+  "PlanetName": "Caradhras"
+ },
+ {
+  "PlanetNaturalId": "JS-601e",
+  "PlanetName": "Carpeshina"
+ },
+ {
+  "PlanetNaturalId": "QQ-645b",
+  "PlanetName": "Celebdil"
+ },
+ {
+  "PlanetNaturalId": "YI-715a",
+  "PlanetName": "Chrono"
+ },
+ {
+  "PlanetNaturalId": "GY-110c",
+  "PlanetName": "Chu"
+ },
+ {
+  "PlanetNaturalId": "QQ-001a",
+  "PlanetName": "Circa"
+ },
+ {
+  "PlanetNaturalId": "QQ-001b",
+  "PlanetName": "Circe"
+ },
+ {
+  "PlanetNaturalId": "CB-282d",
+  "PlanetName": "Coldwell Deep"
+ },
+ {
+  "PlanetNaturalId": "XH-594c",
+  "PlanetName": "Cortez"
+ },
+ {
+  "PlanetNaturalId": "UP-170b",
+  "PlanetName": "Crafts Folly"
+ },
+ {
+  "PlanetNaturalId": "GY-694d",
+  "PlanetName": "Cronus"
+ },
+ {
+  "PlanetNaturalId": "QJ-149b",
+  "PlanetName": "Crucible"
+ },
+ {
+  "PlanetNaturalId": "OZ-189c",
+  "PlanetName": "Curie"
+ },
+ {
+  "PlanetNaturalId": "AJ-293a",
+  "PlanetName": "Damascus"
+ },
+ {
+  "PlanetNaturalId": "OT-442b",
+  "PlanetName": "Danakil"
+ },
+ {
+  "PlanetNaturalId": "ZV-759c",
+  "PlanetName": "Deimos"
+ },
+ {
+  "PlanetNaturalId": "KI-446b",
+  "PlanetName": "Demeter"
+ },
+ {
+  "PlanetNaturalId": "YI-280j",
+  "PlanetName": "Dodai"
+ },
+ {
+  "PlanetNaturalId": "BS-658e",
+  "PlanetName": "Dou Jiang"
+ },
+ {
+  "PlanetNaturalId": "VH-331b",
+  "PlanetName": "Dreamerr Prime"
+ },
+ {
+  "PlanetNaturalId": "AU-605c",
+  "PlanetName": "Duarte"
+ },
+ {
+  "PlanetNaturalId": "YI-552c",
+  "PlanetName": "Ebonreef"
+ },
+ {
+  "PlanetNaturalId": "IY-028c",
+  "PlanetName": "Electronica"
+ },
+ {
+  "PlanetNaturalId": "PB-519a",
+  "PlanetName": "Elysium"
+ },
+ {
+  "PlanetNaturalId": "AM-783c",
+  "PlanetName": "Ementior"
+ },
+ {
+  "PlanetNaturalId": "ZV-307a",
+  "PlanetName": "Eos"
+ },
+ {
+  "PlanetNaturalId": "FK-794c",
+  "PlanetName": "Epicier"
+ },
+ {
+  "PlanetNaturalId": "UV-796a",
+  "PlanetName": "Erna"
+ },
+ {
+  "PlanetNaturalId": "ZK-357e",
+  "PlanetName": "Esmeralda"
+ },
+ {
+  "PlanetNaturalId": "KW-688c",
+  "PlanetName": "Etherwind"
+ },
+ {
+  "PlanetNaturalId": "AW-844a",
+  "PlanetName": "Euu"
+ },
+ {
+  "PlanetNaturalId": "OS-099c",
+  "PlanetName": "Fangzhang"
+ },
+ {
+  "PlanetNaturalId": "UB-282a",
+  "PlanetName": "Florinia"
+ },
+ {
+  "PlanetNaturalId": "XG-326a",
+  "PlanetName": "Foundation"
+ },
+ {
+  "PlanetNaturalId": "OT-580e",
+  "PlanetName": "Fresnel Beacon"
+ },
+ {
+  "PlanetNaturalId": "XG-326d",
+  "PlanetName": "Frost"
+ },
+ {
+  "PlanetNaturalId": "AM-783b",
+  "PlanetName": "Gallus"
+ },
+ {
+  "PlanetNaturalId": "YK-649c",
+  "PlanetName": "Ganymede"
+ },
+ {
+  "PlanetNaturalId": "WB-675i",
+  "PlanetName": "Gasworld"
+ },
+ {
+  "PlanetNaturalId": "JS-952c",
+  "PlanetName": "Gibson"
+ },
+ {
+  "PlanetNaturalId": "KW-358b",
+  "PlanetName": "Giedi Prime"
+ },
+ {
+  "PlanetNaturalId": "LS-300c",
+  "PlanetName": "Griffonstone"
+ },
+ {
+  "PlanetNaturalId": "YK-005d",
+  "PlanetName": "Halcyon"
+ },
+ {
+  "PlanetNaturalId": "ZV-896b",
+  "PlanetName": "Harmonia"
+ },
+ {
+  "PlanetNaturalId": "YI-209h",
+  "PlanetName": "Harpina"
+ },
+ {
+  "PlanetNaturalId": "QJ-149a",
+  "PlanetName": "Hearth"
+ },
+ {
+  "PlanetNaturalId": "GK-476b",
+  "PlanetName": "Hecate"
+ },
+ {
+  "PlanetNaturalId": "LS-231c",
+  "PlanetName": "Hekaton"
+ },
+ {
+  "PlanetNaturalId": "VH-331d",
+  "PlanetName": "Helion Prime"
+ },
+ {
+  "PlanetNaturalId": "ZV-307c",
+  "PlanetName": "Hephaestus"
+ },
+ {
+  "PlanetNaturalId": "KI-448b",
+  "PlanetName": "Hermes"
+ },
+ {
+  "PlanetNaturalId": "WU-070a",
+  "PlanetName": "Hyalos"
+ },
+ {
+  "PlanetNaturalId": "VH-331i",
+  "PlanetName": "Hydron"
+ },
+ {
+  "PlanetNaturalId": "VH-331h",
+  "PlanetName": "Hypoxia"
+ },
+ {
+  "PlanetNaturalId": "SE-110c",
+  "PlanetName": "Ice Station Alpha"
+ },
+ {
+  "PlanetNaturalId": "CH-115e",
+  "PlanetName": "Ignis Prime"
+ },
+ {
+  "PlanetNaturalId": "OT-580a",
+  "PlanetName": "Iiron"
+ },
+ {
+  "PlanetNaturalId": "RC-040c",
+  "PlanetName": "Ironforge"
+ },
+ {
+  "PlanetNaturalId": "KW-358d",
+  "PlanetName": "Ix"
+ },
+ {
+  "PlanetNaturalId": "OT-889b",
+  "PlanetName": "Jeetiyu"
+ },
+ {
+  "PlanetNaturalId": "CG-044c",
+  "PlanetName": "Jotu"
+ },
+ {
+  "PlanetNaturalId": "OF-259d",
+  "PlanetName": "Jura"
+ },
+ {
+  "PlanetNaturalId": "KW-689a",
+  "PlanetName": "Kaffee"
+ },
+ {
+  "PlanetNaturalId": "KW-020d",
+  "PlanetName": "Kakrafoon Kappa"
+ },
+ {
+  "PlanetNaturalId": "UV-351a",
+  "PlanetName": "Katoa"
+ },
+ {
+  "PlanetNaturalId": "SB-838c",
+  "PlanetName": "Kazehana Star"
+ },
+ {
+  "PlanetNaturalId": "LG-913e",
+  "PlanetName": "Kerfyland"
+ },
+ {
+  "PlanetNaturalId": "KI-401a",
+  "PlanetName": "Kevin"
+ },
+ {
+  "PlanetNaturalId": "VH-778c",
+  "PlanetName": "Kinngait"
+ },
+ {
+  "PlanetNaturalId": "LG-418b",
+  "PlanetName": "Kinza"
+ },
+ {
+  "PlanetNaturalId": "KI-401b",
+  "PlanetName": "Kiros"
+ },
+ {
+  "PlanetNaturalId": "XH-594b",
+  "PlanetName": "Kiruna"
+ },
+ {
+  "PlanetNaturalId": "YI-059f",
+  "PlanetName": "Kub"
+ },
+ {
+  "PlanetNaturalId": "TD-298b",
+  "PlanetName": "Kwinana"
+ },
+ {
+  "PlanetNaturalId": "FK-371b",
+  "PlanetName": "La Forge"
+ },
+ {
+  "PlanetNaturalId": "AJ-768a",
+  "PlanetName": "Lemuria"
+ },
+ {
+  "PlanetNaturalId": "XH-594a",
+  "PlanetName": "Libertas"
+ },
+ {
+  "PlanetNaturalId": "ZV-896c",
+  "PlanetName": "Life"
+ },
+ {
+  "PlanetNaturalId": "VH-874b",
+  "PlanetName": "Logica"
+ },
+ {
+  "PlanetNaturalId": "QJ-684a",
+  "PlanetName": "Lom Palanka"
+ },
+ {
+  "PlanetNaturalId": "XD-354b",
+  "PlanetName": "Magus"
+ },
+ {
+  "PlanetNaturalId": "RC-040b",
+  "PlanetName": "Malahat"
+ },
+ {
+  "PlanetNaturalId": "OT-442h",
+  "PlanetName": "Manakil"
+ },
+ {
+  "PlanetNaturalId": "EL-179b",
+  "PlanetName": "Manifold"
+ },
+ {
+  "PlanetNaturalId": "OZ-189a",
+  "PlanetName": "Mayer"
+ },
+ {
+  "PlanetNaturalId": "ZV-194d",
+  "PlanetName": "Midas"
+ },
+ {
+  "PlanetNaturalId": "SB-838b",
+  "PlanetName": "Mikazuki Star"
+ },
+ {
+  "PlanetNaturalId": "KW-020c",
+  "PlanetName": "Milliways"
+ },
+ {
+  "PlanetNaturalId": "WC-702b",
+  "PlanetName": "Mimar"
+ },
+ {
+  "PlanetNaturalId": "SB-838a",
+  "PlanetName": "Mizuho Star"
+ },
+ {
+  "PlanetNaturalId": "OT-580b",
+  "PlanetName": "Montem"
+ },
+ {
+  "PlanetNaturalId": "SO-838b",
+  "PlanetName": "Mustafar"
+ },
+ {
+  "PlanetNaturalId": "QJ-149c",
+  "PlanetName": "Nascent"
+ },
+ {
+  "PlanetNaturalId": "OY-569c",
+  "PlanetName": "Nehalennia"
+ },
+ {
+  "PlanetNaturalId": "JS-299a",
+  "PlanetName": "Nemesis"
+ },
+ {
+  "PlanetNaturalId": "AM-783a",
+  "PlanetName": "Nexus Exos"
+ },
+ {
+  "PlanetNaturalId": "AM-528g",
+  "PlanetName": "Niflheim"
+ },
+ {
+  "PlanetNaturalId": "ZV-194a",
+  "PlanetName": "Nike"
+ },
+ {
+  "PlanetNaturalId": "VH-043c",
+  "PlanetName": "Nobelion"
+ },
+ {
+  "PlanetNaturalId": "YK-649b",
+  "PlanetName": "Norwick"
+ },
+ {
+  "PlanetNaturalId": "BS-788c",
+  "PlanetName": "Nova Honshu"
+ },
+ {
+  "PlanetNaturalId": "OF-443b",
+  "PlanetName": "Nova Kyushu"
+ },
+ {
+  "PlanetNaturalId": "EZ-476b",
+  "PlanetName": "Nova Unalaska"
+ },
+ {
+  "PlanetNaturalId": "XG-326c",
+  "PlanetName": "Nutaaq Nuuk"
+ },
+ {
+  "PlanetNaturalId": "VH-331f",
+  "PlanetName": "Odysseus"
+ },
+ {
+  "PlanetNaturalId": "QJ-650c",
+  "PlanetName": "Origo"
+ },
+ {
+  "PlanetNaturalId": "DW-456g",
+  "PlanetName": "Orm"
+ },
+ {
+  "PlanetNaturalId": "XG-326e",
+  "PlanetName": "Outpost"
+ },
+ {
+  "PlanetNaturalId": "OT-580d",
+  "PlanetName": "Pallada"
+ },
+ {
+  "PlanetNaturalId": "GK-462c",
+  "PlanetName": "Paradise"
+ },
+ {
+  "PlanetNaturalId": "OS-099b",
+  "PlanetName": "Penglai"
+ },
+ {
+  "PlanetNaturalId": "VH-043a",
+  "PlanetName": "Phantasm"
+ },
+ {
+  "PlanetNaturalId": "ZV-307d",
+  "PlanetName": "Phobos"
+ },
+ {
+  "PlanetNaturalId": "OT-627c",
+  "PlanetName": "Polaris"
+ },
+ {
+  "PlanetNaturalId": "HM-049b",
+  "PlanetName": "Poseidon"
+ },
+ {
+  "PlanetNaturalId": "OT-889a",
+  "PlanetName": "Prism"
+ },
+ {
+  "PlanetNaturalId": "ZV-194b",
+  "PlanetName": "Prometheus"
+ },
+ {
+  "PlanetNaturalId": "VH-331a",
+  "PlanetName": "Promitor"
+ },
+ {
+  "PlanetNaturalId": "UV-796b",
+  "PlanetName": "Proxion"
+ },
+ {
+  "PlanetNaturalId": "CH-771a",
+  "PlanetName": "Pyrgos"
+ },
+ {
+  "PlanetNaturalId": "QJ-382i",
+  "PlanetName": "Remus"
+ },
+ {
+  "PlanetNaturalId": "TD-228b",
+  "PlanetName": "Rhazes"
+ },
+ {
+  "PlanetNaturalId": "BN-908b",
+  "PlanetName": "Rhenos Pater"
+ },
+ {
+  "PlanetNaturalId": "KQ-966b",
+  "PlanetName": "Rock"
+ },
+ {
+  "PlanetNaturalId": "AJ-946a",
+  "PlanetName": "Rock II"
+ },
+ {
+  "PlanetNaturalId": "QJ-382g",
+  "PlanetName": "Romulus"
+ },
+ {
+  "PlanetNaturalId": "TO-392d",
+  "PlanetName": "Sabaton"
+ },
+ {
+  "PlanetNaturalId": "PG-899b",
+  "PlanetName": "Saladin"
+ },
+ {
+  "PlanetNaturalId": "KW-976c",
+  "PlanetName": "Salusa Secundus"
+ },
+ {
+  "PlanetNaturalId": "WB-675c",
+  "PlanetName": "Sand"
+ },
+ {
+  "PlanetNaturalId": "IY-816c",
+  "PlanetName": "Selene"
+ },
+ {
+  "PlanetNaturalId": "TD-203b",
+  "PlanetName": "Sheol"
+ },
+ {
+  "PlanetNaturalId": "VH-778b",
+  "PlanetName": "Shesmu"
+ },
+ {
+  "PlanetNaturalId": "VH-331e",
+  "PlanetName": "Shiptronia"
+ },
+ {
+  "PlanetNaturalId": "JS-570a",
+  "PlanetName": "Singren"
+ },
+ {
+  "PlanetNaturalId": "KW-602c",
+  "PlanetName": "Sonos Malum"
+ },
+ {
+  "PlanetNaturalId": "XH-556c",
+  "PlanetName": "Soteria"
+ },
+ {
+  "PlanetNaturalId": "LS-746b",
+  "PlanetName": "Stella Prime"
+ },
+ {
+  "PlanetNaturalId": "CB-045b",
+  "PlanetName": "Tacotopia"
+ },
+ {
+  "PlanetNaturalId": "DC-823b",
+  "PlanetName": "Talosia"
+ },
+ {
+  "PlanetNaturalId": "UV-351e",
+  "PlanetName": "Tarvos"
+ },
+ {
+  "PlanetNaturalId": "YI-715c",
+  "PlanetName": "The Burn Pits"
+ },
+ {
+  "PlanetNaturalId": "YK-715c",
+  "PlanetName": "Tiezendor"
+ },
+ {
+  "PlanetNaturalId": "JK-782c",
+  "PlanetName": "Time's Edge"
+ },
+ {
+  "PlanetNaturalId": "XG-326b",
+  "PlanetName": "Titan"
+ },
+ {
+  "PlanetNaturalId": "TD-260f",
+  "PlanetName": "Tivalis"
+ },
+ {
+  "PlanetNaturalId": "FK-037f",
+  "PlanetName": "Toktu"
+ },
+ {
+  "PlanetNaturalId": "EW-238c",
+  "PlanetName": "Trail's End"
+ },
+ {
+  "PlanetNaturalId": "GH-459c",
+  "PlanetName": "Tropica"
+ },
+ {
+  "PlanetNaturalId": "AU-522b",
+  "PlanetName": "Typhon"
+ },
+ {
+  "PlanetNaturalId": "UV-351c",
+  "PlanetName": "Umbra"
+ },
+ {
+  "PlanetNaturalId": "XH-329a",
+  "PlanetName": "Uponor"
+ },
+ {
+  "PlanetNaturalId": "OT-627a",
+  "PlanetName": "Ursin"
+ },
+ {
+  "PlanetNaturalId": "OT-580c",
+  "PlanetName": "Vallis"
+ },
+ {
+  "PlanetNaturalId": "GC-645b",
+  "PlanetName": "Vault"
+ },
+ {
+  "PlanetNaturalId": "YI-715b",
+  "PlanetName": "Verdant"
+ },
+ {
+  "PlanetNaturalId": "EL-179g",
+  "PlanetName": "Veyra"
+ },
+ {
+  "PlanetNaturalId": "JS-570i",
+  "PlanetName": "Volos"
+ },
+ {
+  "PlanetNaturalId": "LS-014a",
+  "PlanetName": "Volta"
+ },
+ {
+  "PlanetNaturalId": "ZV-759b",
+  "PlanetName": "Vulcan"
+ },
+ {
+  "PlanetNaturalId": "UV-351b",
+  "PlanetName": "Yannick"
+ },
+ {
+  "PlanetNaturalId": "OS-099d",
+  "PlanetName": "Yingzhou"
+ },
+ {
+  "PlanetNaturalId": "AW-006e",
+  "PlanetName": "Zephyrus"
+ }
+]
