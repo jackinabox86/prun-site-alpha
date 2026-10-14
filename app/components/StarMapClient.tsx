@@ -6,13 +6,24 @@ import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
 import {
   EXCHANGES,
   computeEmpire,
+  findExchange,
   loadPlanetNames,
   loadStarSystems,
   makeResolver,
   splitList,
   type Empire,
+  type Exchange,
   type StarSystem,
 } from "@/lib/starMap";
+import {
+  SHIP_SIZES,
+  loadMaterialSizes,
+  loadsBySystem,
+  parseBurn,
+  planRoutes,
+  type MaterialSize,
+  type PlannedRoute,
+} from "@/lib/routePlan";
 
 // World-unit diameters. Neighbouring systems are ~50-100 units apart.
 const STAR_SIZE = 37.5;
@@ -39,6 +50,11 @@ const MAX_BASE_DOTS = 12;
 const FLY_MS = 900;
 const FLY_DISTANCE = 260;
 const BASES_STORAGE_KEY = "starMap.bases";
+const EXCHANGE_STORAGE_KEY = "starMap.exchange";
+const BURN_STORAGE_KEY = "starMap.burn";
+const SHIP_STORAGE_KEY = "starMap.ship";
+const MIN_DAYS_STORAGE_KEY = "starMap.minDays";
+const DEFAULT_MIN_DAYS = 7;
 
 // Soft spectral tints for ordinary stars, kept pale so the saturated
 // exchange colors stay distinct from every ordinary star.
@@ -167,7 +183,22 @@ interface SceneApi {
 interface Bases {
   /** Planet labels per base system. */
   bySystem: Map<number, string[]>;
+  /** Exchanges pinned per base system with "Base > AI1". */
+  pinned: Map<number, Exchange>;
   unresolved: string[];
+}
+
+/** A text setting kept in this browser's localStorage. */
+function useStoredText(key: string, initial = ""): [string, (text: string) => void] {
+  const [text, setText] = useState(initial);
+  useEffect(() => {
+    setText(window.localStorage.getItem(key) ?? initial);
+  }, [key, initial]);
+  const update = (next: string) => {
+    setText(next);
+    window.localStorage.setItem(key, next);
+  };
+  return [text, update];
 }
 
 export default function StarMapClient() {
@@ -179,15 +210,23 @@ export default function StarMapClient() {
   const [hover, setHover] = useState<HoverInfo | null>(null);
   const [query, setQuery] = useState("");
   const [queryError, setQueryError] = useState<string | null>(null);
-  const [basesText, setBasesText] = useState("");
+  const [basesText, updateBasesText] = useStoredText(BASES_STORAGE_KEY);
+  const [exchangeCode, setExchangeCode] = useStoredText(EXCHANGE_STORAGE_KEY);
+  const [burnText, setBurnText] = useStoredText(BURN_STORAGE_KEY);
+  const [shipId, setShipId] = useStoredText(SHIP_STORAGE_KEY, SHIP_SIZES[0].id);
+  const [minDaysText, setMinDaysText] = useStoredText(MIN_DAYS_STORAGE_KEY, String(DEFAULT_MIN_DAYS));
+  const [materialSizes, setMaterialSizes] = useState<Map<string, MaterialSize>>(() => new Map());
   const [empireOn, setEmpireOn] = useState(false);
+  const [plannerOpen, setPlannerOpen] = useState(false);
+  const [selectedRoute, setSelectedRoute] = useState<number | null>(null);
 
   useEffect(() => {
     let cancelled = false;
-    Promise.all([loadStarSystems(), loadPlanetNames()])
-      .then(([s, names]) => {
+    Promise.all([loadStarSystems(), loadPlanetNames(), loadMaterialSizes()])
+      .then(([s, names, sizes]) => {
         if (cancelled) return;
         setPlanetNames(names);
+        setMaterialSizes(sizes);
         setSystems(s);
       })
       .catch((e: unknown) => !cancelled && setError(e instanceof Error ? e.message : String(e)));
@@ -196,39 +235,65 @@ export default function StarMapClient() {
     };
   }, []);
 
-  // The base list persists in this browser only.
-  useEffect(() => {
-    setBasesText(window.localStorage.getItem(BASES_STORAGE_KEY) ?? "");
-  }, []);
-  const updateBasesText = (text: string) => {
-    setBasesText(text);
-    window.localStorage.setItem(BASES_STORAGE_KEY, text);
-  };
-
   const resolve = useMemo(() => (systems ? makeResolver(systems, planetNames) : null), [systems, planetNames]);
 
+  const burn = useMemo(() => parseBurn(burnText, materialSizes), [burnText, materialSizes]);
+
+  // Bases come from the bases box and from the planets in a pasted burn table.
   const bases = useMemo<Bases>(() => {
     const bySystem = new Map<number, string[]>();
+    const pinned = new Map<number, Exchange>();
     const unresolved: string[] = [];
-    if (!resolve) return { bySystem, unresolved };
+    if (!resolve) return { bySystem, pinned, unresolved };
+    const add = (system: number, label: string) => {
+      const labels = bySystem.get(system) ?? [];
+      if (!labels.includes(label)) labels.push(label);
+      bySystem.set(system, labels);
+    };
     for (const entry of splitList(basesText)) {
-      const hit = resolve(entry);
-      if (!hit) {
+      const [name, pin] = entry.split(">").map((t) => t.trim());
+      const hit = resolve(name);
+      const exchange = pin === undefined ? null : findExchange(pin);
+      if (!hit || (pin !== undefined && !exchange)) {
         unresolved.push(entry);
         continue;
       }
-      const labels = bySystem.get(hit.system) ?? [];
-      if (!labels.includes(hit.label)) labels.push(hit.label);
-      bySystem.set(hit.system, labels);
+      add(hit.system, hit.label);
+      if (exchange) pinned.set(hit.system, exchange);
     }
-    return { bySystem, unresolved };
-  }, [resolve, basesText]);
+    for (const base of burn.bases) {
+      const hit = resolve(base.planet);
+      if (hit) add(hit.system, hit.label);
+      else unresolved.push(base.planet);
+    }
+    return { bySystem, pinned, unresolved };
+  }, [resolve, basesText, burn]);
 
+  const homeExchange = findExchange(exchangeCode);
   const empire = useMemo(
-    () => (systems && bases.bySystem.size > 0 ? computeEmpire(systems, [...bases.bySystem.keys()]) : null),
-    [systems, bases],
+    () =>
+      systems && bases.bySystem.size > 0
+        ? computeEmpire(systems, [...bases.bySystem.keys()], (base) => bases.pinned.get(base) ?? homeExchange)
+        : null,
+    [systems, bases, homeExchange],
   );
-  const empireActive = empireOn && empire !== null;
+
+  const ship = SHIP_SIZES.find((x) => x.id === shipId) ?? SHIP_SIZES[0];
+  const minDays = Math.max(0, parseFloat(minDaysText) || 0);
+  const plan = useMemo<PlannedRoute[]>(() => {
+    if (!systems || !resolve || !empire || burn.bases.length === 0) return [];
+    return planRoutes(systems, empire, loadsBySystem(burn.bases, resolve).loads, ship, minDays);
+  }, [systems, resolve, empire, burn, ship, minDays]);
+  useEffect(() => setSelectedRoute(null), [plan]);
+
+  // A selected route narrows empire view to that one lap.
+  const shownEmpire = useMemo<Empire | null>(() => {
+    const route = selectedRoute === null ? undefined : plan[selectedRoute];
+    if (!empire || !route) return empire;
+    const stops = new Set(route.stops.map((s) => s.system));
+    return { routes: empire.routes.filter((r) => stops.has(r.base)), systems: new Set(route.systems), edges: route.edges };
+  }, [empire, plan, selectedRoute]);
+  const empireActive = empireOn && shownEmpire !== null;
 
   const suggestions = useMemo(() => {
     if (!systems) return [];
@@ -538,13 +603,15 @@ export default function StarMapClient() {
   }, [systems]);
 
   // These run after the scene effect above, so the handle is ready.
+  // Empire view hides every other system, so hide their base rings too.
   useEffect(() => {
-    sceneApi.current?.setBases(new Map([...bases.bySystem].map(([i, labels]) => [i, labels.length])));
-  }, [systems, bases]);
+    const shown = [...bases.bySystem].filter(([i]) => !empireActive || shownEmpire?.systems.has(i));
+    sceneApi.current?.setBases(new Map(shown.map(([i, labels]) => [i, labels.length])));
+  }, [systems, bases, empireActive, shownEmpire]);
 
   useEffect(() => {
-    sceneApi.current?.setEmpire(empireActive ? empire : null);
-  }, [systems, empire, empireActive]);
+    sceneApi.current?.setEmpire(empireActive ? shownEmpire : null);
+  }, [systems, shownEmpire, empireActive]);
 
   const onZoomSubmit = (e: FormEvent) => {
     e.preventDefault();
@@ -554,7 +621,7 @@ export default function StarMapClient() {
       return;
     }
     setQueryError(null);
-    if (empireActive && empire && !empire.systems.has(hit.system)) setEmpireOn(false);
+    if (empireActive && shownEmpire && !shownEmpire.systems.has(hit.system)) setEmpireOn(false);
     sceneApi.current?.flyToSystem(hit.system);
   };
 
@@ -636,10 +703,22 @@ export default function StarMapClient() {
             value={basesText}
             onChange={(e) => updateBasesText(e.target.value)}
             rows={4}
-            placeholder={"Montem, Katoa\nUV-351c"}
+            placeholder={"Montem, Katoa\nUV-351c\nMalahat > AI1"}
             style={{ ...inputStyle, display: "block", width: "100%", marginTop: 4, resize: "vertical" }}
           />
         </label>
+        <label style={{ display: "flex", alignItems: "center", gap: 6, marginTop: 6, color: "#8fa3c7" }}>
+          Exchange
+          <select value={homeExchange?.code ?? ""} onChange={(e) => setExchangeCode(e.target.value)} style={{ ...inputStyle, flex: 1, minWidth: 0 }}>
+            <option value="">Nearest by jumps</option>
+            {EXCHANGES.map((x) => (
+              <option key={x.code} value={x.code}>
+                {x.name} ({x.code})
+              </option>
+            ))}
+          </select>
+        </label>
+        <div style={{ color: "#6f80a3", fontSize: 11 }}>Pin one base with &quot;Base &gt; AI1&quot;.</div>
         <div style={{ color: "#6f80a3", marginTop: 4 }}>
           {baseCount > 0 && `${baseCount} base${baseCount === 1 ? "" : "s"} in ${bases.bySystem.size} system${bases.bySystem.size === 1 ? "" : "s"}`}
           {bases.unresolved.length > 0 && <div style={{ color: "#ff8a80" }}>Not found: {bases.unresolved.join(", ")}</div>}
@@ -658,17 +737,102 @@ export default function StarMapClient() {
         >
           {empireActive ? "Show all systems" : "Empire view"}
         </button>
-        {empireActive && empire && systems && (
-          <div style={{ marginTop: 6, color: "#b8c6e6" }}>
-            {empire.routes.map((r) => (
+        {empireActive && shownEmpire && systems && (
+          <div style={{ marginTop: 6, color: "#b8c6e6", maxHeight: 220, overflowY: "auto" }}>
+            {shownEmpire.routes.map((r) => (
               <div key={r.base}>
                 {systems[r.base].name} → <span style={{ color: systems[r.exchange].exchange?.color }}>{systems[r.exchange].exchange?.code}</span>{" "}
                 <span style={{ color: "#6f80a3" }}>
                   {r.jumps} jump{r.jumps === 1 ? "" : "s"}
+                  {bases.pinned.has(r.base) && " (pinned)"}
                 </span>
               </div>
             ))}
           </div>
+        )}
+      </div>
+
+      <div style={{ ...panelStyle, left: 12, top: 12, width: plannerOpen ? 340 : undefined, maxHeight: "calc(100% - 210px)", overflowY: "auto", pointerEvents: "auto" }}>
+        <button type="button" onClick={() => setPlannerOpen((open) => !open)} style={{ ...buttonStyle, width: plannerOpen ? "100%" : undefined }}>
+          {plannerOpen ? "Hide route planner" : "Route planner"}
+        </button>
+        {plannerOpen && (
+          <>
+            <label style={{ display: "block", marginTop: 8, color: "#8fa3c7" }}>
+              RPrUn burn table (XIT BURN, copied)
+              <textarea
+                value={burnText}
+                onChange={(e) => setBurnText(e.target.value)}
+                rows={3}
+                placeholder={"Planet\tTicker\tInv\tBurn/day\tNeed\tDays\nMetis b\tDW\t58\t-56.5\t451\t1"}
+                style={{ ...inputStyle, display: "block", width: "100%", marginTop: 4, resize: "vertical" }}
+              />
+            </label>
+            <div style={{ color: "#6f80a3" }}>
+              {burn.bases.length > 0 && `${burn.bases.length} bases with burn data; they are added to your bases.`}
+              {burn.unknownTickers.length > 0 && <div style={{ color: "#ff8a80" }}>No size for: {burn.unknownTickers.join(", ")}</div>}
+            </div>
+            <div style={{ display: "flex", gap: 6, marginTop: 6 }}>
+              <label style={{ flex: 1, color: "#8fa3c7" }}>
+                Ship hold
+                <select value={ship.id} onChange={(e) => setShipId(e.target.value)} style={{ ...inputStyle, display: "block", width: "100%" }}>
+                  {SHIP_SIZES.map((x) => (
+                    <option key={x.id} value={x.id}>
+                      {x.label}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label style={{ width: 96, color: "#8fa3c7" }}>
+                Min days/lap
+                <input
+                  type="number"
+                  min={0}
+                  step={0.5}
+                  value={minDaysText}
+                  onChange={(e) => setMinDaysText(e.target.value)}
+                  style={{ ...inputStyle, display: "block", width: "100%" }}
+                />
+              </label>
+            </div>
+            <div style={{ color: "#6f80a3", fontSize: 11, marginTop: 4 }}>
+              Each hold leaves the exchange with every stop&apos;s inputs and picks up outputs on the way. Days = how long one hold supplies the
+              route. No flight times, so laps are counted in jumps. Click a route to show it.
+            </div>
+            {burn.bases.length === 0 && <div style={{ marginTop: 6 }}>Paste a burn table to plan routes.</div>}
+            {systems &&
+              plan.map((r, i) => {
+                const selected = selectedRoute === i;
+                const exchange = systems[r.exchange].exchange;
+                return (
+                  <button
+                    key={i}
+                    type="button"
+                    onClick={() => {
+                      setSelectedRoute(selected ? null : i);
+                      setEmpireOn(true);
+                    }}
+                    style={{
+                      ...routeCardStyle,
+                      borderColor: selected ? BASE_COLOR : r.overloaded ? "rgba(255, 138, 128, 0.5)" : "rgba(160, 185, 255, 0.2)",
+                    }}
+                  >
+                    <div>
+                      <span style={{ color: exchange?.color }}>{exchange?.code}</span>{" "}
+                      <span style={{ color: r.overloaded ? "#ff8a80" : BASE_COLOR }}>{r.coverDays.toFixed(1)} days</span>{" "}
+                      <span style={{ color: "#6f80a3" }}>
+                        ({r.binding}) · ~{r.lapJumps} jumps/lap
+                      </span>
+                    </div>
+                    <div>{r.stops.map((stop) => `${systems[stop.system].name} (${stop.planets.join(", ")})`).join(" → ")}</div>
+                    <div style={{ color: "#6f80a3" }}>
+                      per day in {fmt(r.load.inT)}t / {fmt(r.load.inV)}m³ · out {fmt(r.load.outT)}t / {fmt(r.load.outV)}m³
+                    </div>
+                    {r.overloaded && <div style={{ color: "#ff8a80" }}>Under {minDays} days on its own: needs a bigger hold.</div>}
+                  </button>
+                );
+              })}
+          </>
         )}
       </div>
 
@@ -692,6 +856,24 @@ export default function StarMapClient() {
     </div>
   );
 }
+
+const fmt = (n: number) => (n >= 100 ? n.toFixed(0) : n.toFixed(1));
+
+const routeCardStyle: CSSProperties = {
+  display: "block",
+  width: "100%",
+  marginTop: 6,
+  padding: "4px 6px",
+  textAlign: "left",
+  background: "rgba(2, 4, 12, 0.6)",
+  border: "1px solid",
+  borderRadius: 2,
+  color: "#b8c6e6",
+  fontFamily: "var(--font-mono)",
+  fontSize: 11,
+  lineHeight: 1.5,
+  cursor: "pointer",
+};
 
 const panelStyle: CSSProperties = {
   position: "absolute",

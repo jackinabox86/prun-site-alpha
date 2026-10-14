@@ -223,11 +223,28 @@ export interface Empire {
   edges: [number, number][];
 }
 
+/** Matches an exchange by code, name or system natural ID ("AI1", "Antares", "ZV-307"). */
+export function findExchange(text: string): Exchange | null {
+  const t = text.trim().toLowerCase();
+  if (!t) return null;
+  return (
+    EXCHANGES.find((x) => x.code.toLowerCase() === t || x.naturalId.toLowerCase() === t || x.name.toLowerCase() === t) ??
+    EXCHANGES.find((x) => x.name.toLowerCase().startsWith(t)) ??
+    null
+  );
+}
+
 /**
  * For each base system: the exchange with the fewest jumps (ties broken by
- * straight-line distance) and the shortest jump route to it.
+ * straight-line distance) and the shortest jump route to it. `exchangeFor`
+ * pins a base system to one exchange instead; the star data has no gateways,
+ * so a pin is how a player corrects routes that really run through one.
  */
-export function computeEmpire(systems: StarSystem[], baseSystems: number[]): Empire {
+export function computeEmpire(
+  systems: StarSystem[],
+  baseSystems: number[],
+  exchangeFor?: (base: number) => Exchange | null,
+): Empire {
   const exchanges = systems.flatMap((s, i) => (s.exchange ? [i] : []));
   const fromExchange = new Map(exchanges.map((x) => [x, jumpsFrom(systems, x)]));
   const routes: EmpireRoute[] = [];
@@ -237,7 +254,9 @@ export function computeEmpire(systems: StarSystem[], baseSystems: number[]): Emp
   for (const base of new Set(baseSystems)) {
     shown.add(base);
     let best: { x: number; jumps: number; d2: number } | null = null;
+    const pinned = exchangeFor?.(base);
     for (const x of exchanges) {
+      if (pinned && systems[x].exchange !== pinned) continue;
       const jumps = fromExchange.get(x)!.dist[base];
       if (jumps < 0) continue;
       const a = systems[base];
