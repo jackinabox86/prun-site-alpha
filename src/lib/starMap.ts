@@ -129,6 +129,7 @@ export async function loadPlanetNames(url: string = planetDataUrl()): Promise<Ma
 }
 
 const PLANET_ID = /^([A-Z]{2}-\d{3})([a-z])$/i;
+const NAMED_SYSTEM_PLANET = /^(.+?)\s+([a-z])$/i;
 
 export interface Lookup {
   /** Index of the system the query names. */
@@ -166,10 +167,17 @@ export function makeResolver(systems: StarSystem[], planetNames: Map<string, str
     const hit = planetLookup(id);
     if (hit) byKey.set(name.toLowerCase(), hit);
   }
+  // Planets in named systems display as "<System> <letter>", e.g. "Metis b".
+  const namedSystemPlanet = (q: string): Lookup | null => {
+    const m = NAMED_SYSTEM_PLANET.exec(q);
+    const hit = m && byKey.get(m[1].toLowerCase());
+    if (!m || !hit || hit.isPlanet) return null;
+    return { system: hit.system, label: `${hit.label} ${m[2].toLowerCase()}`, isPlanet: true };
+  };
   return (query) => {
     const q = query.trim();
     if (!q) return null;
-    return byKey.get(q.toLowerCase()) ?? planetLookup(q);
+    return byKey.get(q.toLowerCase()) ?? planetLookup(q) ?? namedSystemPlanet(q);
   };
 }
 

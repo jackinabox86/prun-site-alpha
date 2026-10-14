@@ -33,7 +33,7 @@ const ROUTE_OPACITY = 0.5;
 // Base markers: a faint yellow ring, plus one dot per base when a system
 // holds more than one.
 const BASE_COLOR = "#ffd84a";
-const BASE_RING_SIZE = 115;
+const BASE_RING_SIZE = 57.5;
 const MAX_BASE_DOTS = 12;
 
 const FLY_MS = 900;
@@ -95,7 +95,7 @@ const baseVertexShader = /* glsl */ `
   void main() {
     vCount = count;
     vec4 mv = modelViewMatrix * vec4(position, 1.0);
-    gl_PointSize = clamp(${BASE_RING_SIZE.toFixed(1)} * uScale / -mv.z, 20.0, 120.0);
+    gl_PointSize = clamp(${BASE_RING_SIZE.toFixed(1)} * uScale / -mv.z, 10.0, 60.0);
     gl_Position = projectionMatrix * mv;
   }
 `;
@@ -113,7 +113,7 @@ const baseFragmentShader = /* glsl */ `
         if (float(k) >= vCount) break;
         float ang = 6.2831853 * float(k) / vCount - 1.5707963;
         vec2 p = 0.41 * vec2(cos(ang), sin(ang));
-        a = max(a, smoothstep(0.075, 0.045, length(c - p)) * 0.95);
+        a = max(a, smoothstep(0.11, 0.07, length(c - p)) * 0.95);
       }
     }
     gl_FragColor = vec4(uColor * a, a);
