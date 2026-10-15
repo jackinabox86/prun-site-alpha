@@ -20,12 +20,14 @@ import {
 } from "@/lib/starMap";
 import {
   SHIP_SIZES,
+  betterScore,
   formatFleet,
   loadMaterialSizes,
   loadsByBase,
   parseBurn,
   parseFleet,
   planRoutes,
+  planScore,
   type MaterialSize,
   type PlannedRoute,
 } from "@/lib/routePlan";
@@ -55,6 +57,7 @@ const BASE_RING_SIZE = 57.5;
 // Hovering a base lights its route to the exchange along the jump lines.
 const HIGHLIGHT_COLOR = "#fff3b0";
 const HIGHLIGHT_GATEWAY_COLOR = "#b8fbff";
+const MILK_COLOR = "#9be37a";
 const MAX_BASE_DOTS = 12;
 
 const FLY_MS = 900;
@@ -70,6 +73,10 @@ const MIN_DAYS_STORAGE_KEY = "starMap.minDays";
 const FLEET_STORAGE_KEY = "starMap.fleet";
 /** System names whose bases route on jump lines only. */
 const NO_GATEWAY_STORAGE_KEY = "starMap.noGateway";
+/** "System>AI1" lines: bases sent to an exchange other than the nearest. */
+const EXCHANGE_FOR_STORAGE_KEY = "starMap.exchangeFor";
+const MILK_STORAGE_KEY = "starMap.milkRuns";
+const INFO_COLLAPSED_STORAGE_KEY = "starMap.infoCollapsed";
 /** Ship hold option that plans with the counts in the fleet box. */
 const FLEET_OPTION = "fleet";
 const DEFAULT_MIN_DAYS = 7;
@@ -243,6 +250,11 @@ export default function StarMapClient() {
   const [gatewaysOffText, setGatewaysOffText] = useStoredText(GATEWAYS_STORAGE_KEY);
   const useGateways = gatewaysOffText !== "off";
   const [noGatewayText, setNoGatewayText] = useStoredText(NO_GATEWAY_STORAGE_KEY);
+  const [exchangeForText, setExchangeForText] = useStoredText(EXCHANGE_FOR_STORAGE_KEY);
+  const [milkOffText, setMilkOffText] = useStoredText(MILK_STORAGE_KEY);
+  const milkOn = milkOffText !== "off";
+  const [infoCollapsedText, setInfoCollapsedText] = useStoredText(INFO_COLLAPSED_STORAGE_KEY);
+  const infoCollapsed = infoCollapsedText === "1";
   const [empireOn, setEmpireOn] = useState(false);
   const [plannerOpen, setPlannerOpen] = useState(false);
   const [selectedRoute, setSelectedRoute] = useState<number | null>(null);
@@ -339,13 +351,42 @@ export default function StarMapClient() {
     setNoGatewayText([...names].join("\n"));
   };
 
+  // Exchanges chosen per system in empire view, kept by system name like the gateway opt-outs.
+  const exchangeFor = useMemo(() => {
+    const byName = new Map<string, Exchange>();
+    for (const line of exchangeForText.split(/\r?\n/)) {
+      const [name, code] = line.split(">");
+      const exchange = code ? findExchange(code) : null;
+      if (name?.trim() && exchange) byName.set(name.trim(), exchange);
+    }
+    const bySystem = new Map<number, Exchange>();
+    (systems ?? []).forEach((s, i) => {
+      const exchange = byName.get(s.name);
+      if (exchange) bySystem.set(i, exchange);
+    });
+    return bySystem;
+  }, [systems, exchangeForText]);
+  const setExchangeFor = (system: number, code: string) => {
+    if (!systems) return;
+    const name = systems[system].name;
+    const lines = exchangeForText.split(/\r?\n/).filter((l) => l.trim() && l.split(">")[0].trim() !== name);
+    if (code) lines.push(`${name}>${code}`);
+    setExchangeForText(lines.join("\n"));
+  };
+
   const homeExchange = findExchange(exchangeCode);
   const empire = useMemo(
     () =>
       systems && bases.bySystem.size > 0
-        ? computeEmpire(systems, [...bases.bySystem.keys()], (base) => bases.pinned.get(base) ?? homeExchange, gateways, noGateways)
+        ? computeEmpire(
+            systems,
+            [...bases.bySystem.keys()],
+            (base) => exchangeFor.get(base) ?? bases.pinned.get(base) ?? homeExchange,
+            gateways,
+            noGateways,
+          )
         : null,
-    [systems, bases, homeExchange, gateways, noGateways],
+    [systems, bases, exchangeFor, homeExchange, gateways, noGateways],
   );
 
   const useFleet = shipId === FLEET_OPTION;
@@ -353,8 +394,10 @@ export default function StarMapClient() {
   const fleet = useMemo(() => parseFleet(fleetText), [fleetText]);
   const fleetSize = [...fleet.values()].reduce((a, b) => a + b, 0);
   const minDays = Math.max(0, parseFloat(minDaysText) || 0);
-  const plan = useMemo<PlannedRoute[]>(() => {
-    if (!systems || !resolve || !empire || burn.bases.length === 0) return [];
+  // Plans with and without milk runs; milk runs are only suggested when they
+  // serve more bases or need fewer ships than dropping everything at the exchange.
+  const plans = useMemo<{ base: PlannedRoute[]; milk: PlannedRoute[] | null }>(() => {
+    if (!systems || !resolve || !empire || burn.bases.length === 0) return { base: [], milk: null };
     // A ship only takes gateways its volume fits, so bigger ships may fly the
     // jump lines instead; each base keeps the exchange the empire view gave it.
     const exchangeOf = new Map(empire.routes.map((r) => [r.base, systems[r.exchange].exchange]));
@@ -366,8 +409,13 @@ export default function StarMapClient() {
         gateways.filter((g) => g.maxShipVolume >= volume),
         noGateways,
       );
-    return planRoutes(systems, empire, loadsByBase(burn.bases, resolve).stops, useFleet ? fleet : ship, minDays, empireFor);
+    const stops = loadsByBase(burn.bases, resolve).stops;
+    const ships = useFleet ? fleet : ship;
+    const base = planRoutes(systems, empire, stops, ships, minDays, empireFor);
+    const milk = planRoutes(systems, empire, stops, ships, minDays, empireFor, true);
+    return { base, milk: betterScore(planScore(milk), planScore(base)) ? milk : null };
   }, [systems, resolve, empire, burn, useFleet, fleet, ship, minDays, gateways, noGateways]);
+  const plan = milkOn && plans.milk ? plans.milk : plans.base;
   const setFleetCount = (id: string, n: number) => {
     const next = new Map(fleet);
     next.set(id, n);
@@ -913,7 +961,17 @@ export default function StarMapClient() {
         </div>
       )}
 
-      <div style={{ ...panelStyle, right: 12, top: 12, width: 260, pointerEvents: "auto" }}>
+      <div style={{ position: "absolute", right: infoCollapsed ? 0 : 12, top: 12, display: "flex", alignItems: "flex-start", pointerEvents: "auto" }}>
+        <button
+          type="button"
+          onClick={() => setInfoCollapsedText(infoCollapsed ? "" : "1")}
+          title={infoCollapsed ? "Show the panel" : "Hide the panel"}
+          aria-label={infoCollapsed ? "Show the panel" : "Hide the panel"}
+          style={collapseHandleStyle}
+        >
+          {infoCollapsed ? "‹" : "›"}
+        </button>
+      <div style={{ ...panelStyle, position: "static", width: 260, display: infoCollapsed ? "none" : undefined }}>
         <form onSubmit={onZoomSubmit} style={{ display: "flex", gap: 6 }}>
           <input
             value={query}
@@ -985,11 +1043,25 @@ export default function StarMapClient() {
           <div style={{ marginTop: 6, color: "#b8c6e6", maxHeight: 220, overflowY: "auto" }}>
             {shownEmpire.routes.map((r) => (
               <div key={r.base}>
-                {systems[r.base].name} → <span style={{ color: systems[r.exchange].exchange?.color }}>{systems[r.exchange].exchange?.code}</span>{" "}
+                {systems[r.base].name} →{" "}
+                <select
+                  value={exchangeFor.get(r.base)?.code ?? ""}
+                  onChange={(e) => setExchangeFor(r.base, e.target.value)}
+                  title="Exchange for this system's bases"
+                  aria-label={`Exchange for ${systems[r.base].name}`}
+                  style={{ ...exchangeSelectStyle, color: systems[r.exchange].exchange?.color }}
+                >
+                  <option value="">{exchangeFor.has(r.base) ? "auto" : systems[r.exchange].exchange?.code}</option>
+                  {EXCHANGES.map((x) => (
+                    <option key={x.code} value={x.code}>
+                      {x.code}
+                    </option>
+                  ))}
+                </select>{" "}
                 <span style={{ color: "#6f80a3" }}>
                   {r.jumps} jump{r.jumps === 1 ? "" : "s"}
                   {r.gatewayLimit !== null && <span style={{ color: GATEWAY_COLOR }}> via gateway</span>}
-                  {bases.pinned.has(r.base) && " (pinned)"}
+                  {(exchangeFor.has(r.base) || bases.pinned.has(r.base)) && " (pinned)"}
                 </span>
                 {gateways.length > 0 && (r.gatewayLimit !== null || noGateways.has(r.base)) && (
                   <button
@@ -1006,6 +1078,7 @@ export default function StarMapClient() {
           </div>
         )}
       </div>
+      </div>
 
       <div style={{ ...panelStyle, left: 12, top: 12, width: plannerOpen ? 340 : undefined, maxHeight: "calc(100% - 210px)", overflowY: "auto", pointerEvents: "auto" }}>
         <button type="button" onClick={() => setPlannerOpen((open) => !open)} style={{ ...buttonStyle, width: plannerOpen ? "100%" : undefined }}>
@@ -1014,7 +1087,6 @@ export default function StarMapClient() {
         {plannerOpen && (
           <>
             <div style={{ color: "#6f80a3", marginTop: 8 }}>
-              {burn.bases.length > 0 && `${burn.bases.length} bases with burn data from the bases box.`}
               {burn.unknownTickers.length > 0 && <div style={{ color: "#ff8a80" }}>No size for: {burn.unknownTickers.join(", ")}</div>}
             </div>
             <div style={{ display: "flex", gap: 6, marginTop: 6 }}>
@@ -1061,6 +1133,19 @@ export default function StarMapClient() {
                 {burn.bases.length > 0 && <FleetSummary plan={plan} fleetSize={fleetSize} />}
               </div>
             )}
+            {burn.bases.length > 0 && (
+              <div style={{ marginTop: 6 }}>
+                <label style={{ display: "flex", alignItems: "center", gap: 6, color: "#8fa3c7" }}>
+                  <input type="checkbox" checked={milkOn} onChange={(e) => setMilkOffText(e.target.checked ? "" : "off")} />
+                  Milk runs
+                </label>
+                <div style={{ color: plans.milk ? MILK_COLOR : "#6f80a3", fontSize: 11 }}>
+                  {plans.milk
+                    ? `Passing outputs to bases later on the same lap ${milkSaving(plans.base, plans.milk)}${milkOn ? "" : " Tick to use it."}`
+                    : "No saving from passing outputs between bases; they go to the exchange."}
+                </div>
+              </div>
+            )}
             <div style={{ color: "#6f80a3", fontSize: 11, marginTop: 4 }}>
               Each hold leaves the exchange with every stop&apos;s inputs and picks up outputs on the way. Days = how long one hold supplies the
               route. No flight times, so laps are counted in jumps. Click a route to show it.
@@ -1095,6 +1180,11 @@ export default function StarMapClient() {
                     <div style={{ color: "#6f80a3" }}>
                       per day in {fmt(r.load.inT)}t / {fmt(r.load.inV)}m³ · out {fmt(r.load.outT)}t / {fmt(r.load.outV)}m³
                     </div>
+                    {r.transfers.length > 0 && (
+                      <div style={{ color: MILK_COLOR }}>
+                        {r.transfers.map((t) => `${t.from} → ${t.to}: ${fmt(t.rate)} ${t.ticker}/day`).join(" · ")}
+                      </div>
+                    )}
                     {r.overloaded && r.ship && <div style={{ color: "#ff8a80" }}>Under {minDays} days on its own: needs a bigger hold.</div>}
                     {!r.ship && <div style={{ color: "#ff8a80" }}>Every ship in the fleet is already on a route.</div>}
                     {r.ship && r.gatewayLimit !== null && (
@@ -1111,26 +1201,28 @@ export default function StarMapClient() {
         )}
       </div>
 
-      <div style={{ ...panelStyle, left: 12, bottom: 12, pointerEvents: "none" }}>
-        {EXCHANGES.map((x) => (
-          <div key={x.code}>
-            <span style={{ display: "inline-block", width: 9, height: 9, borderRadius: "50%", background: x.color, boxShadow: `0 0 6px ${x.color}`, marginRight: 8 }} />
-            {x.name} ({x.code})
-          </div>
-        ))}
-        {baseCount > 0 && (
-          <div>
-            <span style={{ display: "inline-block", width: 7, height: 7, borderRadius: "50%", border: `1px solid ${BASE_COLOR}`, marginRight: 8 }} />
-            Your bases
-          </div>
-        )}
-        {gateways.length > 0 && (
-          <div>
-            <span style={{ display: "inline-block", width: 12, height: 2, background: GATEWAY_COLOR, verticalAlign: "middle", marginRight: 5 }} />
-            Gateway
-          </div>
-        )}
-        <div style={{ color: "#6f80a3", marginTop: 4 }}>
+      <div style={{ ...panelStyle, left: 12, bottom: 12, padding: "4px 8px", fontSize: 11, lineHeight: 1.5, pointerEvents: "none" }}>
+        <div style={{ display: "flex", flexWrap: "wrap", columnGap: 12 }}>
+          {EXCHANGES.map((x) => (
+            <span key={x.code}>
+              <span style={{ display: "inline-block", width: 7, height: 7, borderRadius: "50%", background: x.color, boxShadow: `0 0 5px ${x.color}`, marginRight: 5 }} />
+              {x.name}
+            </span>
+          ))}
+          {baseCount > 0 && (
+            <span>
+              <span style={{ display: "inline-block", width: 6, height: 6, borderRadius: "50%", border: `1px solid ${BASE_COLOR}`, marginRight: 5 }} />
+              Your bases
+            </span>
+          )}
+          {gateways.length > 0 && (
+            <span>
+              <span style={{ display: "inline-block", width: 10, height: 2, background: GATEWAY_COLOR, verticalAlign: "middle", marginRight: 5 }} />
+              Gateway
+            </span>
+          )}
+        </div>
+        <div style={{ color: "#6f80a3" }}>
           {systems ? `${systems.length} systems · ` : ""}drag rotate · right-drag pan · scroll zoom
         </div>
       </div>
@@ -1157,7 +1249,39 @@ function FleetSummary({ plan, fleetSize }: { plan: PlannedRoute[]; fleetSize: nu
   );
 }
 
+/** What a milk-run plan gains over dropping every output at the exchange. */
+function milkSaving(base: PlannedRoute[], milk: PlannedRoute[]): string {
+  const [unservedB, shortB, shipsB, jumpsB] = planScore(base);
+  const [unservedM, shortM, shipsM, jumpsM] = planScore(milk);
+  if (unservedM < unservedB) return `gives ${unservedB - unservedM} more base${unservedB - unservedM === 1 ? "" : "s"} a ship.`;
+  if (shortM < shortB) return `lifts ${shortB - shortM} base${shortB - shortM === 1 ? "" : "s"} over the minimum days.`;
+  if (shipsM < shipsB) return `uses ${shipsM} ships instead of ${shipsB}.`;
+  return `cuts laps from ${jumpsB} to ${jumpsM} jumps in total.`;
+}
+
 const fmt = (n: number) => (n >= 100 ? n.toFixed(0) : n.toFixed(1));
+
+const exchangeSelectStyle: CSSProperties = {
+  padding: "0 2px",
+  background: "rgba(2, 4, 12, 0.8)",
+  border: "1px solid rgba(160, 185, 255, 0.25)",
+  borderRadius: 2,
+  fontFamily: "var(--font-mono)",
+  fontSize: 11,
+};
+
+const collapseHandleStyle: CSSProperties = {
+  width: 16,
+  height: 48,
+  padding: 0,
+  background: "rgba(6, 10, 24, 0.7)",
+  border: "1px solid rgba(160, 185, 255, 0.2)",
+  borderRight: "none",
+  borderRadius: "3px 0 0 3px",
+  color: "#8fa3c7",
+  fontSize: 14,
+  cursor: "pointer",
+};
 
 const linkButtonStyle: CSSProperties = {
   marginLeft: 6,
