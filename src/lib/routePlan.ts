@@ -96,20 +96,28 @@ export interface ParsedBurn {
 }
 
 /**
- * Parses the RPrUn burn table (Planet, Ticker, Inv, Burn/day, ...). The header
- * row and the "Overall" block are skipped: Overall nets one base's output
- * against another base's use, which only holds if the goods are moved.
+ * Parses the RPrUn burn table (Planet, Ticker, Inv, Burn/day, ...). With BURN's
+ * In/Out view on, the columns are Inv, In, Out, Net, so the header row decides
+ * which column holds the net rate; with no header it is Burn/day's column. The
+ * "Overall" block is skipped: Overall nets one base's output against another
+ * base's use, which only holds if the goods are moved.
  */
 export function parseBurn(text: string, sizes: Map<string, MaterialSize>): ParsedBurn {
   const byPlanet = new Map<string, DailyLoad>();
   const flowsOf = new Map<string, Flow[]>();
   const unknown = new Set<string>();
+  let rateCol = 3;
   for (const line of text.split(/\r?\n/)) {
-    const cols = line.split("\t");
-    if (cols.length < 4) continue;
-    const planet = cols[0].trim();
-    const ticker = cols[1].trim().toUpperCase();
-    const rate = parseFloat(cols[3]);
+    const cols = line.split("\t").map((c) => c.trim());
+    if (cols[1] === "Ticker") {
+      const net = cols.indexOf("Net");
+      rateCol = net >= 0 ? net : 3;
+      continue;
+    }
+    if (cols.length <= rateCol) continue;
+    const planet = cols[0];
+    const ticker = cols[1].toUpperCase();
+    const rate = parseFloat(cols[rateCol]);
     if (!planet || planet === "Overall" || !ticker || !Number.isFinite(rate)) continue;
     const load = byPlanet.get(planet) ?? emptyLoad();
     byPlanet.set(planet, load);
