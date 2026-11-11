@@ -3,6 +3,7 @@
 
 import { useMemo, memo, useState, useEffect } from "react";
 import PlotlySankey from "./PlotlySankey";
+import { orderLinksByNodeY } from "./sankeyLinkOrder";
 import type { ChainNode } from "@/core/aemChainBuilder";
 
 const MAX_DEPTH = 20;
@@ -272,6 +273,8 @@ const AemSankey = memo(function AemSankey({ chain, height = 400 }: AemSankeyProp
       });
     }
 
+    const orderedLinks = orderLinksByNodeY(links, nodeY);
+
     return {
       data: [
         {
@@ -290,13 +293,14 @@ const AemSankey = memo(function AemSankey({ chain, height = 400 }: AemSankeyProp
             y: nodeY,
           },
           link: {
-            source: links.source,
-            target: links.target,
-            value: links.value,
-            color: links.color,
+            source: orderedLinks.source,
+            target: orderedLinks.target,
+            value: orderedLinks.value,
+            color: orderedLinks.color,
             hovertemplate: "%{customdata}<extra></extra>",
-            customdata: links.hover,
-            label: links.label,
+            customdata: orderedLinks.hover,
+            label: orderedLinks.label,
+            sort: "input",
           },
           textfont: { size: 13 },
         } as any,

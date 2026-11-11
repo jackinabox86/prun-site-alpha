@@ -649,7 +649,7 @@ export default function BestRecipesHistoryClient() {
                   margin: { l: 60, r: 40, t: 40, b: 80 },
                   hovermode: "closest",
                 }}
-                config={{ responsive: true }}
+                config={{ responsive: true, showSendToCloud: false }}
                 style={{ width: "100%", height: "400px" }}
               />
             </div>
@@ -740,7 +740,7 @@ export default function BestRecipesHistoryClient() {
                     margin: { l: 60, r: 40, t: 40, b: 80 },
                     hovermode: "closest",
                   }}
-                  config={{ responsive: true }}
+                  config={{ responsive: true, showSendToCloud: false }}
                   style={{ width: "100%", height: "400px" }}
                 />
               ) : (

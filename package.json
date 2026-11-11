@@ -29,8 +29,8 @@
   "dependencies": {
     "csv-parse": "^6.1.0",
     "csv-stringify": "^6.6.0",
-    "next": "latest",
-    "plotly.js": "^3.1.1",
+    "next": "16.4.6",
+    "plotly.js": "^4.3.0",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
     "react-plotly.js": "^2.6.0",
