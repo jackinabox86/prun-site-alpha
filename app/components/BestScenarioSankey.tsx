@@ -3,6 +3,7 @@
 
 import { useMemo, memo, useState, useEffect, Suspense } from "react";
 import PlotlySankey from "./PlotlySankey";
+import { orderLinksByNodeY } from "./sankeyLinkOrder";
 import type { Exchange, PriceType } from "@/types";
 import { scenarioDisplayName } from "@/core/scenario";
 import { formatCurrency, getCurrencySymbol } from "@/lib/formatting";
@@ -423,6 +424,8 @@ const BestScenarioSankey = memo(function BestScenarioSankey({
       });
     }
 
+    const orderedLinks = orderLinksByNodeY(links, nodeY);
+
     return {
       data: [
         {
@@ -441,13 +444,14 @@ const BestScenarioSankey = memo(function BestScenarioSankey({
             y: nodeY,
           },
           link: {
-            source: links.source,
-            target: links.target,
-            value: links.value,
-            color: links.color,
+            source: orderedLinks.source,
+            target: orderedLinks.target,
+            value: orderedLinks.value,
+            color: orderedLinks.color,
             hovertemplate: "%{customdata}<extra></extra>",
-            customdata: links.hover,
-            label: links.label,
+            customdata: orderedLinks.hover,
+            label: orderedLinks.label,
+            sort: "input",
           },
           textfont: { size: 13 },
         } as any,
