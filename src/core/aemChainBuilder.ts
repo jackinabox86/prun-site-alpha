@@ -115,9 +115,12 @@ export function buildProductionChain(
   recipeMap: RecipeMap,
   forceRecipes: Map<string, string>,
   visited: Set<string> = new Set(),
-  depth: number = 0
+  depth: number = 0,
+  parentPath: string = ""
 ): ChainNode {
-  const nodeId = `${ticker}::${depth}::${visited.size}`;
+  // Path-based id: unique per position in the tree, so the same ticker in
+  // sibling branches never collides into one Sankey node
+  const nodeId = parentPath ? `${parentPath}>${ticker}` : ticker;
 
   // Check for max depth
   if (depth > MAX_DEPTH) {
@@ -202,7 +205,8 @@ export function buildProductionChain(
       recipeMap,
       forceRecipes,
       newVisited,
-      depth + 1
+      depth + 1,
+      nodeId
     );
 
     return {

@@ -70,6 +70,23 @@ export async function GET(request: Request) {
 
     const limit = Math.min(Math.max(parseInt(limitParam, 10) || 100, 1), 1000);
 
+    // Validate date range parameters up front — an unparseable date would
+    // otherwise filter out every snapshot and masquerade as a 404
+    const fromMillis = fromParam ? new Date(fromParam).getTime() : null;
+    if (fromMillis !== null && Number.isNaN(fromMillis)) {
+      return NextResponse.json(
+        { success: false, error: `Invalid "from" date: "${fromParam}"` },
+        { status: 400 }
+      );
+    }
+    const toMillis = toParam ? new Date(toParam).getTime() : null;
+    if (toMillis !== null && Number.isNaN(toMillis)) {
+      return NextResponse.json(
+        { success: false, error: `Invalid "to" date: "${toParam}"` },
+        { status: 400 }
+      );
+    }
+
     // Create cache key
     const cacheKey = `history:${ticker}:${exchange}:${sellAt}:${limit}:${fromParam || ''}:${toParam || ''}`;
 
@@ -106,14 +123,10 @@ export async function GET(request: Request) {
 
     // Filter snapshots by date range if provided
     let snapshots = indexData.snapshots;
-    if (fromParam) {
-      const fromDate = new Date(fromParam);
-      const fromMillis = fromDate.getTime();
+    if (fromMillis !== null) {
       snapshots = snapshots.filter(s => getTimestampMillis(s.timestamp) >= fromMillis);
     }
-    if (toParam) {
-      const toDate = new Date(toParam);
-      const toMillis = toDate.getTime();
+    if (toMillis !== null) {
       snapshots = snapshots.filter(s => getTimestampMillis(s.timestamp) <= toMillis);
     }
 

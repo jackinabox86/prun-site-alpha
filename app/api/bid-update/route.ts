@@ -164,8 +164,6 @@ export async function GET(request: Request) {
       totalOrders: orders.length,
       activeBuyOrders: activeBuyOrders.length,
       outbidCount: comparisons.length,
-      _sampleOrder: orders.length > 0 ? orders[0] : null,
-      _sampleExchange: exchangeData.length > 0 ? exchangeData[0] : null,
     });
   } catch (err) {
     const message = err instanceof Error ? err.message : "Unknown error";

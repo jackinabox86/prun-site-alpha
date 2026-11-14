@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { fetchGitHubDirListing } from "../lib/githubDirListing";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -47,11 +48,6 @@ interface BaseDataFile {
   [hash: string]: { bases: number; rank: number };
 }
 
-interface GitHubFileEntry {
-  name: string;
-  type: string;
-}
-
 export interface PMMGRow {
   username: string;
   corporation: string | null;
@@ -81,12 +77,8 @@ export interface PMMGApiResponse {
 }
 
 async function fetchAvailableMonths(): Promise<string[]> {
-  const res = await fetch(GITHUB_API, {
-    headers: { Accept: "application/vnd.github+json" },
-    cache: "no-store",
-  });
-  if (!res.ok) return [];
-  const entries: GitHubFileEntry[] = await res.json();
+  const entries = await fetchGitHubDirListing(GITHUB_API);
+  if (!entries) return [];
   const months: string[] = [];
   for (const entry of entries) {
     const match = entry.name.match(/^company-data-([a-z]+\d{2})\.json$/);
