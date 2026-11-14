@@ -37,7 +37,6 @@ export default function ReportClient() {
     "bid",
     { urlParamName: "priceType", updateUrl: true }
   );
-  const [priceSource, setPriceSource] = useState<"local" | "gcs">("gcs");
   const [urlParamsChecked, setUrlParamsChecked] = useState(false);
   const [forceMake, setForceMake] = useState<string>("");
   const [forceBuy, setForceBuy] = useState<string>("");
@@ -72,18 +71,31 @@ export default function ReportClient() {
   );
   const [showCopiedMessage, setShowCopiedMessage] = useState(false);
 
+  // Extraction mode is only supported on ANT — the toggle stays persisted for
+  // when the user returns to ANT, but must never be sent for other exchanges
+  const effectiveExtractionMode = exchange === "ANT" && extractionMode;
+
   useEffect(() => {
     const params = new URLSearchParams();
-    if (extractionMode) {
+    if (effectiveExtractionMode) {
       params.set("extractionMode", "true");
     }
     const url = params.toString() ? `/api/tickers?${params}` : "/api/tickers";
 
+    // Ignore stale responses if extractionMode is toggled again before this resolves
+    let cancelled = false;
     fetch(url, { cache: "no-store" })
       .then((r) => (r.ok ? r.json() : Promise.reject(new Error("Failed to load tickers"))))
-      .then((data: { tickers: string[] }) => setTickers(data.tickers ?? []))
-      .catch(() => setTickers([]));
-  }, [extractionMode]);
+      .then((data: { tickers: string[] }) => {
+        if (!cancelled) setTickers(data.tickers ?? []);
+      })
+      .catch(() => {
+        if (!cancelled) setTickers([]);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [effectiveExtractionMode]);
 
   // Read ticker and optional parameters from URL params on mount
   useEffect(() => {
@@ -147,8 +159,7 @@ export default function ReportClient() {
         ticker: tickerInput.trim().toUpperCase(),
         exchange,
         priceType,
-        priceSource,
-        extractionMode: extractionMode ? "true" : "false",
+        extractionMode: effectiveExtractionMode ? "true" : "false",
       };
 
       // Only include forceMake and forceBuy if they're not empty

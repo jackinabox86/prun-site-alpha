@@ -51,15 +51,18 @@ export default function AemVisualizerClient() {
       .finally(() => setLoading(false));
   }, []);
 
-  // Build chain when ticker or force recipe changes
-  useEffect(() => {
-    if (!recipeMap || !tickerInput.trim()) {
+  // Build the chain for the given inputs. Called explicitly (data load,
+  // Execute button, dropdown selection) rather than on every keystroke so
+  // partially-typed tickers don't flash "no recipe" errors.
+  const runChain = (recipes: RecipeMap, tickerRaw: string, force: string) => {
+    const ticker = tickerRaw.trim().toUpperCase();
+    if (!ticker) {
       setChain(null);
+      setError(null);
       return;
     }
 
-    const ticker = tickerInput.trim().toUpperCase();
-    const result = buildChain(ticker, recipeMap, forceRecipe);
+    const result = buildChain(ticker, recipes, force);
 
     if (result.error) {
       setError(result.error);
@@ -68,7 +71,23 @@ export default function AemVisualizerClient() {
       setError(null);
       setChain(result.root);
     }
-  }, [recipeMap, tickerInput, forceRecipe]);
+  };
+
+  // Build the initial chain once recipe data loads
+  useEffect(() => {
+    if (recipeMap) {
+      runChain(recipeMap, tickerInput, forceRecipe);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [recipeMap]);
+
+  // Clearing the ticker input clears the previous chain and any stale error
+  useEffect(() => {
+    if (!tickerInput.trim()) {
+      setChain(null);
+      setError(null);
+    }
+  }, [tickerInput]);
 
   const filteredTickers = useMemo(() => {
     if (!tickerInput) return tickers.slice(0, 50);
@@ -87,18 +106,8 @@ export default function AemVisualizerClient() {
   }, [chain]);
 
   const handleExecute = () => {
-    if (!recipeMap || !tickerInput.trim()) return;
-
-    const ticker = tickerInput.trim().toUpperCase();
-    const result = buildChain(ticker, recipeMap, forceRecipe);
-
-    if (result.error) {
-      setError(result.error);
-      setChain(null);
-    } else {
-      setError(null);
-      setChain(result.root);
-    }
+    if (!recipeMap) return;
+    runChain(recipeMap, tickerInput, forceRecipe);
   };
 
   return (
@@ -212,6 +221,9 @@ export default function AemVisualizerClient() {
                       e.preventDefault();
                       setTickerInput(t);
                       setShowTickerDropdown(false);
+                      if (recipeMap) {
+                        runChain(recipeMap, t, forceRecipe);
+                      }
                     }}
                     style={{
                       padding: "0.5rem",

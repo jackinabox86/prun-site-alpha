@@ -17,7 +17,7 @@ export async function GET(req: Request) {
     const dataSources = GCS_DATA_SOURCES;
 
     // Get bestMap from cached best recipes (use ANT bid as default)
-    const { bestMap } = await cachedBestRecipes.getBestRecipes("gcs", "ANT", "bid");
+    const { bestMap } = await cachedBestRecipes.getBestRecipes("ANT", "bid");
 
     // Load recipes and prices from GCS
     const { recipeMap } = await loadAllFromCsv(

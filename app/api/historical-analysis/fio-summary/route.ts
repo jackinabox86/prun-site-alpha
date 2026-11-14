@@ -1,7 +1,12 @@
 import { NextResponse } from "next/server";
 import { readFileSync } from "fs";
 import { join } from "path";
+import { getOrCompute, HttpJsonError } from "../../best-recipes/lib/cache";
 import type { HistoricalPriceData } from "../../../../src/types";
+
+// Fans out to every file in the GCS manifest — cache and dedupe (see
+// historical-analysis/route.ts)
+const CACHE_TTL_MS = 5 * 60 * 1000;
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -58,6 +63,32 @@ interface SummaryRow {
 export async function GET(request: Request) {
   try {
     const generatedDate = new Date().toISOString().split('T')[0];
+    const csv = await getOrCompute("fio-summary", CACHE_TTL_MS, computeSummaryCsv);
+
+    // Return CSV with proper headers for download
+    return new NextResponse(csv, {
+      status: 200,
+      headers: {
+        'Content-Type': 'text/csv',
+        'Content-Disposition': `attachment; filename="fio-data-summary-${generatedDate}.csv"`,
+      },
+    });
+  } catch (error) {
+    if (error instanceof HttpJsonError) {
+      return NextResponse.json(error.body, { status: error.status });
+    }
+    console.error("Error in FIO summary API:", error);
+    return NextResponse.json(
+      {
+        error: "Internal server error",
+        message: error instanceof Error ? error.message : String(error)
+      },
+      { status: 500 }
+    );
+  }
+}
+
+async function computeSummaryCsv(): Promise<string> {
     const now = Date.now();
 
     // Calculate cutoff dates for three 180-day periods
@@ -101,13 +132,10 @@ export async function GET(request: Request) {
     }
 
     if (!manifest || !manifest.files) {
-      return NextResponse.json(
-        {
-          error: "Manifest file not found",
-          hint: "Run: npm run generate-manifest to create the manifest file"
-        },
-        { status: 503 }
-      );
+      throw new HttpJsonError(503, {
+        error: "Manifest file not found",
+        hint: "Run: npm run generate-manifest to create the manifest file"
+      });
     }
 
     console.log(`Generating FIO summary for ${manifest.files.length} files...`);
@@ -224,23 +252,5 @@ export async function GET(request: Request) {
 
     console.log(`FIO summary generated: ${summaryRows.length} rows`);
 
-    // Return CSV with proper headers for download
-    return new NextResponse(csv, {
-      status: 200,
-      headers: {
-        'Content-Type': 'text/csv',
-        'Content-Disposition': `attachment; filename="fio-data-summary-${generatedDate}.csv"`,
-      },
-    });
-
-  } catch (error) {
-    console.error("Error in FIO summary API:", error);
-    return NextResponse.json(
-      {
-        error: "Internal server error",
-        message: error instanceof Error ? error.message : String(error)
-      },
-      { status: 500 }
-    );
-  }
+    return csv;
 }

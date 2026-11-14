@@ -1,9 +1,8 @@
 // src/server/bestRecipes.ts
 import { loadAllFromCsv } from "@/lib/loadFromCsv";
-import { findAllMakeOptions, buildScenarioRows, clearScenarioCache } from "@/core/engine";
+import { findAllMakeOptions, buildScenarioRowsAtCapacity, clearScenarioCache } from "@/core/engine";
 import { findPrice } from "@/core/price";
 import { scenarioDisplayName } from "@/core/scenario";
-import { CSV_URLS } from "@/lib/config";
 import type { RecipeSheet, RecipeRow, BestMap, PriceMode, Exchange, PriceType } from "@/types";
 
 export interface BestRecipeResult {
@@ -78,6 +77,10 @@ function getCostColumnNames(exchange: Exchange, priceType: PriceType) {
 /**
  * Calculate buy-all profit per area for a ticker
  * This is a simple calculation where all inputs are bought (no MAKE scenarios)
+ * Returns null when it can't be computed (no recipes, or no recipe whose
+ * inputs are all purchasable).
+ * NOTE: a price of 0 is treated as "no price" throughout (findPrice returns
+ * the raw cell, and 0-valued cells mean the exchange has no market data).
  */
 function calculateBuyAllProfitPA(
   ticker: string,
@@ -89,9 +92,14 @@ function calculateBuyAllProfitPA(
 ): number | null {
   const headers = recipeMap.headers;
   const rows = recipeMap.map[ticker] || [];
-  if (!rows.length) return 0;
+  if (!rows.length) return null;
 
   const costCols = getCostColumnNames(exchange, sellPriceType);
+  for (const col of [costCols.wfCst, costCols.deprec]) {
+    if (!headers.includes(col)) {
+      throw new Error(`Recipe data is missing cost column "${col}" — cannot compute buy-all profit for ${exchange}`);
+    }
+  }
   const idx = {
     recipeId: headers.indexOf("RecipeID"),
     wf: headers.indexOf(costCols.wfCst),
@@ -209,14 +217,19 @@ function buildDependencyGraph(recipeSheet: RecipeSheet): {
 function computeDepth(
   ticker: string,
   graph: Record<string, string[]>,
-  memo: Record<string, number> = {}
+  memo: Record<string, number> = {},
+  inProgress: Set<string> = new Set()
 ): number {
   if (ticker in memo) return memo[ticker];
+  // Cycle guard: treat a back-edge as depth 0 rather than recursing forever
+  if (inProgress.has(ticker)) return 0;
   if (!graph[ticker] || graph[ticker].length === 0) {
     memo[ticker] = 0;
     return 0;
   }
-  const depths = graph[ticker].map((child) => computeDepth(child, graph, memo));
+  inProgress.add(ticker);
+  const depths = graph[ticker].map((child) => computeDepth(child, graph, memo, inProgress));
+  inProgress.delete(ticker);
   const depth = 1 + Math.max(...depths);
   memo[ticker] = depth;
   return depth;
@@ -240,14 +253,14 @@ function getTickersInDependencyOrder(recipeSheet: RecipeSheet): string[] {
 /**
  * Refresh best recipe IDs for all tickers in dependency order
  * This is the core logic from the Apps Script refreshBestRecipeIDs function
- * @param priceSource - "local" for local prices, "gcs" for GCS prices (default: "local")
  * @param exchange - Exchange to analyze (default: "ANT")
- * @param buyPriceType - Price type for buying inputs (default: "ask")
+ * @param buyPriceType - Price type used ONLY for the buy-all P/A comparison
+ *   (calculateBuyAllProfitPA); the scenario engine itself always buys inputs
+ *   at ask (see getInputPriceType in engine.ts)
  * @param sellPriceType - Price type for selling outputs (default: "bid")
  * @param preloadedRecipeData - Optional pre-loaded recipe and price data (for extraction mode)
  */
 export async function refreshBestRecipeIDs(
-  priceSource: "local" | "gcs" = "local",
   exchange: Exchange = "ANT",
   buyPriceType: PriceType = "ask",
   sellPriceType: PriceType = "bid",
@@ -265,11 +278,10 @@ export async function refreshBestRecipeIDs(
     recipeMap = preloadedRecipeData.recipeMap;
     pricesMap = preloadedRecipeData.pricesMap;
   } else {
-    // Determine which data sources to use
-    const { LOCAL_DATA_SOURCES, GCS_DATA_SOURCES } = await import("@/lib/config");
-    const dataSources = priceSource === "gcs" ? GCS_DATA_SOURCES : LOCAL_DATA_SOURCES;
+    const { GCS_DATA_SOURCES } = await import("@/lib/config");
+    const dataSources = GCS_DATA_SOURCES;
 
-    console.log(`Using ${priceSource} prices: ${dataSources.prices}`);
+    console.log(`Using GCS prices: ${dataSources.prices}`);
 
     // Load data (no bestMap needed since we're generating it)
     const loadedData = await loadAllFromCsv(
@@ -320,8 +332,7 @@ export async function refreshBestRecipeIDs(
 
       // Compute P/A for each option
       options.forEach((option) => {
-        const dailyCapacity = (option.output1Amount || 0) * (option.runsPerDay || 0);
-        const result = buildScenarioRows(option, 0, dailyCapacity, false);
+        const result = buildScenarioRowsAtCapacity(option);
         option.totalProfitPA = result.subtreeProfitPerArea || 0;
       });
 

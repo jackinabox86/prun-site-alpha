@@ -16,7 +16,6 @@ export async function GET(request: Request) {
   try {
     const { searchParams } = new URL(request.url);
     const clearCache = searchParams.get("clearCache") === "true";
-    const priceSource = (searchParams.get("priceSource") || "gcs") as "local" | "gcs";
     const exchangeParam = searchParams.get("exchange")?.toUpperCase() || "ANT";
     const sellAtParam = searchParams.get("sellAt")?.toLowerCase() || "bid";
     const extractionMode = searchParams.get("extractionMode") === "true";
@@ -37,10 +36,10 @@ export async function GET(request: Request) {
       cachedBestRecipes.clearCache(exchange);
     }
 
-    console.log(`Getting best recipes for ${exchange} with sellAt=${sellAt} mode=${mode} (${priceSource} mode)...`);
+    console.log(`Getting best recipes for ${exchange} with sellAt=${sellAt} mode=${mode}...`);
     const startTime = Date.now();
 
-    const { results } = await cachedBestRecipes.getBestRecipes(priceSource, exchange, sellAt, mode);
+    const { results } = await cachedBestRecipes.getBestRecipes(exchange, sellAt, mode);
 
     const duration = ((Date.now() - startTime) / 1000).toFixed(2);
     console.log(`Best recipes for ${exchange} with sellAt=${sellAt} mode=${mode} retrieved in ${duration}s`);
@@ -52,8 +51,7 @@ export async function GET(request: Request) {
       exchange,
       sellAt,
       mode,
-      priceSource,
-      cached: cachedBestRecipes.isCached(priceSource, exchange, sellAt, mode),
+      cached: cachedBestRecipes.isCached(exchange, sellAt, mode),
       durationSeconds: parseFloat(duration)
     });
   } catch (err: any) {

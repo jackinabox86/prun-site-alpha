@@ -21,8 +21,6 @@ interface ApiResponse {
   totalOrders: number;
   activeBuyOrders: number;
   outbidCount: number;
-  _sampleOrder: Record<string, unknown> | null;
-  _sampleExchange: Record<string, unknown> | null;
   error?: string;
 }
 
@@ -58,7 +56,6 @@ export default function BidUpdateClient() {
   const [error, setError] = useState<string | null>(null);
   const [sortField, setSortField] = useState<SortField>("percentBelow");
   const [sortAsc, setSortAsc] = useState(false);
-  const [showDebug, setShowDebug] = useState(false);
   const [lastRefresh, setLastRefresh] = useState<Date | null>(null);
   const [fioUsername, setFioUsername] = usePersistedSettings<string>(
     "prun:fio:username",
@@ -241,18 +238,6 @@ export default function BidUpdateClient() {
             Last scan: {lastRefresh.toLocaleTimeString()}
           </span>
         )}
-        <button
-          onClick={() => setShowDebug(!showDebug)}
-          className="terminal-button"
-          style={{
-            padding: "0.25rem 0.75rem",
-            fontSize: "0.7rem",
-            marginLeft: "auto",
-            opacity: 0.5,
-          }}
-        >
-          {showDebug ? "Hide Debug" : "Debug"}
-        </button>
       </div>
 
       {/* Error */}
@@ -543,72 +528,6 @@ export default function BidUpdateClient() {
         </div>
       )}
 
-      {/* Debug Panel */}
-      {showDebug && data && (
-        <div
-          className="terminal-box"
-          style={{ marginBottom: "2rem", opacity: 0.7 }}
-        >
-          <div
-            className="terminal-header"
-            style={{ marginBottom: "1rem", fontSize: "0.8rem" }}
-          >
-            Debug: Sample API Responses
-          </div>
-          {data._sampleOrder && (
-            <div style={{ marginBottom: "1rem" }}>
-              <div
-                style={{
-                  fontFamily: "var(--font-mono)",
-                  fontSize: "0.7rem",
-                  color: "var(--color-accent-primary)",
-                  marginBottom: "0.5rem",
-                }}
-              >
-                Sample CXOS Order (first record):
-              </div>
-              <pre
-                style={{
-                  fontFamily: "var(--font-mono)",
-                  fontSize: "0.7rem",
-                  color: "var(--color-text-secondary)",
-                  whiteSpace: "pre-wrap",
-                  wordBreak: "break-all",
-                  margin: 0,
-                }}
-              >
-                {JSON.stringify(data._sampleOrder, null, 2)}
-              </pre>
-            </div>
-          )}
-          {data._sampleExchange && (
-            <div>
-              <div
-                style={{
-                  fontFamily: "var(--font-mono)",
-                  fontSize: "0.7rem",
-                  color: "var(--color-accent-primary)",
-                  marginBottom: "0.5rem",
-                }}
-              >
-                Sample Exchange Entry (first record):
-              </div>
-              <pre
-                style={{
-                  fontFamily: "var(--font-mono)",
-                  fontSize: "0.7rem",
-                  color: "var(--color-text-secondary)",
-                  whiteSpace: "pre-wrap",
-                  wordBreak: "break-all",
-                  margin: 0,
-                }}
-              >
-                {JSON.stringify(data._sampleExchange, null, 2)}
-              </pre>
-            </div>
-          )}
-        </div>
-      )}
     </>
   );
 }

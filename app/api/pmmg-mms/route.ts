@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { fetchGitHubDirListing } from "../lib/githubDirListing";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -36,11 +37,6 @@ function formatMonthLabel(code: string): string {
   return idx >= 0 ? `${MONTH_NAMES[idx]} 20${yy}` : code;
 }
 
-interface GitHubFileEntry {
-  name: string;
-  type: string;
-}
-
 interface ProdDataFile {
   [ticker: string]: {
     amount: number;
@@ -68,18 +64,14 @@ export interface MMSApiResponse {
 
 export async function GET() {
   try {
-    const dirRes = await fetch(GITHUB_API, {
-      headers: { Accept: "application/vnd.github+json" },
-      cache: "no-store",
-    });
-    if (!dirRes.ok) {
+    const entries = await fetchGitHubDirListing(GITHUB_API);
+    if (!entries) {
       return NextResponse.json(
         { error: "Could not retrieve file listing from GitHub." } satisfies Partial<MMSApiResponse>,
         { status: 502 }
       );
     }
 
-    const entries: GitHubFileEntry[] = await dirRes.json();
     const monthCodes: string[] = [];
     for (const entry of entries) {
       const match = entry.name.match(/^prod-data-([a-z]+\d{2})\.json$/);

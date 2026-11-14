@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useRef } from "react";
 import { scenarioDisplayName } from "@/core/scenario";
 import { tickerFilterGroups } from "@/lib/tickerFilters";
 import type { Exchange } from "@/types";
@@ -148,11 +148,16 @@ export default function BestRecipesClient() {
     "ANT",
     { urlParamName: "exchange", updateUrl: true }
   );
-  const [sellAt, setSellAt] = usePersistedSettings<string>(
+  const [sellAtRaw, setSellAt] = usePersistedSettings<string>(
     "prun:settings:priceType",
     "bid",
     { urlParamName: "sellAt", updateUrl: true }
   );
+  // The persisted key is shared with the main page, which also offers pp30.
+  // This page (and /api/best-recipes) doesn't support it, so coerce unknown
+  // values to bid — otherwise the API silently falls back to bid while no
+  // price-type button appears selected.
+  const sellAt = SELL_AT_OPTIONS.some((o) => o.value === sellAtRaw) ? sellAtRaw : "bid";
   const [extractionMode, setExtractionMode] = usePersistedSettings<boolean>(
     "prun:settings:extractionMode",
     false,
@@ -175,7 +180,14 @@ export default function BestRecipesClient() {
     return DEFAULT_VOLUME_LEVELS;
   });
 
+  // Guards so a slow response for a previous exchange/sellAt/extractionMode
+  // selection can't overwrite the table after the user switches settings
+  const requestIdRef = useRef(0);
+  const hasLoadedRef = useRef(false);
+
   const loadData = async () => {
+    const requestId = ++requestIdRef.current;
+    hasLoadedRef.current = true;
     setLoading(true);
     setError(null);
     try {
@@ -209,8 +221,10 @@ export default function BestRecipesClient() {
       if (!json.success) {
         throw new Error(json.error || "Unknown error");
       }
+      if (requestId !== requestIdRef.current) return; // stale response
       setData(json.data || []);
     } catch (e: any) {
+      if (requestId !== requestIdRef.current) return; // stale response
       if (e.name === "AbortError") {
         setError("Request timed out after 5 minutes. The calculation may be too complex.");
       } else {
@@ -218,9 +232,20 @@ export default function BestRecipesClient() {
       }
       setData([]);
     } finally {
-      setLoading(false);
+      if (requestId === requestIdRef.current) {
+        setLoading(false);
+      }
     }
   };
+
+  // Refetch when settings change so the table is never labeled with one
+  // exchange/mode while showing another's numbers. Skipped until the user
+  // has generated data once.
+  useEffect(() => {
+    if (!hasLoadedRef.current) return;
+    loadData();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [exchange, sellAt, extractionMode]);
 
   const handleSort = (column: keyof BestRecipeResult) => {
     if (sortColumn === column) {

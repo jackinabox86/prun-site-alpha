@@ -1,7 +1,13 @@
 import { NextResponse } from "next/server";
 import { readFileSync } from "fs";
 import { join } from "path";
+import { getOrCompute, HttpJsonError } from "../best-recipes/lib/cache";
 import type { HistoricalPriceData, Exchange } from "../../../src/types";
+
+// This route fans out to every file in the GCS manifest, so uncached
+// concurrent requests are a cost/DoS amplifier — results are cached and
+// concurrent identical requests share one computation
+const CACHE_TTL_MS = 5 * 60 * 1000;
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -76,6 +82,28 @@ export async function GET(request: Request) {
       );
     }
 
+    const result = await getOrCompute(
+      `historical-analysis:${days}:${ticker ?? "ALL"}`,
+      CACHE_TTL_MS,
+      () => computeAnalysis(days, ticker)
+    );
+    return NextResponse.json(result);
+  } catch (error) {
+    if (error instanceof HttpJsonError) {
+      return NextResponse.json(error.body, { status: error.status });
+    }
+    console.error("Error in historical analysis API:", error);
+    return NextResponse.json(
+      {
+        error: "Internal server error",
+        message: error instanceof Error ? error.message : String(error)
+      },
+      { status: 500 }
+    );
+  }
+}
+
+async function computeAnalysis(days: number, ticker: string | null) {
     // Calculate cutoff date
     const cutoffDate = new Date();
     cutoffDate.setDate(cutoffDate.getDate() - days);
@@ -113,13 +141,10 @@ export async function GET(request: Request) {
     }
 
     if (!manifest || !manifest.files) {
-      return NextResponse.json(
-        {
-          error: "Manifest file not found",
-          hint: "Run: npm run generate-manifest to create the manifest file"
-        },
-        { status: 503 }
-      );
+      throw new HttpJsonError(503, {
+        error: "Manifest file not found",
+        hint: "Run: npm run generate-manifest to create the manifest file"
+      });
     }
 
     // Filter files by ticker if specified
@@ -127,13 +152,10 @@ export async function GET(request: Request) {
     if (ticker) {
       filesToProcess = manifest.files.filter(f => f.ticker === ticker);
       if (filesToProcess.length === 0) {
-        return NextResponse.json(
-          {
-            error: `No data found for ticker "${ticker}"`,
-            hint: "Check that the ticker exists in the system"
-          },
-          { status: 404 }
-        );
+        throw new HttpJsonError(404, {
+          error: `No data found for ticker "${ticker}"`,
+          hint: "Check that the ticker exists in the system"
+        });
       }
       console.log(`Processing ${filesToProcess.length} files for ticker ${ticker} with ${days} day lookback...`);
     } else {
@@ -275,16 +297,5 @@ export async function GET(request: Request) {
 
     console.log(`Analysis complete: ${filesProcessed} files, ${processedTickers.size} tickers`);
 
-    return NextResponse.json(result);
-
-  } catch (error) {
-    console.error("Error in historical analysis API:", error);
-    return NextResponse.json(
-      {
-        error: "Internal server error",
-        message: error instanceof Error ? error.message : String(error)
-      },
-      { status: 500 }
-    );
-  }
+    return result;
 }

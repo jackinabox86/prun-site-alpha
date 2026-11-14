@@ -37,8 +37,12 @@ function daysSinceLastRepair(condition: number): number {
   const FLOOR = 0.33;
   const RANGE = 0.67;
   const INFLECTION = 100.87;
+  // At full condition the log term degenerates (log(0) = -Infinity):
+  // a freshly repaired building is simply 0 days since repair
+  if (condition >= FLOOR + RANGE) return 0;
   const numerator = RANGE / (condition - FLOOR) - 1;
-  return (1 / K) * Math.log(numerator) + INFLECTION;
+  // The curve goes negative for near-perfect condition; days can't be negative
+  return Math.max(0, (1 / K) * Math.log(numerator) + INFLECTION);
 }
 
 export async function GET(request: Request) {

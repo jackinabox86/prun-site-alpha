@@ -1,7 +1,7 @@
 // app/components/Top20Table.tsx
 "use client";
 
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { scenarioDisplayName } from "@/core/scenario";
 import BestScenarioSankey from "./BestScenarioSankey";
 import type { Exchange, PriceType } from "@/types";
@@ -26,6 +26,12 @@ type Top20Option = {
 
 export default function Top20Table({ options, exchange, priceType }: { options: Top20Option[]; exchange?: Exchange; priceType?: PriceType }) {
   const [expandedRows, setExpandedRows] = useState<Set<number>>(new Set());
+
+  // Expansion state is keyed by row index — a new report means new rows, so
+  // carrying it over would pre-expand unrelated scenarios
+  useEffect(() => {
+    setExpandedRows(new Set());
+  }, [options]);
 
   if (!options || options.length === 0) return null;
 

@@ -88,13 +88,44 @@ function calculateIndex(
   vwapDataMap: Map<string, VWAPHistoricalData>,
   indexTimestamp: number,
   weightType: "equal" | "volume"
-): { indexData: IndexDataPoint[]; weights: TickerWeight[] } {
-  // Step 1: Calculate weights
-  const weights: TickerWeight[] = [];
-  const tickers = Array.from(vwapDataMap.keys());
+): { indexData: IndexDataPoint[]; weights: TickerWeight[]; tickersWithoutBasePrice: string[] } {
+  const MS_PER_DAY = 24 * 60 * 60 * 1000;
 
+  // Step 1: Get base prices on the index date. Use the nearest point within a
+  // small tolerance rather than requiring an exact timestamp match, so a data
+  // gap or timestamp misalignment on the chosen date doesn't drop the ticker.
+  const BASE_TOLERANCE_MS = 3 * MS_PER_DAY;
+  const basePrices: Record<string, number> = {};
+  for (const [ticker, data] of vwapDataMap.entries()) {
+    let bestPrice: number | null = null;
+    let bestDist = Infinity;
+    for (const point of data.data) {
+      if (point.vwap7d === null) continue;
+      const dist = Math.abs(point.DateEpochMs - indexTimestamp);
+      if (dist <= BASE_TOLERANCE_MS && dist < bestDist) {
+        bestDist = dist;
+        bestPrice = point.vwap7d;
+      }
+    }
+    if (bestPrice !== null && bestPrice > 0) {
+      basePrices[ticker] = bestPrice;
+    }
+  }
+
+  // Tickers without a base price cannot contribute to the index at all;
+  // weights must be computed over the eligible set only, otherwise the index
+  // starts below 100 and every value is biased low.
+  const tickers = Array.from(vwapDataMap.keys()).filter(t => basePrices[t] !== undefined);
+  const tickersWithoutBasePrice = Array.from(vwapDataMap.keys()).filter(t => basePrices[t] === undefined);
+
+  const weights: TickerWeight[] = [];
+  if (tickers.length === 0) {
+    return { indexData: [], weights, tickersWithoutBasePrice };
+  }
+
+  // Step 2: Calculate weights over the eligible tickers
   if (weightType === "equal") {
-    // Equal weight: 1/N for each ticker
+    // Equal weight: 1/N for each eligible ticker
     const equalWeight = 1 / tickers.length;
     for (const ticker of tickers) {
       weights.push({ ticker, weight: equalWeight, indexDateVolume: 0 });
@@ -102,15 +133,14 @@ function calculateIndex(
   } else {
     // Volume-weighted: based on rawVolume from 7 days before the index date to now
     const DAYS_BEFORE = 7;
-    const MS_PER_DAY = 24 * 60 * 60 * 1000;
-
     const rangeStart = indexTimestamp - (DAYS_BEFORE * MS_PER_DAY);
     const rangeEnd = Date.now();
 
     const volumes: Record<string, number> = {};
     let totalVolume = 0;
 
-    for (const [ticker, data] of vwapDataMap.entries()) {
+    for (const ticker of tickers) {
+      const data = vwapDataMap.get(ticker)!;
       // Sum rawVolume over the date range
       const volumeInRange = data.data
         .filter(d => d.DateEpochMs >= rangeStart && d.DateEpochMs <= rangeEnd)
@@ -137,15 +167,6 @@ function calculateIndex(
     }
   }
 
-  // Step 2: Get base prices on index date
-  const basePrices: Record<string, number> = {};
-  for (const [ticker, data] of vwapDataMap.entries()) {
-    const indexPoint = data.data.find(d => d.DateEpochMs === indexTimestamp);
-    if (indexPoint && indexPoint.vwap7d !== null) {
-      basePrices[ticker] = indexPoint.vwap7d;
-    }
-  }
-
   // Step 3: Build complete date list (union of all dates)
   const allDates = new Set<number>();
   for (const data of vwapDataMap.values()) {
@@ -155,10 +176,13 @@ function calculateIndex(
   }
   const sortedDates = Array.from(allDates).sort((a, b) => a - b);
 
-  // Step 4: Calculate index for each date
+  // Step 4: Calculate index for each date. Renormalize by the weight actually
+  // present that day, so a ticker with a gap on one date doesn't drag the
+  // index down artificially.
   const indexData: IndexDataPoint[] = [];
   for (const timestamp of sortedDates) {
-    let indexValue = 0;
+    let rawSum = 0;
+    let presentWeight = 0;
     const contributions: Record<string, number> = {};
 
     for (const { ticker, weight } of weights) {
@@ -171,23 +195,28 @@ function calculateIndex(
         const priceRatio = point.vwap7d / basePrices[ticker];
         const contribution = weight * priceRatio * 100;
         contributions[ticker] = contribution;
-        indexValue += contribution;
+        rawSum += contribution;
+        presentWeight += weight;
       }
     }
 
     // Only include dates where we have at least some data
-    if (Object.keys(contributions).length > 0) {
+    if (presentWeight > 0) {
+      const scale = 1 / presentWeight;
+      for (const ticker of Object.keys(contributions)) {
+        contributions[ticker] *= scale;
+      }
       const date = new Date(timestamp);
       indexData.push({
         date: date.toISOString().split("T")[0],
         timestamp,
-        indexValue,
+        indexValue: rawSum * scale,
         contributions,
       });
     }
   }
 
-  return { indexData, weights };
+  return { indexData, weights, tickersWithoutBasePrice };
 }
 
 /**
@@ -230,6 +259,15 @@ export async function GET(request: NextRequest) {
       );
     }
 
+    // Each ticker costs one outbound GCS fetch — bound the fan-out
+    const MAX_TICKERS = 50;
+    if (tickers.length > MAX_TICKERS) {
+      return NextResponse.json(
+        { error: `Too many tickers: ${tickers.length}. Maximum is ${MAX_TICKERS}.` },
+        { status: 400 }
+      );
+    }
+
     // Parse index date
     const indexDate = new Date(indexDateParam);
     indexDate.setUTCHours(0, 0, 0, 0);
@@ -262,7 +300,14 @@ export async function GET(request: NextRequest) {
     }
 
     // Calculate index
-    const { indexData, weights } = calculateIndex(vwapDataMap, indexTimestamp, weightType);
+    const { indexData, weights, tickersWithoutBasePrice } = calculateIndex(vwapDataMap, indexTimestamp, weightType);
+
+    if (weights.length === 0) {
+      return NextResponse.json(
+        { error: "No ticker has price data near the chosen index date. Pick a different index date." },
+        { status: 422 }
+      );
+    }
 
     return NextResponse.json({
       success: true,
@@ -270,8 +315,9 @@ export async function GET(request: NextRequest) {
       indexDate: indexDateParam,
       indexTimestamp,
       weightType,
-      tickers: Array.from(vwapDataMap.keys()),
+      tickers: weights.map(w => w.ticker),
       tickersNotFound: tickers.filter(t => !vwapDataMap.has(t)),
+      tickersWithoutBasePrice,
       weights,
       dataPoints: indexData.length,
       data: indexData,

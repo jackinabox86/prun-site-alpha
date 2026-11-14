@@ -26,16 +26,7 @@ export const LOCAL_DATA_SOURCES = {
 } as const;
 
 /**
- * Determine if we should use test files based on environment
- * Always returns empty string - no -test suffix needed
- */
-function getFileSuffix(): string {
-  return '';
-}
-
-/**
  * GCS data sources - requires environment variables to be set
- * Always uses production files (no -test suffix)
  * Throws explicit errors if environment variables are missing
  */
 export const GCS_DATA_SOURCES = {
@@ -44,17 +35,14 @@ export const GCS_DATA_SOURCES = {
     if (!baseUrl) {
       throw new Error("GCS_RECIPES_URL environment variable is not set. Required for GCS mode.");
     }
-    const suffix = getFileSuffix();
-    // Replace .csv with -test.csv if needed
-    return suffix ? baseUrl.replace('.csv', `${suffix}.csv`) : baseUrl;
+    return baseUrl;
   },
   get prices(): string {
     const baseUrl = process.env.GCS_PRICES_URL;
     if (!baseUrl) {
       throw new Error("GCS_PRICES_URL environment variable is not set. Required for GCS mode.");
     }
-    const suffix = getFileSuffix();
-    return suffix ? baseUrl.replace('.csv', `${suffix}.csv`) : baseUrl;
+    return baseUrl;
   },
   get bestRecipes(): string {
     const baseUrl = process.env.GCS_BEST_RECIPES_URL;
