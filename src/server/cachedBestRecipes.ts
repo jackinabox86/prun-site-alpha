@@ -1,5 +1,6 @@
 // src/server/cachedBestRecipes.ts
-import { convertToEnhancedBestMap, type BestRecipeResult, type EnhancedBestMap } from "@/server/bestRecipes";
+import { convertToBestMap, type BestRecipeResult } from "@/server/bestRecipes";
+import type { BestMap } from "@/types";
 
 /**
  * Cached best recipes singleton
@@ -9,7 +10,7 @@ import { convertToEnhancedBestMap, type BestRecipeResult, type EnhancedBestMap }
  */
 class CachedBestRecipes {
   // Cache for results and maps, keyed by `${exchange}-${sellAt}-${mode}`
-  private cache: Map<string, { results: BestRecipeResult[]; bestMap: EnhancedBestMap }> = new Map();
+  private cache: Map<string, { results: BestRecipeResult[]; bestMap: BestMap }> = new Map();
   private initPromises: Map<string, Promise<void>> = new Map();
 
   private getCacheKey(exchange: string, sellAt: string, mode: 'standard' | 'extraction'): string {
@@ -26,7 +27,7 @@ class CachedBestRecipes {
     exchange: string = "ANT",
     sellAt: string = "bid",
     mode: 'standard' | 'extraction' = 'standard'
-  ): Promise<{ results: BestRecipeResult[]; bestMap: EnhancedBestMap }> {
+  ): Promise<{ results: BestRecipeResult[]; bestMap: BestMap }> {
     const cacheKey = this.getCacheKey(exchange, sellAt, mode);
 
     // Return cached data if available
@@ -58,7 +59,7 @@ class CachedBestRecipes {
     return this.getCachedData(cacheKey);
   }
 
-  private getCachedData(cacheKey: string): { results: BestRecipeResult[]; bestMap: EnhancedBestMap } {
+  private getCachedData(cacheKey: string): { results: BestRecipeResult[]; bestMap: BestMap } {
     const cached = this.cache.get(cacheKey);
     if (!cached) {
       throw new Error(`Best recipes not loaded for ${cacheKey}`);
@@ -82,9 +83,13 @@ class CachedBestRecipes {
         "Verify the file exists and is publicly readable."
       );
     }
-    // Enhanced map keeps top3DisplayScenarios so the engine's diversity path
-    // for deep children has the data it needs
-    const bestMap = convertToEnhancedBestMap(gcsData.results);
+    // Serving uses the plain BestMap (top3DisplayScenarios stripped) on purpose:
+    // feeding the enhanced map to the live engine routes every depth>=4 ticker
+    // through buildAllOptionsForTicker, whose unpruned option product exhausts
+    // the heap on deep chains (OOM reproduced on GWS). The top-3 diversity path
+    // runs only inside offline best-recipes generation, which builds its own
+    // enhanced map — see docs/main-analysis-math.md §3.2.
+    const bestMap = convertToBestMap(gcsData.results);
     this.cache.set(cacheKey, { results: gcsData.results, bestMap });
     console.log(`Loaded GCS best recipes for ${exchange} with sellAt=${sellAt} mode=${mode} (${gcsData.results.length} entries, generated: ${gcsData.generatedAt})`);
   }
