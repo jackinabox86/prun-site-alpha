@@ -95,8 +95,8 @@ export default function XitConverterClient() {
   return (
     <>
       {/* Header Section */}
-      <div className="terminal-box" style={{ marginBottom: "2rem" }}>
-        <h1 className="terminal-header" style={{ margin: 0, fontSize: "1.2rem" }}>
+      <div className="terminal-box" style={{ marginBottom: "var(--section-gap)" }}>
+        <h1 className="page-title">
           XIT ACT CONVERTER // PRUN_CARGO_TRANSFER_PARSER
         </h1>
         <p style={{ marginTop: "1rem", marginBottom: 0, color: "var(--color-text-secondary)", fontSize: "0.875rem", lineHeight: "1.6" }}>
@@ -109,7 +109,7 @@ export default function XitConverterClient() {
       </div>
 
       {/* Input Section */}
-      <div className="terminal-box" style={{ marginBottom: "2rem" }}>
+      <div className="terminal-box" style={{ marginBottom: "var(--section-gap)" }}>
         <div className="terminal-header" style={{ marginBottom: "1rem" }}>Input Data Stream</div>
         <label
           htmlFor="input-text"
@@ -164,7 +164,7 @@ export default function XitConverterClient() {
 
       {/* Output Section */}
       {outputJson && (
-        <div className="terminal-box" style={{ marginBottom: "2rem" }}>
+        <div className="terminal-box" style={{ marginBottom: "var(--section-gap)" }}>
           <div className="terminal-header" style={{ marginBottom: "1rem" }}>Output JSON Stream</div>
           <label
             htmlFor="output-json"

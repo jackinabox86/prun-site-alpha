@@ -113,19 +113,9 @@ export default function AemVisualizerClient() {
   return (
     <>
       {/* Header Section */}
-      <div className="terminal-box" style={{ marginBottom: "2rem" }}>
+      <div className="terminal-box" style={{ marginBottom: "var(--section-gap)" }}>
         <div style={{ display: "flex", alignItems: "center", gap: "1rem", marginBottom: "1rem" }}>
-          <h1
-            className="terminal-header"
-            style={{
-              flex: 1,
-              margin: 0,
-              fontSize: "1.2rem",
-              paddingBottom: 0,
-              borderBottom: "none",
-              fontWeight: "normal",
-            }}
-          >
+          <h1 className="page-title" style={{ flex: 1 }}>
             AEM VISUALIZER // PRODUCTION CHAIN STRUCTURE
           </h1>
           <button
@@ -159,7 +149,7 @@ export default function AemVisualizerClient() {
       </div>
 
       {/* Controls Section */}
-      <div className="terminal-box" style={{ marginBottom: "2rem" }}>
+      <div className="terminal-box" style={{ marginBottom: "var(--section-gap)" }}>
         <div className="terminal-header" style={{ marginBottom: "1rem" }}>
           System Controls
         </div>
@@ -411,7 +401,7 @@ VEG_2 - HYF: 16xH2O-1xNS=>6xVEG`}
 
       {/* Error Display */}
       {error && (
-        <div className="terminal-box" style={{ borderColor: "var(--color-error)", marginBottom: "2rem" }}>
+        <div className="terminal-box" style={{ borderColor: "var(--color-error)", marginBottom: "var(--section-gap)" }}>
           <div className="status-error" style={{ fontFamily: "var(--font-mono)", fontSize: "0.875rem" }}>
             ERROR: {error}
           </div>
@@ -420,7 +410,7 @@ VEG_2 - HYF: 16xH2O-1xNS=>6xVEG`}
 
       {/* Results Section */}
       {chain && !error && (
-        <div className="terminal-box" style={{ marginBottom: "2rem" }}>
+        <div className="terminal-box" style={{ marginBottom: "var(--section-gap)" }}>
           <div className="terminal-header" style={{ marginBottom: "1rem" }}>
             Production Chain: {tickerInput.toUpperCase()}
           </div>

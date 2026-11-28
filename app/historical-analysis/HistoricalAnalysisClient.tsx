@@ -334,19 +334,19 @@ export default function HistoricalAnalysisClient() {
   };
 
   return (
-    <div className="terminal-container">
+    <div>
       {/* Header */}
-      <div className="terminal-box" style={{ marginBottom: "2rem" }}>
-        <h1 className="terminal-header" style={{ margin: 0 }}>
+      <div className="terminal-box" style={{ marginBottom: "var(--section-gap)" }}>
+        <h1 className="page-title">
           HISTORICAL TRADING DATA ANALYSIS
         </h1>
-        <p style={{ color: "var(--color-text-secondary)", fontSize: "0.875rem", margin: 0 }}>
+        <p className="page-intro">
           Analyze trading activity for individual tickers or across the entire universe
         </p>
       </div>
 
       {/* Controls */}
-      <div className="terminal-box" style={{ marginBottom: "2rem" }}>
+      <div className="terminal-box" style={{ marginBottom: "var(--section-gap)" }}>
         <h2 className="terminal-header">ANALYSIS CONTROLS</h2>
 
         <div style={{ display: "flex", gap: "1rem", alignItems: "flex-end", flexWrap: "wrap" }}>
@@ -490,7 +490,7 @@ export default function HistoricalAnalysisClient() {
       </div>
 
       {/* Leaderboard Controls */}
-      <div className="terminal-box" style={{ marginBottom: "2rem" }}>
+      <div className="terminal-box" style={{ marginBottom: "var(--section-gap)" }}>
         <h2 className="terminal-header">TICKER LEADERBOARD</h2>
 
         <div style={{ display: "flex", gap: "1rem", alignItems: "flex-end", flexWrap: "wrap" }}>
@@ -571,7 +571,7 @@ export default function HistoricalAnalysisClient() {
       </div>
 
       {/* Orders Summary Controls */}
-      <div className="terminal-box" style={{ marginBottom: "2rem" }}>
+      <div className="terminal-box" style={{ marginBottom: "var(--section-gap)" }}>
         <h2 className="terminal-header">BUYING ORDERS SUMMARY</h2>
 
         <div style={{ display: "flex", gap: "1rem", alignItems: "flex-end", flexWrap: "wrap" }}>
@@ -601,7 +601,7 @@ export default function HistoricalAnalysisClient() {
       {/* Error Display */}
       {error && (
         <div className="terminal-box" style={{
-          marginBottom: "2rem",
+          marginBottom: "var(--section-gap)",
           backgroundColor: "var(--color-bg-tertiary)",
           borderColor: "var(--color-error)",
         }}>
@@ -620,7 +620,7 @@ export default function HistoricalAnalysisClient() {
       {data && (
         <>
           {/* Summary Info */}
-          <div className="terminal-box" style={{ marginBottom: "2rem" }}>
+          <div className="terminal-box" style={{ marginBottom: "var(--section-gap)" }}>
             <h2 className="terminal-header">
               ANALYSIS SUMMARY {data.ticker && `// ${data.ticker}`}
             </h2>
@@ -670,7 +670,7 @@ export default function HistoricalAnalysisClient() {
           </div>
 
           {/* Exchange Stats Table */}
-          <div className="terminal-box" style={{ marginBottom: "2rem" }}>
+          <div className="terminal-box" style={{ marginBottom: "var(--section-gap)" }}>
             <h2 className="terminal-header">EXCHANGE STATISTICS</h2>
             <div style={{ overflowX: "auto" }}>
               <table className="terminal-table">
@@ -713,7 +713,7 @@ export default function HistoricalAnalysisClient() {
           </div>
 
           {/* Total Section */}
-          <div className="terminal-box" style={{ marginBottom: "2rem" }}>
+          <div className="terminal-box" style={{ marginBottom: "var(--section-gap)" }}>
             <h2 className="terminal-header">
               {data.ticker ? `${data.ticker} TOTAL` : "UNIVERSE TOTAL"}
             </h2>
@@ -774,7 +774,7 @@ export default function HistoricalAnalysisClient() {
       {leaderboardData && (
         <>
           {/* Leaderboard Summary */}
-          <div className="terminal-box" style={{ marginBottom: "2rem" }}>
+          <div className="terminal-box" style={{ marginBottom: "var(--section-gap)" }}>
             <h2 className="terminal-header">LEADERBOARD SUMMARY</h2>
             <div style={{
               display: "grid",
@@ -881,7 +881,7 @@ export default function HistoricalAnalysisClient() {
       {ordersSummaryData && (
         <>
           {/* Summary Info */}
-          <div className="terminal-box" style={{ marginBottom: "2rem" }}>
+          <div className="terminal-box" style={{ marginBottom: "var(--section-gap)" }}>
             <h2 className="terminal-header">ORDERS SUMMARY</h2>
             <div style={{
               display: "grid",
@@ -916,7 +916,7 @@ export default function HistoricalAnalysisClient() {
           </div>
 
           {/* Exchange Totals Table */}
-          <div className="terminal-box" style={{ marginBottom: "2rem" }}>
+          <div className="terminal-box" style={{ marginBottom: "var(--section-gap)" }}>
             <h2 className="terminal-header">EXCHANGE TOTALS</h2>
             <div style={{ overflowX: "auto" }}>
               <table className="terminal-table">
@@ -973,7 +973,7 @@ export default function HistoricalAnalysisClient() {
           {ordersSummaryData.exchanges
             .filter((ex) => expandedExchanges.has(ex.exchange))
             .map((ex) => (
-              <div className="terminal-box" key={ex.exchange} style={{ marginBottom: "2rem" }}>
+              <div className="terminal-box" key={ex.exchange} style={{ marginBottom: "var(--section-gap)" }}>
                 <h2 className="terminal-header">
                   {ex.exchange} TICKER BREAKDOWN
                   <span style={{ color: "var(--color-text-muted)", fontWeight: "400", marginLeft: "0.5rem", fontSize: "0.75rem" }}>

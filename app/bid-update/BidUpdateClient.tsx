@@ -156,11 +156,8 @@ export default function BidUpdateClient() {
   return (
     <>
       {/* Header */}
-      <div className="terminal-box" style={{ marginBottom: "2rem" }}>
-        <h1
-          className="terminal-header"
-          style={{ margin: 0, fontSize: "1.2rem" }}
-        >
+      <div className="terminal-box" style={{ marginBottom: "var(--section-gap)" }}>
+        <h1 className="page-title">
           BID UPDATE // CXOS_OUTBID_SCANNER
         </h1>
         <p
@@ -190,7 +187,7 @@ export default function BidUpdateClient() {
       </div>
 
       {/* FIO Credentials */}
-      <div className="terminal-box" style={{ marginBottom: "2rem" }}>
+      <div className="terminal-box" style={{ marginBottom: "var(--section-gap)" }}>
         <div className="terminal-header" style={{ marginBottom: "1rem" }}>FIO Credentials</div>
         <div style={{ display: "flex", gap: "1rem", flexWrap: "wrap", alignItems: "center" }}>
           <input
@@ -245,7 +242,7 @@ export default function BidUpdateClient() {
         <div
           className="terminal-box"
           style={{
-            marginBottom: "2rem",
+            marginBottom: "var(--section-gap)",
             borderColor: "var(--color-error, #ff4444)",
           }}
         >
@@ -290,7 +287,7 @@ export default function BidUpdateClient() {
         <div
           className="terminal-box"
           style={{
-            marginBottom: "2rem",
+            marginBottom: "var(--section-gap)",
             display: "flex",
             gap: "2rem",
             flexWrap: "wrap",
@@ -370,7 +367,7 @@ export default function BidUpdateClient() {
 
       {/* Results Table */}
       {data && !error && sortedComparisons.length > 0 && (
-        <div className="terminal-box" style={{ marginBottom: "2rem" }}>
+        <div className="terminal-box" style={{ marginBottom: "var(--section-gap)" }}>
           <div
             className="terminal-header"
             style={{ marginBottom: "1rem" }}

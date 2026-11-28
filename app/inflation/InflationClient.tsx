@@ -297,8 +297,8 @@ export default function InflationClient() {
   return (
     <div>
       {/* Input Controls */}
-      <div className="terminal-box" style={{ marginBottom: "2rem" }}>
-        <h1 className="terminal-header" style={{ margin: 0, marginBottom: "1.5rem", fontSize: "1.2rem", paddingBottom: 0, borderBottom: "none", fontWeight: "normal" }}>
+      <div className="terminal-box" style={{ marginBottom: "var(--section-gap)" }}>
+        <h1 className="page-title" style={{ marginBottom: "1.5rem" }}>
           INFLATION INDEX GENERATOR
         </h1>
 
@@ -439,14 +439,14 @@ export default function InflationClient() {
 
       {/* Error Display */}
       {error && (
-        <div className="terminal-box" style={{ marginBottom: "2rem", borderColor: "var(--color-error)" }}>
+        <div className="terminal-box" style={{ marginBottom: "var(--section-gap)", borderColor: "var(--color-error)" }}>
           <div className="status-error">⚠️ {error}</div>
         </div>
       )}
 
       {/* Info Display */}
       {exchangeResults.length > 0 && !error && (
-        <div className="terminal-box" style={{ marginBottom: "2rem" }}>
+        <div className="terminal-box" style={{ marginBottom: "var(--section-gap)" }}>
           <div style={{ display: "grid", gap: "0.5rem", fontSize: "0.875rem", fontFamily: "var(--font-display)" }}>
             <div>
               <span className="text-accent">Exchanges:</span> {exchangeResults.map(r => r.exchange).join(", ")}
@@ -468,7 +468,7 @@ export default function InflationClient() {
 
       {/* Chart */}
       {exchangeResults.length > 0 && (
-        <div className="terminal-box" style={{ marginBottom: "2rem" }}>
+        <div className="terminal-box" style={{ marginBottom: "var(--section-gap)" }}>
           <Plot
             data={chartData}
             layout={chartLayout}
@@ -481,7 +481,7 @@ export default function InflationClient() {
 
       {/* Weights Display */}
       {exchangeResults.length > 0 && (
-        <div className="terminal-box" style={{ marginBottom: "2rem" }}>
+        <div className="terminal-box" style={{ marginBottom: "var(--section-gap)" }}>
           <div className="terminal-header" style={{ fontSize: "0.75rem" }}>
             Ticker Weights
           </div>
