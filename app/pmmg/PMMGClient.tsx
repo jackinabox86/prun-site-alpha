@@ -207,22 +207,13 @@ export default function PMMGClient() {
     corpSortField === field ? (corpSortAsc ? " ▲" : " ▼") : "";
 
   return (
-    <div style={{ maxWidth: 1100, margin: "0 auto" }}>
-      <h1
-        style={{
-          fontFamily: "var(--font-mono)",
-          color: "var(--color-accent-primary)",
-          fontSize: "1.25rem",
-          letterSpacing: "0.1em",
-          textTransform: "uppercase",
-          marginBottom: "1.5rem",
-        }}
-      >
-        PMMG Leaderboard
-      </h1>
+    <div>
+      <div className="terminal-box" style={{ marginBottom: "var(--section-gap)" }}>
+        <h1 className="page-title">PMMG Leaderboard</h1>
+      </div>
 
       {/* View mode toggle */}
-      <div style={{ marginBottom: "1.5rem", display: "flex", gap: "0.5rem" }}>
+      <div style={{ marginBottom: "var(--section-gap)", display: "flex", gap: "0.5rem" }}>
         <button
           className="terminal-button"
           onClick={() => setViewMode("player")}
@@ -239,7 +230,7 @@ export default function PMMGClient() {
         </button>
       </div>
 
-      <div className="terminal-box" style={{ marginBottom: "1.5rem", padding: "1rem" }}>
+      <div className="terminal-box" style={{ marginBottom: "var(--section-gap)" }}>
         <div style={{ display: "flex", gap: "0.75rem", alignItems: "center", flexWrap: "wrap" }}>
           <span
             style={{
@@ -342,7 +333,7 @@ export default function PMMGClient() {
         <div
           className="terminal-box"
           style={{
-            marginBottom: "1.5rem",
+            marginBottom: "var(--section-gap)",
             padding: "1rem",
             color: "var(--color-error)",
             borderColor: "var(--color-error)",
@@ -366,7 +357,7 @@ export default function PMMGClient() {
 
       {/* Player leaderboard */}
       {viewMode === "player" && !loading && rows.length > 0 && (
-        <div className="terminal-box" style={{ padding: "1rem" }}>
+        <div className="terminal-box">
           <div
             style={{
               marginBottom: "0.75rem",
@@ -429,7 +420,7 @@ export default function PMMGClient() {
 
       {/* Corp leaderboard */}
       {viewMode === "corp" && !loading && corpRows.length > 0 && (
-        <div className="terminal-box" style={{ padding: "1rem" }}>
+        <div className="terminal-box">
           <div
             style={{
               marginBottom: "0.75rem",

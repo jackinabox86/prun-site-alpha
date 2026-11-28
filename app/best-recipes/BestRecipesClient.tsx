@@ -368,9 +368,9 @@ export default function BestRecipesClient() {
   return (
     <>
       {/* Header Section */}
-      <div className="terminal-box" style={{ marginBottom: "2rem" }}>
+      <div className="terminal-box" style={{ marginBottom: "var(--section-gap)" }}>
         <div style={{ display: "flex", alignItems: "center", gap: "1rem", marginBottom: "1rem" }}>
-          <h1 className="terminal-header" style={{ flex: 1, margin: 0, fontSize: "1.2rem", paddingBottom: 0, borderBottom: "none", fontWeight: "normal" }}>
+          <h1 className="page-title" style={{ flex: 1 }}>
             BEST RECIPE DATABASE // {exchange}
             {extractionMode && exchange === "ANT" && <span style={{ color: "var(--color-warning)" }}> // EXTRACTION_MODE</span>}
           </h1>
@@ -399,7 +399,7 @@ export default function BestRecipesClient() {
       </div>
 
       {/* Exchange Selection */}
-      <div className="terminal-box" style={{ marginBottom: "1.5rem" }}>
+      <div className="terminal-box" style={{ marginBottom: "var(--section-gap)" }}>
         <div className="terminal-header" style={{ marginBottom: "1rem" }}>Exchange Selection</div>
         <div style={{ display: "flex", gap: "0.75rem", flexWrap: "wrap" }}>
           {EXCHANGE_DISPLAYS.map((exConfig) => (
@@ -427,7 +427,7 @@ export default function BestRecipesClient() {
       </div>
 
       {/* Sell At Selection */}
-      <div className="terminal-box" style={{ marginBottom: "1.5rem" }}>
+      <div className="terminal-box" style={{ marginBottom: "var(--section-gap)" }}>
         <div className="terminal-header" style={{ marginBottom: "1rem" }}>Price Type Selection</div>
         <div style={{ display: "flex", gap: "0.75rem", flexWrap: "wrap" }}>
           {SELL_AT_OPTIONS.map((option) => (
@@ -456,7 +456,7 @@ export default function BestRecipesClient() {
 
       {/* Extraction Mode Toggle (ANT only) */}
       {exchange === "ANT" && (
-        <div className="terminal-box" style={{ marginBottom: "1.5rem" }}>
+        <div className="terminal-box" style={{ marginBottom: "var(--section-gap)" }}>
           <div className="terminal-header" style={{ marginBottom: "1rem" }}>Extraction Mode</div>
           <div style={{ display: "flex", gap: "0.75rem", flexWrap: "wrap", alignItems: "center" }}>
             <button
@@ -496,7 +496,7 @@ export default function BestRecipesClient() {
 
       {/* Loading Indicator */}
       {loading && (
-        <div className="terminal-box" style={{ borderColor: "var(--color-warning)", marginBottom: "1.5rem" }}>
+        <div className="terminal-box" style={{ borderColor: "var(--color-warning)", marginBottom: "var(--section-gap)" }}>
           <div className="status-warning terminal-loading" style={{ fontFamily: "var(--font-mono)", fontSize: "0.875rem" }}>
             <strong>PROCESSING RECIPES</strong>
           </div>
@@ -504,7 +504,7 @@ export default function BestRecipesClient() {
       )}
 
       {/* Controls Section */}
-      <div className="terminal-box" style={{ marginBottom: "1.5rem" }}>
+      <div className="terminal-box" style={{ marginBottom: "var(--section-gap)" }}>
         <div style={{ display: "flex", gap: "1rem", marginBottom: data.length > 0 ? "1rem" : 0, alignItems: "center", flexWrap: "wrap" }}>
           <button
             onClick={loadData}
@@ -636,7 +636,7 @@ export default function BestRecipesClient() {
 
       {/* Error Display */}
       {error && (
-        <div className="terminal-box" style={{ borderColor: "var(--color-error)", marginBottom: "1.5rem" }}>
+        <div className="terminal-box" style={{ borderColor: "var(--color-error)", marginBottom: "var(--section-gap)" }}>
           <div className="status-error" style={{ fontFamily: "var(--font-mono)", fontSize: "0.875rem" }}>
             ERROR: {error}
           </div>
@@ -645,7 +645,7 @@ export default function BestRecipesClient() {
 
       {/* Results Count */}
       {data.length > 0 && (
-        <div className="terminal-box" style={{ marginBottom: "1.5rem" }}>
+        <div className="terminal-box" style={{ marginBottom: "var(--section-gap)" }}>
           <div style={{ fontFamily: "var(--font-mono)", fontSize: "0.875rem", color: "var(--color-text-secondary)" }}>
             <span className="text-accent">SHOWING:</span> {sortedData.length} ticker{sortedData.length !== 1 ? 's' : ''}
             {selectedBuilding !== 'all' && <span> (building: {selectedBuilding})</span>}

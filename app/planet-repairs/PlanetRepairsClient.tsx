@@ -181,13 +181,13 @@ export default function PlanetRepairsClient() {
   );
 
   return (
-    <div style={{ maxWidth: 900, margin: "0 auto" }}>
-      <h1 className="terminal-header" style={{ marginBottom: "1.5rem" }}>
-        Planet Repair Tracker
-      </h1>
+    <div>
+      <div className="terminal-box" style={{ marginBottom: "var(--section-gap)" }}>
+        <h1 className="page-title">Planet Repair Tracker</h1>
+      </div>
 
       {/* Credentials */}
-      <div className="terminal-box" style={{ marginBottom: "1.5rem" }}>
+      <div className="terminal-box" style={{ marginBottom: "var(--section-gap)" }}>
         <div style={{ marginBottom: "0.75rem", fontWeight: 600, color: "var(--color-accent-primary)" }}>
           FIO Credentials
         </div>
@@ -250,7 +250,7 @@ export default function PlanetRepairsClient() {
         <>
           {/* Alert section */}
           {alertPlanets.length > 0 && (
-            <div className="terminal-box" style={{ marginBottom: "1.5rem", borderColor: "var(--color-status-error, #ff4444)" }}>
+            <div className="terminal-box" style={{ marginBottom: "var(--section-gap)", borderColor: "var(--color-status-error, #ff4444)" }}>
               <div style={{ marginBottom: "0.75rem", fontWeight: 600, color: "var(--color-status-error, #ff4444)" }}>
                 Approaching Repair Target ({alertPlanets.length} planet{alertPlanets.length !== 1 ? "s" : ""})
               </div>

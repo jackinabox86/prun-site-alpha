@@ -329,9 +329,9 @@ TIO     KI-401b     24.28`,
       `}</style>
 
       {/* Header Section */}
-      <div className="terminal-box" style={{ marginBottom: "2rem" }}>
+      <div className="terminal-box" style={{ marginBottom: "var(--section-gap)" }}>
         <div style={{ display: "flex", alignItems: "center", gap: "1rem", marginBottom: "1rem" }}>
-          <h1 className="terminal-header" style={{ flex: 1, margin: 0, fontSize: "1.2rem", paddingBottom: 0, borderBottom: "none", fontWeight: "normal" }}>
+          <h1 className="page-title" style={{ flex: 1 }}>
             TICKER ANALYSIS // BEST PROFIT PER AREA
           </h1>
           <button
@@ -371,7 +371,7 @@ TIO     KI-401b     24.28`,
       </div>
 
       {/* Controls Section */}
-      <div className="terminal-box" style={{ marginBottom: "2rem" }}>
+      <div className="terminal-box" style={{ marginBottom: "var(--section-gap)" }}>
         <div
           onClick={() => setSystemControlsCollapsed(!systemControlsCollapsed)}
           style={{
@@ -824,7 +824,7 @@ VEG_2 - HYF: 16xH2O-1xNS=>6xVEG`}
 
       {/* Error Display */}
       {error && (
-        <div className="terminal-box" style={{ borderColor: "var(--color-error)", marginBottom: "2rem" }}>
+        <div className="terminal-box" style={{ borderColor: "var(--color-error)", marginBottom: "var(--section-gap)" }}>
           <div className="status-error" style={{ fontFamily: "var(--font-mono)", fontSize: "0.875rem" }}>
             ERROR: {error}
           </div>
@@ -832,7 +832,7 @@ VEG_2 - HYF: 16xH2O-1xNS=>6xVEG`}
       )}
 
       {report && report.error && (
-        <div className="terminal-box" style={{ borderColor: "var(--color-error)", marginBottom: "2rem" }}>
+        <div className="terminal-box" style={{ borderColor: "var(--color-error)", marginBottom: "var(--section-gap)" }}>
           <div className="status-error" style={{ fontFamily: "var(--font-mono)", fontSize: "0.875rem" }}>
             ERROR: {report.error}
           </div>
@@ -843,7 +843,7 @@ VEG_2 - HYF: 16xH2O-1xNS=>6xVEG`}
       {report && !error && !report.error && report.best && (
         <>
           {/* Summary Box - Collapsible */}
-          <div className="terminal-box" style={{ marginBottom: "2rem" }}>
+          <div className="terminal-box" style={{ marginBottom: "var(--section-gap)" }}>
             <div
               style={{
                 display: "flex",
@@ -1054,7 +1054,7 @@ VEG_2 - HYF: 16xH2O-1xNS=>6xVEG`}
           </div>
 
           {/* Tables Section */}
-          <div className="terminal-box" style={{ marginBottom: "2rem" }}>
+          <div className="terminal-box" style={{ marginBottom: "var(--section-gap)" }}>
             <div className="terminal-header">Best Options - Condensed</div>
             <p style={{ margin: "0 0 1rem 0", color: "var(--color-text-secondary)", fontSize: "0.875rem" }}>
               Best performing option for each unique high-level scenario (up to 20). This condensed table only shows scenarios where the buy/make decisions for direct inputs, not their sub-components, are unique.

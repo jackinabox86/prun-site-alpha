@@ -19,6 +19,7 @@ const LEGEND = {
 };
 
 const BASE_LAYOUT = {
+  autosize: true,
   paper_bgcolor: "#0a0e14",
   plot_bgcolor: "#101419",
   font: { color: "#e6e8eb", family: "monospace" },
@@ -93,6 +94,7 @@ export default function PMMGMMSClient() {
         },
         margin: { t: 20, b: 120, l: 60, r: 20 },
       }}
+      useResizeHandler
       config={{ responsive: true, displayModeBar: false }}
       style={{ width: "100%", height: "500px" }}
     />
@@ -135,6 +137,7 @@ export default function PMMGMMSClient() {
           },
           margin: { t: 20, b: 120, l: 70, r: 20 },
         }}
+        useResizeHandler
         config={{ responsive: true, displayModeBar: false }}
         style={{ width: "100%", height: "500px" }}
       />
@@ -142,31 +145,13 @@ export default function PMMGMMSClient() {
   };
 
   return (
-    <div style={{ maxWidth: 1100, margin: "0 auto" }}>
-      <h1
-        style={{
-          fontFamily: "var(--font-mono)",
-          color: "var(--color-accent-primary)",
-          fontSize: "1.25rem",
-          letterSpacing: "0.1em",
-          textTransform: "uppercase",
-          marginBottom: "0.5rem",
-        }}
-      >
-        PMMG MMS
-      </h1>
-      <p
-        style={{
-          fontFamily: "var(--font-mono)",
-          fontSize: "0.875rem",
-          color: "var(--color-text-muted)",
-          marginBottom: "1.5rem",
-        }}
-      >
-        Share of production volume by material category
-      </p>
+    <div>
+      <div className="terminal-box" style={{ marginBottom: "var(--section-gap)" }}>
+        <h1 className="page-title">PMMG MMS</h1>
+        <p className="page-intro">Share of production volume by material category</p>
+      </div>
 
-      <div style={{ marginBottom: "1.5rem", display: "flex", gap: "0.5rem" }}>
+      <div style={{ marginBottom: "var(--section-gap)", display: "flex", gap: "0.5rem" }}>
         <button
           className="terminal-button"
           onClick={() => setChartType("share")}
@@ -199,7 +184,7 @@ export default function PMMGMMSClient() {
       )}
 
       {!loading && !error && data.length > 0 && (
-        <div className="terminal-box" style={{ padding: "1rem" }}>
+        <div className="terminal-box">
           {chartType === "share" ? shareChart : absoluteChart()}
         </div>
       )}

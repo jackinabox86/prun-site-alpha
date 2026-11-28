@@ -578,11 +578,8 @@ export default function ResupplyClient() {
   return (
     <>
       {/* Header */}
-      <div className="terminal-box" style={{ marginBottom: "2rem" }}>
-        <h1
-          className="terminal-header"
-          style={{ margin: 0, fontSize: "1.2rem" }}
-        >
+      <div className="terminal-box" style={{ marginBottom: "var(--section-gap)" }}>
+        <h1 className="page-title">
           RESUPPLY // BID_OPPORTUNITY_SCANNER
         </h1>
         <p
@@ -612,7 +609,7 @@ export default function ResupplyClient() {
       </div>
 
       {/* Burn Data */}
-      <div className="terminal-box" style={{ marginBottom: "2rem" }}>
+      <div className="terminal-box" style={{ marginBottom: "var(--section-gap)" }}>
         <div className="terminal-header" style={{ marginBottom: "1rem" }}>
           Burn Data
         </div>
@@ -700,7 +697,7 @@ export default function ResupplyClient() {
       </div>
 
       {/* Settings */}
-      <div className="terminal-box" style={{ marginBottom: "2rem" }}>
+      <div className="terminal-box" style={{ marginBottom: "var(--section-gap)" }}>
         <div className="terminal-header" style={{ marginBottom: "1rem" }}>
           Settings
         </div>
@@ -880,7 +877,7 @@ export default function ResupplyClient() {
         <div
           className="terminal-box"
           style={{
-            marginBottom: "2rem",
+            marginBottom: "var(--section-gap)",
             borderColor: "var(--color-error, #ff4444)",
           }}
         >
@@ -901,7 +898,7 @@ export default function ResupplyClient() {
         <div
           className="terminal-box"
           style={{
-            marginBottom: "2rem",
+            marginBottom: "var(--section-gap)",
             borderColor: "var(--color-accent-primary)",
           }}
         >
@@ -922,7 +919,7 @@ export default function ResupplyClient() {
         <div
           className="terminal-box"
           style={{
-            marginBottom: "2rem",
+            marginBottom: "var(--section-gap)",
             display: "flex",
             gap: "2rem",
             flexWrap: "wrap",
@@ -1046,7 +1043,7 @@ export default function ResupplyClient() {
 
       {/* Deficit Table — shown when burn data parsed but no API data yet */}
       {deficitRows.length > 0 && !rawData && (
-        <div className="terminal-box" style={{ marginBottom: "2rem" }}>
+        <div className="terminal-box" style={{ marginBottom: "var(--section-gap)" }}>
           <div className="terminal-header" style={{ marginBottom: "1rem" }}>
             Supply Deficits — {targetDaysNum} day target ({deficitRows.filter(r => r.deficit > 0).length} need resupply)
           </div>
@@ -1138,7 +1135,7 @@ export default function ResupplyClient() {
 
       {/* Resupply Results Table */}
       {rawData && parsedCount > 0 && (
-        <div className="terminal-box" style={{ marginBottom: "2rem" }}>
+        <div className="terminal-box" style={{ marginBottom: "var(--section-gap)" }}>
           <div
             style={{
               display: "flex",
@@ -1326,7 +1323,7 @@ export default function ResupplyClient() {
         <div
           className="terminal-box"
           style={{
-            marginBottom: "2rem",
+            marginBottom: "var(--section-gap)",
             borderColor: "var(--color-error, #ff4444)",
           }}
         >

@@ -26,29 +26,11 @@ export default function PMMGGDPClient() {
   }, []);
 
   return (
-    <div style={{ maxWidth: 1100, margin: "0 auto" }}>
-      <h1
-        style={{
-          fontFamily: "var(--font-mono)",
-          color: "var(--color-accent-primary)",
-          fontSize: "1.25rem",
-          letterSpacing: "0.1em",
-          textTransform: "uppercase",
-          marginBottom: "0.5rem",
-        }}
-      >
-        PMMG GDP
-      </h1>
-      <p
-        style={{
-          fontFamily: "var(--font-mono)",
-          fontSize: "0.875rem",
-          color: "var(--color-text-muted)",
-          marginBottom: "1.5rem",
-        }}
-      >
-        Total production volume across all items per month
-      </p>
+    <div>
+      <div className="terminal-box" style={{ marginBottom: "var(--section-gap)" }}>
+        <h1 className="page-title">PMMG GDP</h1>
+        <p className="page-intro">Total production volume across all items per month</p>
+      </div>
 
       {loading && (
         <div
@@ -100,7 +82,7 @@ export default function PMMGGDPClient() {
         const ticktext = tickvals.map(fmtB);
 
         return (
-          <div className="terminal-box" style={{ padding: "1rem" }}>
+          <div className="terminal-box">
             <Plot
               data={[
                 {
@@ -112,6 +94,7 @@ export default function PMMGGDPClient() {
                 },
               ]}
               layout={{
+                autosize: true,
                 paper_bgcolor: "#0a0e14",
                 plot_bgcolor: "#101419",
                 font: { color: "#e6e8eb", family: "monospace" },
@@ -130,6 +113,7 @@ export default function PMMGGDPClient() {
                 margin: { t: 20, b: 120, l: 70, r: 20 },
                 bargap: 0.3,
               }}
+              useResizeHandler
               config={{ responsive: true, displayModeBar: false }}
               style={{ width: "100%", height: "500px" }}
             />

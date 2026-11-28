@@ -111,18 +111,18 @@ export default function BasesRankingClient() {
   });
 
   return (
-    <div style={{ maxWidth: 1100, margin: "0 auto" }}>
-      <h1 style={{ fontFamily: "var(--font-mono)", color: "var(--color-accent-primary)", fontSize: "1.25rem", letterSpacing: "0.1em", textTransform: "uppercase", marginBottom: "0.5rem" }}>
-        Bases Ranking
-      </h1>
-      <p style={{ ...mono, fontSize: "0.75rem", color: "var(--color-text-muted)", marginBottom: "1.5rem" }}>
-        Snapshot: {snapshotDate || "…"}
-        {fioDataDate && <> &mdash; FIO data: {new Date(fioDataDate).toLocaleDateString()}</>}
-        {!fioDataDate && !loading && <> &mdash; <span style={{ color: "var(--color-warning)" }}>FIO data not yet generated (run fetch-fio-users)</span></>}
-        {" "}&mdash; ranked by days per base (lower = more efficient)
-      </p>
+    <div>
+      <div className="terminal-box" style={{ marginBottom: "var(--section-gap)" }}>
+        <h1 className="page-title">Bases Ranking</h1>
+        <p className="page-intro page-intro-meta">
+          Snapshot: {snapshotDate || "…"}
+          {fioDataDate && <> &mdash; FIO data: {new Date(fioDataDate).toLocaleDateString()}</>}
+          {!fioDataDate && !loading && <> &mdash; <span style={{ color: "var(--color-warning)" }}>FIO data not yet generated (run fetch-fio-users)</span></>}
+          {" "}&mdash; ranked by days per base (lower = more efficient)
+        </p>
+      </div>
 
-      <div className="terminal-box" style={{ marginBottom: "1.5rem", padding: "1rem" }}>
+      <div className="terminal-box" style={{ marginBottom: "var(--section-gap)" }}>
         <div style={{ display: "flex", gap: "0.75rem", alignItems: "center", flexWrap: "wrap" }}>
           <span style={{ ...mono, color: "var(--color-text-muted)" }}>Min bases</span>
           <input type="number" className="terminal-input" value={minBases} min={1}
@@ -138,7 +138,7 @@ export default function BasesRankingClient() {
       </div>
 
       {error && (
-        <div className="terminal-box" style={{ marginBottom: "1.5rem", padding: "1rem", color: "var(--color-error)", borderColor: "var(--color-error)" }}>
+        <div className="terminal-box" style={{ marginBottom: "var(--section-gap)", color: "var(--color-error)", borderColor: "var(--color-error)" }}>
           Error: {error}
         </div>
       )}

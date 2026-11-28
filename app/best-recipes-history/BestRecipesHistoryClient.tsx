@@ -317,13 +317,13 @@ export default function BestRecipesHistoryClient() {
   } : null;
 
   return (
-    <div className="terminal-container">
+    <div>
       {/* Header Section */}
-      <div className="terminal-box" style={{ marginBottom: "2rem" }}>
-        <h1 className="terminal-header" style={{ fontSize: "1.2rem" }}>
+      <div className="terminal-box" style={{ marginBottom: "var(--section-gap)" }}>
+        <h1 className="page-title">
           BEST RECIPES // HISTORICAL ANALYSIS
         </h1>
-        <p style={{ color: "var(--color-text-secondary)", fontSize: "0.875rem", lineHeight: "1.6" }}>
+        <p className="page-intro">
           This page tracks historical changes in best recipe profitability across all tickers.
           The <strong style={{ color: "var(--color-accent-primary)" }}>Biggest Movers</strong> table below shows which tickers have experienced the largest profit changes over your selected time period.
           You can sort the table by clicking any column header.
@@ -333,7 +333,7 @@ export default function BestRecipesHistoryClient() {
       </div>
 
       {/* Movers Section */}
-      <section className="terminal-box" style={{ marginBottom: "2rem" }}>
+      <section className="terminal-box" style={{ marginBottom: "var(--section-gap)" }}>
         <h2 className="terminal-header">
           BIGGEST MOVERS // TOP PROFIT/LOSS CHANGES
         </h2>
@@ -560,7 +560,7 @@ export default function BestRecipesHistoryClient() {
       </section>
 
       {/* Ticker History Section */}
-      <section id="ticker-history" className="terminal-box" style={{ marginBottom: "2rem" }}>
+      <section id="ticker-history" className="terminal-box" style={{ marginBottom: "var(--section-gap)" }}>
         <h2 className="terminal-header">
           Ticker Deep Dive{selectedTicker ? `: ${selectedTicker}` : ""}
         </h2>
